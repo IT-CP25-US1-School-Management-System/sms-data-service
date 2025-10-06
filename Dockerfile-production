@@ -1,0 +1,42 @@
+FROM golang:1.25.1
+
+ARG app_name
+
+RUN mkdir -p /go/src/github.com/IT-CP25-US1-School-Management-System/sms-data-service
+WORKDIR /go/src/github.com/IT-CP25-US1-School-Management-System/sms-data-service
+
+ENV GO111MODULE=on
+ENV ADDR=0.0.0.0
+ENV TZ=Asia/Bangkok
+
+# Copy app service 
+COPY go.mod .
+COPY . .
+
+RUN go mod tidy     
+
+RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o  /go/src/github.com/IT-CP25-US1-School-Management-System/sms-data-service/build/app main.go
+
+FROM alpine:latest 
+RUN apk --no-cache add ca-certificates tzdata
+WORKDIR /usr/app
+
+ARG app_name
+ARG build_number
+ARG version
+ENV env_build_number=${build_number}
+ENV env_version=${version}
+ENV ADDR=0.0.0.0
+ENV TZ=Asia/Bangkok
+
+COPY --from=0 /go/src/github.com/IT-CP25-US1-School-Management-System/sms-data-service/build/app .
+COPY --from=0 /go/src/github.com/IT-CP25-US1-School-Management-System/sms-data-service/assets assets
+COPY --from=0 /go/src/github.com/IT-CP25-US1-School-Management-System/sms-data-service/migrations migrations
+
+EXPOSE 3000
+EXPOSE 3100
+
+RUN adduser --system --uid 1001 golang
+USER golang
+
+CMD ["./app"]

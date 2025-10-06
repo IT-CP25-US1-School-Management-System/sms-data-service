@@ -1,0 +1,11 @@
+go.sum
+go-template
+tmp/*
+.env
+
+.DS_Store
+cover.out
+coverage.html
+ 
+
+report/*
