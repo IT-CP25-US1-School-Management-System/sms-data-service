@@ -1,0 +1,18 @@
+type: object
+properties:
+  dataset_id:
+    type: string
+  columns:
+    type: array
+    items:
+      type: string
+  filter:
+    type: string
+  format:
+    type: string
+    enum:
+      - parquet
+      - csv
+    default: parquet
+  destination_uri:
+    type: string

@@ -1,0 +1,6 @@
+allOf:
+  - $ref: "./ContractUpsert.yml"
+  - type: object
+    properties:
+      etag:
+        type: string

@@ -1,0 +1,27 @@
+type: object
+properties:
+  from:
+    $ref: "./FromRef.yml"
+  joins:
+    type: array
+    items:
+      $ref: "./JoinRef.yml"
+  projections:
+    type: array
+    items:
+      $ref: "./Projection.yml"
+  group_by:
+    type: array
+    items:
+      $ref: "./Expr.yml"
+  where_allow:
+    type: array
+    items:
+      $ref: "./WhereAllow.yml"
+  order_allow:
+    type: array
+    items:
+      $ref: "./OrderAllow.yml"
+  limit_default:
+    type: integer
+    minimum: 1

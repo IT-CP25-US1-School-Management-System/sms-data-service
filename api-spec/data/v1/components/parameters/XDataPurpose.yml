@@ -1,0 +1,7 @@
+name: X-Data-Purpose
+in: header
+description: Purpose binding for personal data (optional in this profile)
+required: false
+schema:  
+  type: string
+  example: marketing 

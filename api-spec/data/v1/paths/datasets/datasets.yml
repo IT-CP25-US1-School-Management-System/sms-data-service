@@ -1,0 +1,48 @@
+# /datasets:
+get:
+  tags: [Catalog]
+  summary: Search datasets
+  parameters:
+    - $ref: "../../components/parameters/Q.yml"
+    - $ref: "../../components/parameters/Domain.yml"
+    - $ref: "../../components/parameters/Tag.yml"
+    - $ref: "../../components/parameters/HasPII.yml"
+    - $ref: "../../components/parameters/Owner.yml"
+    - $ref: "../../components/parameters/Page.yml"
+    - $ref: "../../components/parameters/PageSize.yml"
+    - $ref: "../../components/parameters/Sort.yml"
+  responses:
+    "200":
+      description: List of datasets
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              items:
+                type: array
+                items:
+                  $ref: "../../components/schemas/Dataset.yml"
+              page:
+                type: integer
+              page_size:
+                type: integer
+              total:
+                type: integer
+
+post:
+  tags: [Catalog]
+  summary: Register a dataset
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: "../../components/schemas/DatasetUpsert.yml"
+  responses:
+    "201":
+      description: Created
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/Dataset.yml"

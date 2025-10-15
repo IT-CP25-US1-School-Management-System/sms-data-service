@@ -1,0 +1,13 @@
+type: object
+properties:
+  dataset:
+    type: string
+  view:
+    type: string
+  rows:
+    type: array
+    items:
+      type: object
+      additionalProperties: true
+  next_page_token:
+    type: string

@@ -1,0 +1,23 @@
+type: object
+required:
+  - id
+  - domain
+  - owner
+  - sensitivity
+properties:
+  id:
+    type: string
+  domain:
+    type: string
+  owner:
+    type: string
+  sensitivity:
+    type: string
+  has_pii:
+    type: boolean
+  tags:
+    type: array
+    items:
+      type: string
+  description:
+    type: string

@@ -1,0 +1,32 @@
+# /introspect/columns:
+get:
+  tags: [Introspection]
+  summary: List columns for a table
+  parameters:
+    - name: source
+      in: query
+      required: true
+      schema:
+        type: string
+    - name: schema
+      in: query
+      required: true
+      schema:
+        type: string
+    - name: table
+      in: query
+      required: true
+      schema:
+        type: string
+  responses:
+    "200":
+      description: Columns
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              items:
+                type: array
+                items:
+                  $ref: "../../components/schemas/PhysicalColumn.yml"

@@ -1,0 +1,22 @@
+# /introspect/schemas:
+get:
+  tags: [Introspection]
+  summary: List schemas in a source
+  parameters:
+    - name: source
+      in: query
+      required: true
+      schema:
+        type: string
+  responses:
+    "200":
+      description: Schemas
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              items:
+                type: array
+                items:
+                  type: string

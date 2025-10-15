@@ -1,0 +1,18 @@
+# Introspection endpoints
+get:
+  tags: [Introspection]
+  summary: List registered physical sources
+  responses:
+    "200":
+      description: Sources
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              items:
+                type: array
+                items:
+                  $ref: "../../components/schemas/SourceInfo.yml"
+
+

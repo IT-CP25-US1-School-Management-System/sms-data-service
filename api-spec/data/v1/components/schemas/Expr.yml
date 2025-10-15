@@ -1,0 +1,22 @@
+type: object
+description: Column reference or function call
+properties:
+  col:
+    type: string
+    description: alias.column
+  func:
+    type: string
+    enum:
+      - max
+      - min
+      - sum
+      - avg
+      - count
+      - coalesce
+      - upper
+      - lower
+      - date_trunc
+  args:
+    type: array
+    items:
+      $ref: "./Expr.yml"

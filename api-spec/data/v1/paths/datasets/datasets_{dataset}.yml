@@ -1,0 +1,19 @@
+# /datasets/{id}:
+get:
+  tags: [Catalog]
+  summary: Get dataset detail
+  parameters:
+    - $ref: "../../components/parameters/DatasetId.yml"
+  responses:
+    "200":
+      description: Dataset
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/DatasetDetail.yml"
+    "404":
+        description: Not Found,
+        content:
+          application/json:
+            schema:
+              $ref: "../../components/schemas/ErrorResponse.yml"  

@@ -1,0 +1,87 @@
+get:
+  tags: [Serving]
+  summary: Get a row by key (policy-aware)
+  parameters:
+    - $ref: "../../components/parameters/DatasetPath.yml"
+    - name: key
+      in: path
+      required: true
+      schema:
+        type: string
+    - $ref: "../../components/parameters/XDataPurpose.yml"
+    - name: view
+      in: query
+      schema:
+        type: string
+        default: cs
+    - name: columns
+      in: query
+      schema:
+        type: string
+  responses:
+    "200":
+      description: Row data
+      content:
+        application/json:
+          schema:
+            type: object
+            additionalProperties: true
+    "403":
+      description: Forbidden,
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yml"
+    "404":
+      description: Not Found,
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yml"
+patch:
+  tags: [Serving]
+  summary: Update a row (partial)
+  parameters:
+    - $ref: "../../components/parameters/DatasetPath.yml"
+    - name: key
+      in: path
+      required: true
+      schema:
+        type: string
+    - $ref: "../../components/parameters/XDataPurpose.yml"
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          additionalProperties: true
+  responses:
+    "204":
+      description: No Content
+    "404":
+      description: Not Found,
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yml"
+delete:
+  tags: [Serving]
+  summary: Delete (soft) a row by key
+  parameters:
+    - $ref: "../../components/parameters/DatasetPath.yml"
+    - name: key
+      in: path
+      required: true
+      schema:
+        type: string
+    - $ref: "../../components/parameters/XDataPurpose.yml"
+  responses:
+    "204":
+      description: No Content
+    "404":
+      description: Not Found,
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yml"

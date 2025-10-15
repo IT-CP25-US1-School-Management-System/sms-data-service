@@ -1,0 +1,6 @@
+type: object
+properties:
+  current:
+    $ref: "./Contract.yml"
+  proposed:
+    $ref: "./Contract.yml"

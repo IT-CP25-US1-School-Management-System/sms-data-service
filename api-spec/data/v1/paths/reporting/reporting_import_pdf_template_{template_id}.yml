@@ -1,0 +1,148 @@
+get:
+  tags: [Reporting]
+  summary: Get PDF template for Export
+  parameters:
+    - name: template_id
+      in: path
+      required: true
+      schema:
+        type: string
+  responses:
+    "200":
+      description: PDF template retrieved successfully
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              template_id:
+                type: string
+                description: The ID of the PDF template
+              columns:
+                type: array
+                items:
+                  type: string
+                description: List of column names in the template
+              position:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    column:
+                      type: string
+                      description: Column name
+                    x:
+                      type: number
+                      description: X coordinate
+                    y:
+                      type: number
+                      description: Y coordinate
+                description: List of positions corresponding to the columns
+                required:
+                  - column
+                  - x
+                  - y
+              dataset_id:
+                type: string
+                description: The ID of the dataset associated with the template
+              created_at:
+                type: string
+                format: date-time
+                description: Timestamp when the template was created
+              updated_at:
+                type: string
+                format: date-time
+                description: Timestamp when the template was last updated
+    "404":
+      description: PDF template not found
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yml"
+put:
+  tags: [Reporting]
+  summary: Update a PDF template
+  parameters:
+    - name: template_id
+      in: path
+      required: true
+      schema:
+        type: string
+  requestBody:
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            columns:
+              type: array
+              items:
+                type: string
+              description: List of column names in the template
+            position:
+              type: array
+              items:
+                type: object
+                properties:
+                  column:
+                    type: string
+                    description: Column name
+                  x:
+                    type: number
+                    description: X coordinate
+                  y:
+                    type: number
+                    description: Y coordinate
+              description: List of positions corresponding to the columns
+              required:
+                - column
+                - x
+                - y
+            dataset_id:
+              type: string
+              description: The ID of the dataset associated with the template
+          required:
+            - columns
+            - position
+            - dataset_id
+  responses:
+    "200":
+      description: PDF template updated successfully
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              template_id:
+                type: string
+                description: The ID of the updated PDF template
+    "400":
+      description: Bad request (e.g., missing parameters, invalid data)
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yml"
+    "404":
+      description: PDF template not found
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yml"
+delete:
+  tags: [Reporting]
+  summary: Delete a PDF template
+  parameters:
+    - name: template_id
+      in: path
+      required: true
+      schema:
+        type: string
+  responses:
+    "204":
+      description: PDF template deleted successfully
+    "404":
+      description: PDF template not found
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yml"

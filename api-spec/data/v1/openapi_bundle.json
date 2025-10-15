@@ -1,0 +1,2545 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Data Management Service (DMS) API — v1 (query-only)",
+    "version": "1 .0.0",
+    "description": "Central DMS focused on Catalog, Introspection, Contracts\nServing (dynamic datasets + CRUD/Query/Export).\n"
+  },
+  "servers": [
+    {
+      "url": "https://dms.company.com/api/v1",
+      "description": "Production"
+    },
+    {
+      "url": "http://localhost:3200/api/v1",
+      "description": "Local Dev"
+    }
+  ],
+  "security": [
+    {
+      "bearerAuth": []
+    }
+  ],
+  "tags": [
+    {
+      "name": "Health"
+    },
+    {
+      "name": "Introspection"
+    },
+    {
+      "name": "Catalog"
+    },
+    {
+      "name": "Contracts"
+    },
+    {
+      "name": "Serving"
+    },
+    {
+      "name": "Reporting"
+    }
+  ],
+  "paths": {
+    "/health": {
+      "get": {
+        "tags": [
+          "Health"
+        ],
+        "summary": "Health probe",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/introspect/sources": {
+      "get": {
+        "tags": [
+          "Introspection"
+        ],
+        "summary": "List registered physical sources",
+        "responses": {
+          "200": {
+            "description": "Sources",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/SourceInfo"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/introspect/schemas": {
+      "get": {
+        "tags": [
+          "Introspection"
+        ],
+        "summary": "List schemas in a source",
+        "parameters": [
+          {
+            "name": "source",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Schemas",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/introspect/tables": {
+      "get": {
+        "tags": [
+          "Introspection"
+        ],
+        "summary": "List tables in a schema",
+        "parameters": [
+          {
+            "name": "source",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "schema",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Tables",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/introspect/columns": {
+      "get": {
+        "tags": [
+          "Introspection"
+        ],
+        "summary": "List columns for a table",
+        "parameters": [
+          {
+            "name": "source",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "schema",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "table",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Columns",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/PhysicalColumn"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/datasets": {
+      "get": {
+        "tags": [
+          "Catalog"
+        ],
+        "summary": "Search datasets",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Q"
+          },
+          {
+            "$ref": "#/components/parameters/Domain"
+          },
+          {
+            "$ref": "#/components/parameters/Tag"
+          },
+          {
+            "$ref": "#/components/parameters/HasPII"
+          },
+          {
+            "$ref": "#/components/parameters/Owner"
+          },
+          {
+            "$ref": "#/components/parameters/Page"
+          },
+          {
+            "$ref": "#/components/parameters/PageSize"
+          },
+          {
+            "$ref": "#/components/parameters/Sort"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of datasets",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Dataset"
+                      }
+                    },
+                    "page": {
+                      "type": "integer"
+                    },
+                    "page_size": {
+                      "type": "integer"
+                    },
+                    "total": {
+                      "type": "integer"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Catalog"
+        ],
+        "summary": "Register a dataset",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DatasetUpsert"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Dataset"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/datasets/{dataset}": {
+      "get": {
+        "tags": [
+          "Catalog"
+        ],
+        "summary": "Get dataset detail",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/DatasetId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Dataset",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DatasetDetail"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found,",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/datasets/{dataset}/versions": {
+      "get": {
+        "tags": [
+          "Catalog"
+        ],
+        "summary": "List dataset versions",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/DatasetId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Versions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "versions": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/DatasetVersion"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/contracts/{dataset}": {
+      "post": {
+        "tags": [
+          "Contracts"
+        ],
+        "summary": "Publish/Update data contract (schema, DQ, runtime query plan)",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/DatasetPath"
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ContractUpsert"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Registered",
+            "headers": {
+              "ETag": {
+                "description": "Entity tag",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "contract_id": {
+                      "type": "string"
+                    },
+                    "version": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/contracts/{dataset}/{versions}": {
+      "get": {
+        "tags": [
+          "Contracts"
+        ],
+        "summary": "Read a specific data contract version",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/DatasetPath"
+          },
+          {
+            "name": "versions",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contract",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Contract"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/contracts/validate": {
+      "post": {
+        "tags": [
+          "Contracts"
+        ],
+        "summary": "Validate schema change (compatibility, breaking)",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ContractValidateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Validation result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContractValidateResult"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/data/{dataset}": {
+      "get": {
+        "tags": [
+          "Serving"
+        ],
+        "summary": "List rows from a dataset (policy-aware, dynamic)",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/DatasetPath"
+          },
+          {
+            "$ref": "#/components/parameters/XDataPurpose"
+          },
+          {
+            "name": "view",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "columns",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "description": "comma-separated allowlisted columns"
+            }
+          },
+          {
+            "name": "filter",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "description": "key:value on allowlisted filter keys"
+            }
+          },
+          {
+            "name": "order_by",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "description": "allowlisted column name with optional '-' prefix"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/Limit"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Rows",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RowsResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "BadRequest,",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized,",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden,",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Serving"
+        ],
+        "summary": "Create a row",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/DatasetPath"
+          },
+          {
+            "$ref": "#/components/parameters/XDataPurpose"
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": true
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "BadRequest,",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict,",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/data/{dataset}/key/{key}": {
+      "get": {
+        "tags": [
+          "Serving"
+        ],
+        "summary": "Get a row by key (policy-aware)",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/DatasetPath"
+          },
+          {
+            "name": "key",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/XDataPurpose"
+          },
+          {
+            "name": "view",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "default": "cs"
+            }
+          },
+          {
+            "name": "columns",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Row data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden,",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found,",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "Serving"
+        ],
+        "summary": "Update a row (partial)",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/DatasetPath"
+          },
+          {
+            "name": "key",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/XDataPurpose"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": true
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found,",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Serving"
+        ],
+        "summary": "Delete (soft) a row by key",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/DatasetPath"
+          },
+          {
+            "name": "key",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/XDataPurpose"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found,",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/data/{dataset}/query": {
+      "post": {
+        "tags": [
+          "Serving"
+        ],
+        "summary": "Query data",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/XDataPurpose"
+          },
+          {
+            "$ref": "#/components/parameters/DatasetPath"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QueryRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Result set,",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QueryResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "BadRequest,",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/reporting/export/job": {
+      "post": {
+        "tags": [
+          "Reporting"
+        ],
+        "summary": "Export a dataset to object storage (csv/xlxs)",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExportJobCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "job_id": {
+                      "type": "string",
+                      "description": "The ID of the export job"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/reporting/export/job/{job_id}/status": {
+      "get": {
+        "tags": [
+          "Reporting"
+        ],
+        "summary": "Get status of an export job",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/JobId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Job status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExportJobStatus"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/reporting/export/job/{job_id}/result": {
+      "get": {
+        "tags": [
+          "Reporting"
+        ],
+        "summary": "Get the result of an export job",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/JobId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Job result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExportJobResult"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/reporting/import/job": {
+      "post": {
+        "tags": [
+          "Reporting"
+        ],
+        "summary": "Import a report",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "The report file to be imported (e.g., CSV, Excel)"
+                  },
+                  "dataset_id": {
+                    "type": "string",
+                    "description": "The ID of the dataset to import the report into"
+                  }
+                },
+                "required": [
+                  "file",
+                  "dataset_id"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Report import job accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "job_id": {
+                      "type": "string",
+                      "description": "The ID of the import job"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request (e.g., missing parameters, invalid file format)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/reporting/import/job/{job_id}/status": {
+      "get": {
+        "tags": [
+          "Reporting"
+        ],
+        "summary": "Get status of an import job",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/JobId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Job status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportJobStatus"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/reporting/import/job/{job_id}/result": {
+      "get": {
+        "tags": [
+          "Reporting"
+        ],
+        "summary": "Get the result of an export job",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/JobId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Job result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportJobResult"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/reporting/import/pdf/template": {
+      "post": {
+        "tags": [
+          "Reporting"
+        ],
+        "summary": "Import a PDF template",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "The PDF template file to be imported"
+                  },
+                  "data": {
+                    "type": "object",
+                    "description": "Metadata about the PDF template",
+                    "properties": {
+                      "columns": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        },
+                        "description": "List of column names in the template"
+                      },
+                      "position": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "column": {
+                              "type": "string",
+                              "description": "Column name"
+                            },
+                            "x": {
+                              "type": "number",
+                              "description": "X coordinate"
+                            },
+                            "y": {
+                              "type": "number",
+                              "description": "Y coordinate"
+                            }
+                          }
+                        },
+                        "description": "List of positions corresponding to the columns",
+                        "required": [
+                          "column",
+                          "x",
+                          "y"
+                        ]
+                      },
+                      "dataset_id": {
+                        "type": "string",
+                        "description": "The ID of the dataset associated with the template"
+                      }
+                    }
+                  }
+                },
+                "required": [
+                  "file",
+                  "data"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "PDF template import accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "template_id": {
+                      "type": "string",
+                      "description": "The ID of the imported PDF template"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request (e.g., missing parameters, invalid file format)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict (e.g., template already exists)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/reporting/import/pdf/template/{template_id}": {
+      "get": {
+        "tags": [
+          "Reporting"
+        ],
+        "summary": "Get PDF template for Export",
+        "parameters": [
+          {
+            "name": "template_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "PDF template retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "template_id": {
+                      "type": "string",
+                      "description": "The ID of the PDF template"
+                    },
+                    "columns": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      },
+                      "description": "List of column names in the template"
+                    },
+                    "position": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "column": {
+                            "type": "string",
+                            "description": "Column name"
+                          },
+                          "x": {
+                            "type": "number",
+                            "description": "X coordinate"
+                          },
+                          "y": {
+                            "type": "number",
+                            "description": "Y coordinate"
+                          }
+                        }
+                      },
+                      "description": "List of positions corresponding to the columns",
+                      "required": [
+                        "column",
+                        "x",
+                        "y"
+                      ]
+                    },
+                    "dataset_id": {
+                      "type": "string",
+                      "description": "The ID of the dataset associated with the template"
+                    },
+                    "created_at": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "Timestamp when the template was created"
+                    },
+                    "updated_at": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "Timestamp when the template was last updated"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "PDF template not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Reporting"
+        ],
+        "summary": "Update a PDF template",
+        "parameters": [
+          {
+            "name": "template_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "columns": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "List of column names in the template"
+                  },
+                  "position": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "column": {
+                          "type": "string",
+                          "description": "Column name"
+                        },
+                        "x": {
+                          "type": "number",
+                          "description": "X coordinate"
+                        },
+                        "y": {
+                          "type": "number",
+                          "description": "Y coordinate"
+                        }
+                      }
+                    },
+                    "description": "List of positions corresponding to the columns",
+                    "required": [
+                      "column",
+                      "x",
+                      "y"
+                    ]
+                  },
+                  "dataset_id": {
+                    "type": "string",
+                    "description": "The ID of the dataset associated with the template"
+                  }
+                },
+                "required": [
+                  "columns",
+                  "position",
+                  "dataset_id"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "PDF template updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "template_id": {
+                      "type": "string",
+                      "description": "The ID of the updated PDF template"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request (e.g., missing parameters, invalid data)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "PDF template not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Reporting"
+        ],
+        "summary": "Delete a PDF template",
+        "parameters": [
+          {
+            "name": "template_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "PDF template deleted successfully"
+          },
+          "404": {
+            "description": "PDF template not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/reporting/export/pdf/template/job": {
+      "post": {
+        "tags": [
+          "Reporting"
+        ],
+        "summary": "Export a PDF report based on a template",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "template_id": {
+                    "type": "string",
+                    "description": "The ID of the PDF template to use for the report"
+                  },
+                  "dataset_id": {
+                    "type": "string",
+                    "description": "The ID of the dataset to generate the report from"
+                  },
+                  "key": {
+                    "type": "string",
+                    "description": "The key identifying the specific report instance to generate"
+                  }
+                },
+                "required": [
+                  "template_id",
+                  "dataset_id",
+                  "key"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "job_id": {
+                      "type": "string",
+                      "description": "The ID of the export job"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request (e.g., missing parameters, invalid template ID)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found (e.g., template or dataset not found)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/reporting/export/pdf/template/job/{job_id}/status": {
+      "get": {
+        "tags": [
+          "Reporting"
+        ],
+        "summary": "Get status of an import job",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/JobId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Job status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "description": "The current status of the job (e.g., pending, in_progress, completed, failed)"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/reporting/export/pdf/template/job/{job_id}/result": {
+      "get": {
+        "tags": [
+          "Reporting"
+        ],
+        "summary": "Get status of an import job",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/JobId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Job status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "job_id": {
+                      "type": "string",
+                      "description": "The ID of the PDF template export job"
+                    },
+                    "status": {
+                      "type": "string",
+                      "description": "The current status of the job (e.g., pending, in_progress, completed, failed)"
+                    },
+                    "download_url": {
+                      "type": "string",
+                      "description": "The URL to download the generated PDF report (present if status is completed)"
+                    },
+                    "error_message": {
+                      "type": "string",
+                      "description": "Error message if the job failed"
+                    },
+                    "created_at": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "The timestamp when the job was created"
+                    },
+                    "completed_at": {
+                      "type": "string",
+                      "format": "date-time",
+                      "description": "The timestamp when the job was completed (present if status is completed or failed)"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    },
+    "schemas": {
+      "SourceInfo": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "jdbc",
+              "file",
+              "api"
+            ]
+          },
+          "display_name": {
+            "type": "string"
+          }
+        }
+      },
+      "PhysicalColumn": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "data_type": {
+            "type": "string"
+          },
+          "nullable": {
+            "type": "boolean"
+          },
+          "default": {
+            "type": "string"
+          }
+        }
+      },
+      "Dataset": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "domain": {
+            "type": "string"
+          },
+          "owner": {
+            "type": "string"
+          },
+          "sensitivity": {
+            "type": "string",
+            "enum": [
+              "public",
+              "internal",
+              "confidential",
+              "restricted"
+            ]
+          },
+          "has_pii": {
+            "type": "boolean"
+          },
+          "latest_version": {
+            "type": "string"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "description": {
+            "type": "string"
+          }
+        }
+      },
+      "DatasetUpsert": {
+        "type": "object",
+        "required": [
+          "id",
+          "domain",
+          "owner",
+          "sensitivity"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "domain": {
+            "type": "string"
+          },
+          "owner": {
+            "type": "string"
+          },
+          "sensitivity": {
+            "type": "string"
+          },
+          "has_pii": {
+            "type": "boolean"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "description": {
+            "type": "string"
+          }
+        }
+      },
+      "DatasetDetail": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "domain": {
+            "type": "string"
+          },
+          "owner": {
+            "type": "string"
+          },
+          "sensitivity": {
+            "type": "string",
+            "enum": [
+              "public",
+              "internal",
+              "confidential",
+              "restricted"
+            ]
+          },
+          "has_pii": {
+            "type": "boolean"
+          },
+          "latest_version": {
+            "type": "string"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "description": {
+            "type": "string"
+          }
+        }
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "object",
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              },
+              "details": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      },
+      "DatasetVersion": {
+        "type": "object",
+        "properties": {
+          "version": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "active",
+              "preview",
+              "deprecated"
+            ]
+          },
+          "breaking": {
+            "type": "boolean"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "sunset": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "Column": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "nullable": {
+            "type": "boolean"
+          },
+          "enum": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "DQRule": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "rule": {
+            "type": "string"
+          }
+        }
+      },
+      "AccessPolicy": {
+        "type": "object",
+        "properties": {
+          "role": {
+            "type": "string"
+          },
+          "columns_allow": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "FromRef": {
+        "type": "object",
+        "required": [
+          "source",
+          "schema",
+          "table"
+        ],
+        "properties": {
+          "source": {
+            "type": "string"
+          },
+          "schema": {
+            "type": "string"
+          },
+          "table": {
+            "type": "string"
+          },
+          "alias": {
+            "type": "string"
+          }
+        }
+      },
+      "Expr": {
+        "type": "object",
+        "description": "Column reference or function call",
+        "properties": {
+          "col": {
+            "type": "string",
+            "description": "alias.column"
+          },
+          "func": {
+            "type": "string",
+            "enum": [
+              "max",
+              "min",
+              "sum",
+              "avg",
+              "count",
+              "coalesce",
+              "upper",
+              "lower",
+              "date_trunc"
+            ]
+          },
+          "args": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Expr"
+            }
+          }
+        }
+      },
+      "BoolExpr": {
+        "type": "object",
+        "description": "Boolean expression for joins/where (eq/and/or only)",
+        "properties": {
+          "eq": {
+            "type": "array",
+            "minItems": 2,
+            "maxItems": 2,
+            "items": {
+              "$ref": "#/components/schemas/Expr"
+            }
+          },
+          "and": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BoolExpr"
+            }
+          },
+          "or": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BoolExpr"
+            }
+          }
+        }
+      },
+      "JoinRef": {
+        "type": "object",
+        "required": [
+          "type",
+          "source",
+          "schema",
+          "table",
+          "on"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "inner",
+              "left"
+            ]
+          },
+          "source": {
+            "type": "string"
+          },
+          "schema": {
+            "type": "string"
+          },
+          "table": {
+            "type": "string"
+          },
+          "alias": {
+            "type": "string"
+          },
+          "on": {
+            "$ref": "#/components/schemas/BoolExpr"
+          }
+        }
+      },
+      "Projection": {
+        "type": "object",
+        "required": [
+          "as",
+          "expr"
+        ],
+        "properties": {
+          "as": {
+            "type": "string"
+          },
+          "expr": {
+            "$ref": "#/components/schemas/Expr"
+          },
+          "type": {
+            "type": "string"
+          },
+          "nullable": {
+            "type": "boolean"
+          }
+        }
+      },
+      "WhereAllow": {
+        "type": "object",
+        "required": [
+          "key",
+          "expr"
+        ],
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "expr": {
+            "$ref": "#/components/schemas/Expr"
+          },
+          "ops": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "=",
+                "IN",
+                ">",
+                "<",
+                ">=",
+                "<="
+              ]
+            }
+          }
+        }
+      },
+      "OrderAllow": {
+        "type": "object",
+        "properties": {
+          "col": {
+            "type": "string"
+          }
+        }
+      },
+      "QueryPlan": {
+        "type": "object",
+        "properties": {
+          "from": {
+            "$ref": "#/components/schemas/FromRef"
+          },
+          "joins": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/JoinRef"
+            }
+          },
+          "projections": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Projection"
+            }
+          },
+          "group_by": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Expr"
+            }
+          },
+          "where_allow": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WhereAllow"
+            }
+          },
+          "order_allow": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OrderAllow"
+            }
+          },
+          "limit_default": {
+            "type": "integer",
+            "minimum": 1
+          }
+        }
+      },
+      "RuntimePolicy": {
+        "type": "object",
+        "description": "Runtime serving configuration (query plan only).",
+        "required": [
+          "key",
+          "default_view",
+          "query"
+        ],
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "default_view": {
+            "type": "string"
+          },
+          "query": {
+            "$ref": "#/components/schemas/QueryPlan"
+          }
+        }
+      },
+      "ContractUpsert": {
+        "type": "object",
+        "required": [
+          "version",
+          "schema",
+          "policies"
+        ],
+        "properties": {
+          "version": {
+            "type": "string"
+          },
+          "owner": {
+            "type": "string"
+          },
+          "schema": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Column"
+            }
+          },
+          "quality_rules": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DQRule"
+            }
+          },
+          "access_policies": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AccessPolicy"
+            }
+          },
+          "policies": {
+            "type": "object",
+            "required": [
+              "runtime"
+            ],
+            "properties": {
+              "runtime": {
+                "$ref": "#/components/schemas/RuntimePolicy"
+              },
+              "views": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              },
+              "filters": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "Contract": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ContractUpsert"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "etag": {
+                "type": "string"
+              }
+            }
+          }
+        ]
+      },
+      "ContractValidateRequest": {
+        "type": "object",
+        "properties": {
+          "current": {
+            "$ref": "#/components/schemas/Contract"
+          },
+          "proposed": {
+            "$ref": "#/components/schemas/Contract"
+          }
+        }
+      },
+      "ContractValidateResult": {
+        "type": "object",
+        "properties": {
+          "breaking": {
+            "type": "boolean"
+          },
+          "messages": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "RowsResponse": {
+        "type": "object",
+        "properties": {
+          "dataset": {
+            "type": "string"
+          },
+          "view": {
+            "type": "string"
+          },
+          "rows": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          },
+          "next_page_token": {
+            "type": "string"
+          }
+        }
+      },
+      "CreateResult": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string"
+          }
+        }
+      },
+      "QueryRequest": {
+        "type": "object",
+        "properties": {
+          "sql": {
+            "type": "string"
+          },
+          "params": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "view": {
+            "type": "string"
+          },
+          "as_of": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "QueryResponse": {
+        "type": "object",
+        "properties": {
+          "columns": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "rows": {
+            "type": "array",
+            "items": {
+              "type": "array",
+              "items": {}
+            }
+          }
+        }
+      },
+      "ExportJobCreate": {
+        "type": "object",
+        "properties": {
+          "dataset_id": {
+            "type": "string"
+          },
+          "columns": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "filter": {
+            "type": "string"
+          },
+          "format": {
+            "type": "string",
+            "enum": [
+              "parquet",
+              "csv"
+            ],
+            "default": "parquet"
+          },
+          "destination_uri": {
+            "type": "string"
+          }
+        }
+      },
+      "ExportJobStatus": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "in_progress",
+              "completed",
+              "failed"
+            ]
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "completed_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "destination_uri": {
+            "type": "string"
+          },
+          "error_message": {
+            "type": "string"
+          }
+        }
+      },
+      "ExportJobResult": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "in_progress",
+              "completed",
+              "failed"
+            ]
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "completed_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "started_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "destination_uri": {
+            "type": "string"
+          },
+          "error_message": {
+            "type": "string"
+          }
+        }
+      },
+      "ImportJobStatus": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "in_progress",
+              "completed",
+              "failed"
+            ]
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "completed_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "error_message": {
+            "type": "string"
+          }
+        }
+      },
+      "ImportJobResult": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "in_progress",
+              "completed",
+              "failed"
+            ]
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "completed_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "error_message": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "parameters": {
+      "Q": {
+        "name": "q",
+        "in": "query",
+        "schema": {
+          "type": "string"
+        }
+      },
+      "Domain": {
+        "name": "domain",
+        "in": "query",
+        "schema": {
+          "type": "string"
+        }
+      },
+      "Tag": {
+        "name": "tag",
+        "in": "query",
+        "schema": {
+          "type": "string"
+        }
+      },
+      "HasPII": {
+        "name": "has_pii",
+        "in": "query",
+        "schema": {
+          "type": "boolean"
+        }
+      },
+      "Owner": {
+        "name": "owner",
+        "in": "query",
+        "schema": {
+          "type": "string"
+        }
+      },
+      "Page": {
+        "name": "page",
+        "in": "query",
+        "schema": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 1
+        }
+      },
+      "PageSize": {
+        "name": "page_size",
+        "in": "query",
+        "schema": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 200,
+          "default": 20
+        }
+      },
+      "Sort": {
+        "name": "sort",
+        "in": "query",
+        "schema": {
+          "type": "string",
+          "description": "field or -field"
+        }
+      },
+      "DatasetId": {
+        "name": "dataset",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      },
+      "DatasetPath": {
+        "name": "dataset",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      },
+      "IdempotencyKey": {
+        "name": "Idempotency-Key",
+        "in": "header",
+        "required": false,
+        "schema": {
+          "type": "string",
+          "format": "uuid"
+        }
+      },
+      "XDataPurpose": {
+        "name": "X-Data-Purpose",
+        "in": "header",
+        "description": "Purpose binding for personal data (optional in this profile)",
+        "required": false,
+        "schema": {
+          "type": "string",
+          "example": "marketing"
+        }
+      },
+      "Limit": {
+        "name": "limit",
+        "in": "query",
+        "schema": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000,
+          "default": 100
+        }
+      },
+      "JobId": {
+        "name": "job_id",
+        "in": "path",
+        "required": true,
+        "description": "The ID of the export job",
+        "schema": {
+          "type": "string",
+          "format": "uuid"
+        }
+      }
+    }
+  }
+}

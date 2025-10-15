@@ -1,0 +1,13 @@
+type: object
+description: Runtime serving configuration (query plan only).
+required:
+  - key
+  - default_view
+  - query
+properties:
+  key:
+    type: string
+  default_view:
+    type: string
+  query:
+    $ref: "./QueryPlan.yml"

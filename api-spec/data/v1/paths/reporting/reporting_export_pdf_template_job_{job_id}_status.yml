@@ -1,0 +1,22 @@
+get:
+  tags: [Reporting]
+  summary: Get status of an import job
+  parameters:
+    - $ref: "../../components/parameters/JobId.yml"
+  responses:
+    "200":
+      description: Job status
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              status:
+                type: string
+                description: The current status of the job (e.g., pending, in_progress, completed, failed)
+    "404":
+      description: Not Found
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yml"

@@ -1,0 +1,19 @@
+post:
+  tags: [Reporting]
+  summary: Export a dataset to object storage (csv/xlxs)
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema: { $ref: "../../components/schemas/ExportJobCreate.yml" }
+  responses:
+    "202":
+      description: Accepted
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              job_id:
+                type: string
+                description: The ID of the export job

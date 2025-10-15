@@ -1,0 +1,94 @@
+openapi: 3.0.3
+info:
+  title: Data Management Service (DMS) API — v1 (query-only)
+  version: "1 .0.0"
+  description: |
+    Central DMS focused on Catalog, Introspection, Contracts
+    Serving (dynamic datasets + CRUD/Query/Export).
+servers:
+  - url: https://dms.company.com/api/v1
+    description: Production
+  - url: http://localhost:3200/api/v1
+    description: Local Dev
+security:
+  - bearerAuth: []
+tags:
+  - name: Health
+  - name: Introspection
+  - name: Catalog
+  - name: Contracts
+  - name: Serving
+  - name: Reporting
+paths:
+  /health:
+    get:
+      tags: [Health]
+      summary: Health probe
+      responses:
+        "200": { description: OK }
+
+  # -------------------- Introspection (physical metadata) --------------------
+  /introspect/sources:
+    $ref: paths/introspect/sources.yml
+  /introspect/schemas:
+    $ref: paths/introspect/schemas.yml
+  /introspect/tables:
+    $ref: paths/introspect/tables.yml
+  /introspect/columns:
+    $ref: paths/introspect/columns.yml
+
+  # -------------------- Catalog --------------------
+  /datasets:
+    $ref: paths/datasets/datasets.yml
+  /datasets/{dataset}:
+    $ref: paths/datasets/datasets_{dataset}.yml
+  /datasets/{dataset}/versions:
+    $ref: paths/datasets/datasets_{dataset}_versions.yml
+
+  # -------------------- Contracts (with runtime query plans only) --------------------
+  /contracts/{dataset}:
+    $ref: paths/contracts/contracts_{dataset}.yml
+  /contracts/{dataset}/{versions}:
+    $ref: paths/contracts/contracts_{dataset}_{versions}.yml
+  /contracts/validate:
+    $ref: paths/contracts/contracts_validate.yml
+
+  # -------------------- Serving (dynamic + CRUD/Query/Export) --------------------
+  /data/{dataset}:
+    $ref: paths/serving/data_{dataset}.yml
+  /data/{dataset}/key/{key}:
+    $ref: paths/serving/data_{dataset}_key_{key}.yml
+  /data/{dataset}/query:
+    $ref: paths/serving/data_{dataset}_query.yml
+
+  # -------------------- Reporting (export, import, reporting) --------------------
+  /reporting/export/job:
+    $ref: paths/reporting/reporting_export_job.yml
+  /reporting/export/job/{job_id}/status:
+    $ref: paths/reporting/reporting_export_job_{job_id}_status.yml
+  /reporting/export/job/{job_id}/result:
+    $ref: paths/reporting/reporting_export_job_{job_id}_result.yml
+  /reporting/import/job:
+    $ref: paths/reporting/reporting_import_job.yml
+  /reporting/import/job/{job_id}/status:
+    $ref: paths/reporting/reporting_import_job_{job_id}_status.yml
+  /reporting/import/job/{job_id}/result:
+    $ref: paths/reporting/reporting_import_job_{job_id}_result.yml
+
+  /reporting/import/pdf/template:
+    $ref: paths/reporting/reporting_import_pdf_template.yml
+  /reporting/import/pdf/template/{template_id}:
+    $ref: paths/reporting/reporting_import_pdf_template_{template_id}.yml
+  /reporting/export/pdf/template/job:
+    $ref: paths/reporting/reporting_export_pdf_template_job.yml
+  /reporting/export/pdf/template/job/{job_id}/status:
+    $ref: paths/reporting/reporting_export_pdf_template_job_{job_id}_status.yml
+  /reporting/export/pdf/template/job/{job_id}/result:
+    $ref: paths/reporting/reporting_export_pdf_template_job_{job_id}_result.yml
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT

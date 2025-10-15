@@ -1,0 +1,8 @@
+type: object
+properties:
+  breaking:
+    type: boolean
+  messages:
+    type: array
+    items:
+      type: string

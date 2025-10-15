@@ -1,0 +1,18 @@
+get:
+  tags: [Reporting]
+  summary: Get status of an export job
+  parameters:
+    - $ref: "../../components/parameters/JobId.yml"
+  responses:
+    "200":
+      description: Job status
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ExportJobStatus.yml"
+    "404":
+      description: Not Found
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yml"

@@ -1,0 +1,18 @@
+type: object
+properties:
+  version:
+    type: string
+  status:
+    type: string
+    enum:
+      - active
+      - preview
+      - deprecated
+  breaking:
+    type: boolean
+  created_at:
+    type: string
+    format: date-time
+  sunset:
+    type: string
+    format: date-time

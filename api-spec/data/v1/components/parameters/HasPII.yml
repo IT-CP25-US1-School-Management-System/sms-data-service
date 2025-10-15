@@ -1,0 +1,4 @@
+name: has_pii
+in: query
+schema:
+  type: boolean

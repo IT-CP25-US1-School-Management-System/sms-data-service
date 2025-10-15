@@ -1,0 +1,39 @@
+get:
+  tags: [Reporting]
+  summary: Get status of an import job
+  parameters:
+    - $ref: "../../components/parameters/JobId.yml"
+  responses:
+    "200":
+      description: Job status
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              job_id:
+                type: string
+                description: The ID of the PDF template export job
+              status:
+                type: string
+                description: The current status of the job (e.g., pending, in_progress, completed, failed)
+              download_url:
+                type: string
+                description: The URL to download the generated PDF report (present if status is completed)
+              error_message:
+                type: string
+                description: Error message if the job failed
+              created_at:
+                type: string
+                format: date-time
+                description: The timestamp when the job was created
+              completed_at:
+                type: string
+                format: date-time
+                description: The timestamp when the job was completed (present if status is completed or failed)
+    "404":
+      description: Not Found
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yml"

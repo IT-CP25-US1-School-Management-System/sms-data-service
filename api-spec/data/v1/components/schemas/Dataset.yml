@@ -1,0 +1,27 @@
+type: object
+properties:
+  id:
+    type: string
+  name:
+    type: string
+  domain:
+    type: string
+  owner:
+    type: string
+  sensitivity:
+    type: string
+    enum:
+      - public
+      - internal
+      - confidential
+      - restricted
+  has_pii:
+    type: boolean
+  latest_version:
+    type: string
+  tags:
+    type: array
+    items:
+      type: string
+  description:
+    type: string

@@ -1,0 +1,12 @@
+type: object
+properties:
+  id:
+    type: string
+  type:
+    type: string
+    enum:
+      - jdbc
+      - file
+      - api
+  display_name:
+    type: string

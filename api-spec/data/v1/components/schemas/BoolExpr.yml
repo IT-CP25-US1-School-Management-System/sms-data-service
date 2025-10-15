@@ -1,0 +1,17 @@
+type: object
+description: Boolean expression for joins/where (eq/and/or only)
+properties:
+  eq:
+    type: array
+    minItems: 2
+    maxItems: 2
+    items:
+      $ref: "./Expr.yml"
+  and:
+    type: array
+    items:
+      $ref: "./BoolExpr.yml"
+  or:
+    type: array
+    items:
+      $ref: "./BoolExpr.yml"

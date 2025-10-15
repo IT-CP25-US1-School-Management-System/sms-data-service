@@ -1,0 +1,70 @@
+post:
+  tags: [Reporting]
+  summary: Import a PDF template
+  requestBody:
+    content:
+      multipart/form-data:
+        schema:
+          type: object
+          properties:
+            file:
+              type: string
+              format: binary
+              description: The PDF template file to be imported
+            data:
+              type: object
+              description: Metadata about the PDF template
+              properties:
+                columns:
+                  type: array
+                  items:
+                    type: string
+                  description: List of column names in the template
+                position:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      column:
+                        type: string
+                        description: Column name
+                      x:
+                        type: number
+                        description: X coordinate
+                      y:
+                        type: number
+                        description: Y coordinate
+                  description: List of positions corresponding to the columns
+                  required:
+                    - column
+                    - x
+                    - y
+                dataset_id:
+                  type: string
+                  description: The ID of the dataset associated with the template
+          required:
+            - file
+            - data
+  responses:
+    "201":
+      description: PDF template import accepted
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              template_id:
+                type: string
+                description: The ID of the imported PDF template
+    "400":
+      description: Bad request (e.g., missing parameters, invalid file format)
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yml"
+    "409":
+      description: Conflict (e.g., template already exists)
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yml"

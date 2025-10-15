@@ -1,0 +1,27 @@
+# /introspect/tables:
+get:
+  tags: [Introspection]
+  summary: List tables in a schema
+  parameters:
+    - name: source
+      in: query
+      required: true
+      schema:
+        type: string
+    - name: schema
+      in: query
+      required: true
+      schema:
+        type: string
+  responses:
+    "200":
+      description: Tables
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              items:
+                type: array
+                items:
+                  type: string

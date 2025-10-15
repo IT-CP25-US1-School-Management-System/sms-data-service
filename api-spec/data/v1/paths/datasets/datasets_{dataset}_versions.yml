@@ -1,0 +1,17 @@
+get:
+  tags: [Catalog]
+  summary: List dataset versions
+  parameters:
+    - $ref: "../../components/parameters/DatasetId.yml"
+  responses:
+    "200":
+      description: Versions
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              versions:
+                type: array
+                items:
+                  $ref: "../../components/schemas/DatasetVersion.yml"

@@ -1,0 +1,32 @@
+post:
+  tags:
+    - Contracts
+  summary: Publish/Update data contract (schema, DQ, runtime query plan)
+  parameters:
+    - $ref: "../../components/parameters/DatasetPath.yml"
+    - $ref: "../../components/parameters/IdempotencyKey.yml"
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: "../../components/schemas/ContractUpsert.yml"
+  responses:
+    "201":
+      description: Registered
+      headers:
+        ETag:
+          description: Entity tag
+          schema:
+            type: string
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              contract_id:
+                type: string
+              version:
+                type: string
+              status:
+                type: string

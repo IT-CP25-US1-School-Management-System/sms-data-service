@@ -1,0 +1,18 @@
+type: object
+required:
+  - name
+  - type
+  - connection_ref
+properties:
+  name:
+    type: string
+  type:
+    type: string
+    enum:
+      - jdbc
+      - file
+      - api
+  connection_ref:
+    type: string
+  sensitivity:
+    type: string

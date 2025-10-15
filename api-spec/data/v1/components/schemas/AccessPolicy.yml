@@ -1,0 +1,8 @@
+type: object
+properties:
+  role:
+    type: string
+  columns_allow:
+    type: array
+    items:
+      type: string

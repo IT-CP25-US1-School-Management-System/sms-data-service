@@ -1,0 +1,46 @@
+post:
+  tags: [Reporting]
+  summary: Export a PDF report based on a template
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            template_id:
+              type: string
+              description: The ID of the PDF template to use for the report
+            dataset_id:
+              type: string
+              description: The ID of the dataset to generate the report from
+            key:
+              type: string
+              description: The key identifying the specific report instance to generate
+          required:
+            - template_id
+            - dataset_id
+            - key
+  responses:
+    "202":
+      description: Accepted
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              job_id:
+                type: string
+                description: The ID of the export job
+    "400":
+      description: Bad request (e.g., missing parameters, invalid template ID)
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yml" 
+    "404":
+      description: Not found (e.g., template or dataset not found)
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yml"

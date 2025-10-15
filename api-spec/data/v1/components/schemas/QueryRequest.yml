@@ -1,0 +1,12 @@
+type: object
+properties:
+  sql:
+    type: string
+  params:
+    type: object
+    additionalProperties: true
+  view:
+    type: string
+  as_of:
+    type: string
+    format: date-time

@@ -1,0 +1,14 @@
+type: object
+required:
+  - source
+  - schema
+  - table
+properties:
+  source:
+    type: string
+  schema:
+    type: string
+  table:
+    type: string
+  alias:
+    type: string

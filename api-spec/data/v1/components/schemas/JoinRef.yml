@@ -1,0 +1,23 @@
+type: object
+required:
+  - type
+  - source
+  - schema
+  - table
+  - "on"
+properties:
+  type:
+    type: string
+    enum:
+      - inner
+      - left
+  source:
+    type: string
+  schema:
+    type: string
+  table:
+    type: string
+  alias:
+    type: string
+  "on":
+    $ref: "./BoolExpr.yml"

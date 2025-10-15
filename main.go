@@ -18,12 +18,14 @@ import (
 	helperMiddl "github.com/GodeFvt/go-backend/helper/middleware"
 	helperRoute "github.com/GodeFvt/go-backend/helper/route"
 	"github.com/GodeFvt/go-backend/psql"
+
 	"github.com/getsentry/sentry-go"
 	sentryecho "github.com/getsentry/sentry-go/echo"
 	"github.com/go-playground/validator/v10"
 	"github.com/labstack/echo/v4"
 	echoMiddL "github.com/labstack/echo/v4/middleware"
 	"github.com/spf13/cast"
+	echoSwagger "github.com/swaggo/echo-swagger"
 	"google.golang.org/grpc"
 )
 
@@ -33,6 +35,7 @@ var (
 
 var (
 	APP_PORT     = helper.GetENV("APP_PORT", "3000")
+	APP_MODE     = helper.GetENV("APP_MODE", "production")
 	GRPC_PORT    = helper.GetENV("GRPC_PORT", "3100")
 	ALLOW_ORIGIN = func() []string {
 		origins := helper.GetENV("ALLOW_ORIGIN", "*")
@@ -108,8 +111,8 @@ func main() {
 	})
 
 	// /* init psqlClient */
-	psqlClient := connectPsqlDB(PSQL_DATABASE_URL)
-	defer psqlClient.GetClient().Close()
+	// psqlClient := connectPsqlDB(PSQL_DATABASE_URL)
+	// defer psqlClient.GetClient().Close()
 
 	// /* init redisClient */
 	redisClient := connectRedis(REDIS_ADDRESS)
@@ -134,6 +137,19 @@ func main() {
 		}
 		return c.JSON(http.StatusOK, resp)
 	})
+
+	if APP_MODE == "development" {
+		// Serve static files from api-spec directory
+		e.Static("/api-spec/data/v1", "./api-spec/data/v1")
+
+		e.GET("/api-spec/swagger/*", echoSwagger.EchoWrapHandler(
+			echoSwagger.URL("/api-spec/data/v1/openapi_bundle.json")))
+
+		e.GET("/api-spec/", func(c echo.Context) error {
+			return c.Redirect(http.StatusMovedPermanently, "/api-spec/swagger/index.html")
+		})
+	}
+
 	/* cookie manager */
 	cookieManager := helperCookie.NewCookieManager(COOKIE_DOMAIN, COOKIE_SECURE, COOKIE_HTTPONLY)
 

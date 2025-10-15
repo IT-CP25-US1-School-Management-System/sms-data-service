@@ -1,0 +1,36 @@
+post:
+  tags: [Reporting]
+  summary: Import a report
+  requestBody:
+    content:
+      multipart/form-data:
+        schema:
+          type: object
+          properties:
+            file:
+              type: string
+              format: binary
+              description: The report file to be imported (e.g., CSV, Excel)
+            dataset_id:
+              type: string
+              description: The ID of the dataset to import the report into
+          required:
+            - file
+            - dataset_id
+  responses:
+    "202":
+      description: Report import job accepted
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              job_id:
+                type: string
+                description: The ID of the import job
+    "400":
+      description: Bad request (e.g., missing parameters, invalid file format)
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yml"

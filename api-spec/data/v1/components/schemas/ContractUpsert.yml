@@ -1,0 +1,39 @@
+type: object
+required:
+  - version
+  - schema
+  - policies
+properties:
+  version:
+    type: string
+  owner:
+    type: string
+  schema:
+    type: array
+    items:
+      $ref: "./Column.yml"
+  quality_rules:
+    type: array
+    items:
+      $ref: "./DQRule.yml"
+  access_policies:
+    type: array
+    items:
+      $ref: "./AccessPolicy.yml"
+  policies:
+    type: object
+    required:
+      - runtime
+    properties:
+      runtime:
+        $ref: "./RuntimePolicy.yml"
+      views:
+        type: object
+        additionalProperties:
+          type: array
+          items:
+            type: string
+      filters:
+        type: array
+        items:
+          type: string

@@ -1,0 +1,7 @@
+name: job_id
+in: path
+required: true
+description: The ID of the export job
+schema:
+  type: string
+  format: uuid
