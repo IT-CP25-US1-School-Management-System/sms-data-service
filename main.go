@@ -140,10 +140,10 @@ func main() {
 
 	if APP_MODE == "development" {
 		// Serve static files from api-spec directory
-		e.Static("/api-spec/data/v1", "./api-spec/data/v1")
+		e.Static("/data/api/api-spec/data/v1", "./api-spec/data/v1")
 
 		e.GET("/api-spec/swagger/*", echoSwagger.EchoWrapHandler(
-			echoSwagger.URL("/api-spec/data/v1/openapi_bundle.json")))
+			echoSwagger.URL("/data/api/api-spec/data/v1/openapi_bundle.json")))
 
 	}
 
