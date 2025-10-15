@@ -145,9 +145,6 @@ func main() {
 		e.GET("/api-spec/swagger/*", echoSwagger.EchoWrapHandler(
 			echoSwagger.URL("/api-spec/data/v1/openapi_bundle.json")))
 
-		e.GET("/api-spec/", func(c echo.Context) error {
-			return c.Redirect(http.StatusMovedPermanently, "/api-spec/swagger/index.html")
-		})
 	}
 
 	/* cookie manager */
