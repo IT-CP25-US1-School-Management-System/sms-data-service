@@ -139,12 +139,17 @@ func main() {
 	})
 
 	if APP_MODE == "development" {
-		// Serve static files from api-spec directory
 		e.Static("/data/api/api-spec/data/v1", "./api-spec/data/v1")
-
-		e.GET("/api-spec/swagger/*", echoSwagger.EchoWrapHandler(
-			echoSwagger.URL("/data/api/api-spec/data/v1/openapi_bundle.json")))
-
+		e.GET("/api-spec/*", echoSwagger.EchoWrapHandler(
+			func(c *echoSwagger.Config) {
+				c.URLs = []string{"/data/api/api-spec/data/v1/openapi_bundle.json"}
+				c.DocExpansion = "list"
+				c.DomID = "swagger-ui"
+				c.InstanceName = "swagger"
+				c.DeepLinking = true
+				c.PersistAuthorization = false
+				c.SyntaxHighlight = true
+			}))
 	}
 
 	/* cookie manager */
