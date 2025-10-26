@@ -21,7 +21,7 @@ get:
           schema:
             type: object
             properties:
-              items:
+              data:
                 type: array
                 items:
                   type: string
