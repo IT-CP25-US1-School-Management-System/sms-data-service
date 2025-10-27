@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	myMiddL "github.com/IT-CP25-US1-School-Management-System/sms-data-service/middleware"
+	"github.com/IT-CP25-US1-School-Management-System/sms-data-service/route/v1"
 
 	helperGRPC "github.com/GodeFvt/go-backend/grpc"
 	"github.com/GodeFvt/go-backend/helper"
@@ -19,6 +20,11 @@ import (
 	helperRoute "github.com/GodeFvt/go-backend/helper/route"
 	"github.com/GodeFvt/go-backend/psql"
 
+	_data_handler "github.com/IT-CP25-US1-School-Management-System/sms-data-service/service/data/v1/handler"
+	_psqldata_repo "github.com/IT-CP25-US1-School-Management-System/sms-data-service/service/data/v1/repository"
+	_psqldataset_repo "github.com/IT-CP25-US1-School-Management-System/sms-data-service/service/data/v1/repository"
+	_redis_repo "github.com/IT-CP25-US1-School-Management-System/sms-data-service/service/data/v1/repository"
+	_data_usecase "github.com/IT-CP25-US1-School-Management-System/sms-data-service/service/data/v1/usecase"
 	"github.com/getsentry/sentry-go"
 	sentryecho "github.com/getsentry/sentry-go/echo"
 	"github.com/go-playground/validator/v10"
@@ -43,10 +49,12 @@ var (
 		origins = strings.TrimSpace(origins)
 		return strings.Split(origins, ",")
 	}()
-	ALLOW_ORIGIN_HEADER     = strings.Split(helper.GetENV("ALLOW_ORIGIN_HEADER", ""), ",")
-	ALLOW_ORIGIN_CREDENTIAL = cast.ToBool(helper.GetENV("ALLOW_ORIGIN_CREDENTIAL", "true"))
-	PSQL_DATABASE_URL       = helper.GetENV("PSQL_DATABASE_URL", "postgres://postgres:postgres@psql_db:5432/app_example?sslmode=disable")
-	SENTRY_DSN              = helper.GetENV("SENTRY_DSN", "")
+	ALLOW_ORIGIN_HEADER       = strings.Split(helper.GetENV("ALLOW_ORIGIN_HEADER", ""), ",")
+	ALLOW_ORIGIN_CREDENTIAL   = cast.ToBool(helper.GetENV("ALLOW_ORIGIN_CREDENTIAL", "true"))
+	PSQL_DATABASE_DATA_URL    = helper.GetENV("PSQL_DATABASE_DATA_URL", "postgres://postgres:postgres@psql_db:5432/app_example?sslmode=disable")
+	PSQL_DATABASE_DATASET_URL = helper.GetENV("PSQL_DATABASE_DATASET_URL", "postgres://postgres:postgres@psql_db:5432/app_example?sslmode=disable")
+
+	SENTRY_DSN = helper.GetENV("SENTRY_DSN", "")
 
 	JWKS_URL     = strings.Split(helper.GetENV("JWKS_URL", ""), ",")
 	JWT_SECRET   = helper.GetENV("JWT_SECRET", "")
@@ -111,8 +119,11 @@ func main() {
 	})
 
 	// /* init psqlClient */
-	// psqlClient := connectPsqlDB(PSQL_DATABASE_URL)
-	// defer psqlClient.GetClient().Close()
+	psqlDataClient := connectPsqlDB(PSQL_DATABASE_DATA_URL)
+	psqlDatasetClient := connectPsqlDB(PSQL_DATABASE_DATASET_URL)
+
+	defer psqlDataClient.GetClient().Close()
+	defer psqlDatasetClient.GetClient().Close()
 
 	// /* init redisClient */
 	redisClient := connectRedis(REDIS_ADDRESS)
@@ -163,17 +174,23 @@ func main() {
 	e.Use(middL.SetTracer)
 
 	/* repository */
+	psqlDataRepo := _psqldata_repo.NewPsqlDataRepository(psqlDataClient)
+	psqlDatasetRepo := _psqldataset_repo.NewPsqlDatasetRepository(psqlDatasetClient)
+	redisRepo := _redis_repo.NewRedisRepository(redisClient)
 
 	/* usecase */
+	dataUsecase := _data_usecase.NewDataUsecase(psqlDataRepo, psqlDatasetRepo, redisRepo)
 
 	/* handler */
+	dataHandler := _data_handler.NewDataHandler(dataUsecase)
 
 	/* gprc handler */
 
 	/* validate */
 
 	/* inject route */
-	// router := route.NewRoute(e, middL)
+	router := route.NewRoute(e, middL)
+	router.RegisterDataRoute(dataHandler)
 
 	/* inject grpc route */
 

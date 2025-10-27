@@ -41,7 +41,7 @@ paths:
               schema:
                 type: object
                 properties:
-                  items:
+                  data:
                     type: array
                     items:
                       $ref: '#/components/schemas/SourceInfo'
@@ -64,7 +64,7 @@ paths:
               schema:
                 type: object
                 properties:
-                  items:
+                  data:
                     type: array
                     items:
                       type: string
@@ -92,7 +92,7 @@ paths:
               schema:
                 type: object
                 properties:
-                  items:
+                  data:
                     type: array
                     items:
                       type: string
@@ -125,7 +125,7 @@ paths:
               schema:
                 type: object
                 properties:
-                  items:
+                  data:
                     type: array
                     items:
                       $ref: '#/components/schemas/PhysicalColumn'

@@ -68,7 +68,7 @@
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "items": {
+                    "data": {
                       "type": "array",
                       "items": {
                         "$ref": "#/components/schemas/SourceInfo"
@@ -106,7 +106,7 @@
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "items": {
+                    "data": {
                       "type": "array",
                       "items": {
                         "type": "string"
@@ -152,7 +152,7 @@
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "items": {
+                    "data": {
                       "type": "array",
                       "items": {
                         "type": "string"
@@ -206,7 +206,7 @@
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "items": {
+                    "data": {
                       "type": "array",
                       "items": {
                         "$ref": "#/components/schemas/PhysicalColumn"

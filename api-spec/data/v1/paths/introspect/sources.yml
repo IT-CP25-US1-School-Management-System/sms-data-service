@@ -10,7 +10,7 @@ get:
           schema:
             type: object
             properties:
-              items:
+              data:
                 type: array
                 items:
                   $ref: "../../components/schemas/SourceInfo.yml"

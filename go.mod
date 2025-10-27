@@ -16,6 +16,7 @@ require (
 	github.com/labstack/echo/v4 v4.12.0
 	github.com/opentracing/opentracing-go v1.2.0
 	github.com/spf13/cast v1.7.1
+	github.com/swaggo/echo-swagger v1.4.1
 	github.com/uber/jaeger-client-go v2.30.0+incompatible
 	google.golang.org/grpc v1.58.3
 )
@@ -86,7 +87,6 @@ require (
 	github.com/rs/xid v1.6.0 // indirect
 	github.com/segmentio/asm v1.2.0 // indirect
 	github.com/shopspring/decimal v1.4.0 // indirect
-	github.com/swaggo/echo-swagger v1.4.1 // indirect
 	github.com/swaggo/files/v2 v2.0.0 // indirect
 	github.com/swaggo/swag v1.8.12 // indirect
 	github.com/tinylib/msgp v1.3.0 // indirect
