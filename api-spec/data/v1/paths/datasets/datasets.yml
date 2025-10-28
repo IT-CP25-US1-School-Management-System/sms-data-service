@@ -19,16 +19,30 @@ get:
           schema:
             type: object
             properties:
-              items:
+              data:
                 type: array
                 items:
                   $ref: "../../components/schemas/Dataset.yml"
               page:
                 type: integer
-              page_size:
+              per_page:
                 type: integer
-              total:
+              total_pages:
                 type: integer
+              total_rows:
+                type: integer
+    "400":
+      description: BadRequest,
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yml"
+    "500":
+      description: InternalServerError,
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yml"
 
 post:
   tags: [Catalog]
@@ -46,3 +60,15 @@ post:
         application/json:
           schema:
             $ref: "../../components/schemas/Dataset.yml"
+    "400":
+      description: BadRequest,
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yml"
+    "500":
+      description: InternalServerError,
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yml"

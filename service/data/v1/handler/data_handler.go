@@ -3,6 +3,7 @@ package handler
 import (
 	"net/http"
 
+	helperModel "github.com/GodeFvt/go-backend/helper/models"
 	"github.com/IT-CP25-US1-School-Management-System/sms-data-service/errs"
 	"github.com/IT-CP25-US1-School-Management-System/sms-data-service/models/filter"
 	"github.com/IT-CP25-US1-School-Management-System/sms-data-service/service/data/v1"
@@ -11,6 +12,41 @@ import (
 
 type dataHandler struct {
 	dataUs data.DataUsecase
+}
+
+// FetchDatasetList implements data.DataHandler.
+func (d *dataHandler) FetchDatasetList(c echo.Context) error {
+	ctx := c.Request().Context()
+	var filter filter.DatasetsFilter
+	paginator := helperModel.NewPaginator()
+
+	if err := c.Bind(&filter); err != nil {
+		return errs.ErrBadRequest(err)
+	}
+	if err := c.Validate(&filter); err != nil {
+		return errs.ErrBadRequest(err)
+	}
+
+	if filter.Page > 0 && filter.PerPage > 0 {
+		paginator.Page = filter.Page
+		paginator.PerPage = filter.PerPage
+	}
+
+	datasets, err := d.dataUs.FetchDatasetList(ctx, &filter, &paginator)
+	if err != nil {
+		return errs.ErrInternalServer(err)
+	}
+	if len(datasets) == 0 {
+		return errs.ErrNoContent()
+	}
+	res := map[string]interface{}{
+		"data":        datasets,
+		"page":        paginator.Page,
+		"per_page":    paginator.PerPage,
+		"total_pages": paginator.TotalPages,
+		"total_rows":  paginator.TotalEntrySizes,
+	}
+	return c.JSON(http.StatusOK, res)
 }
 
 // FetchSchemasList implements data.DataHandler.

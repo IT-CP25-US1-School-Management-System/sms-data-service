@@ -3,6 +3,7 @@ package usecase
 import (
 	"context"
 
+	"github.com/GodeFvt/go-backend/helper/models"
 	"github.com/IT-CP25-US1-School-Management-System/sms-data-service/models/entity"
 	"github.com/IT-CP25-US1-School-Management-System/sms-data-service/models/filter"
 	"github.com/IT-CP25-US1-School-Management-System/sms-data-service/service/data/v1"
@@ -14,6 +15,11 @@ type dataUsecase struct {
 	redisRepo   data.RedisRepository
 }
 
+// FetchDatasetList implements data.DataUsecase.
+func (d *dataUsecase) FetchDatasetList(ctx context.Context, filter *filter.DatasetsFilter, paginator *models.Paginator) ([]*entity.Datasets, error) {
+	return d.datasetRepo.FetchDatasetList(ctx, filter, paginator)
+}
+
 // FetchSchemasList implements data.DataUsecase.
 func (d *dataUsecase) FetchSchemasList(ctx context.Context, filter *filter.SchemasFilter) ([]*entity.Schemas, error) {
 	return d.datasetRepo.FetchSchemasList(ctx, filter)
@@ -21,7 +27,6 @@ func (d *dataUsecase) FetchSchemasList(ctx context.Context, filter *filter.Schem
 
 // FetchSourceList implements data.DataUsecase.
 func (d *dataUsecase) FetchSourceList(ctx context.Context) ([]*entity.Sources, error) {
-
 	return d.datasetRepo.FetchSourceList(ctx)
 }
 

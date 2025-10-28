@@ -260,7 +260,7 @@
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "items": {
+                    "data": {
                       "type": "array",
                       "items": {
                         "$ref": "#/components/schemas/Dataset"
@@ -269,13 +269,36 @@
                     "page": {
                       "type": "integer"
                     },
-                    "page_size": {
+                    "per_page": {
                       "type": "integer"
                     },
-                    "total": {
+                    "total_pages": {
+                      "type": "integer"
+                    },
+                    "total_rows": {
                       "type": "integer"
                     }
                   }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "BadRequest,",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "InternalServerError,",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
@@ -304,6 +327,26 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/Dataset"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "BadRequest,",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "InternalServerError,",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
@@ -1718,6 +1761,22 @@
           }
         }
       },
+      "ErrorResponse": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "object",
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
       "DatasetUpsert": {
         "type": "object",
         "required": [
@@ -1791,25 +1850,6 @@
           },
           "description": {
             "type": "string"
-          }
-        }
-      },
-      "ErrorResponse": {
-        "type": "object",
-        "properties": {
-          "error": {
-            "type": "object",
-            "properties": {
-              "code": {
-                "type": "string"
-              },
-              "message": {
-                "type": "string"
-              },
-              "details": {
-                "type": "object"
-              }
-            }
           }
         }
       },
@@ -2468,7 +2508,7 @@
         }
       },
       "PageSize": {
-        "name": "page_size",
+        "name": "per_page",
         "in": "query",
         "schema": {
           "type": "integer",
@@ -2478,7 +2518,7 @@
         }
       },
       "Sort": {
-        "name": "sort",
+        "name": "sort_by",
         "in": "query",
         "schema": {
           "type": "string",
