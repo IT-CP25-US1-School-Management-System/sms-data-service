@@ -3,7 +3,7 @@ get:
   tags: [Catalog]
   summary: Search datasets
   parameters:
-    - $ref: "../../components/parameters/Q.yml"
+    - $ref: "../../components/parameters/SearchWord.yml"
     - $ref: "../../components/parameters/Domain.yml"
     - $ref: "../../components/parameters/Tag.yml"
     - $ref: "../../components/parameters/HasPII.yml"
@@ -11,6 +11,7 @@ get:
     - $ref: "../../components/parameters/Page.yml"
     - $ref: "../../components/parameters/PageSize.yml"
     - $ref: "../../components/parameters/Sort.yml"
+    - $ref: "../../components/parameters/SortOrder.yml"
   responses:
     "200":
       description: List of datasets
@@ -19,16 +20,30 @@ get:
           schema:
             type: object
             properties:
-              items:
+              data:
                 type: array
                 items:
                   $ref: "../../components/schemas/Dataset.yml"
               page:
                 type: integer
-              page_size:
+              per_page:
                 type: integer
-              total:
+              total_pages:
                 type: integer
+              total_rows:
+                type: integer
+    "400":
+      description: BadRequest,
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yml"
+    "500":
+      description: InternalServerError,
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yml"
 
 post:
   tags: [Catalog]
@@ -46,3 +61,15 @@ post:
         application/json:
           schema:
             $ref: "../../components/schemas/Dataset.yml"
+    "400":
+      description: BadRequest,
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yml"
+    "500":
+      description: InternalServerError,
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yml"

@@ -1,4 +1,4 @@
-name: sort
+name: sort_by
 in: query
 schema: 
   type: string

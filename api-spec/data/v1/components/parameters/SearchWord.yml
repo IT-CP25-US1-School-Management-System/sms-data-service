@@ -1,0 +1,4 @@
+name: search_word
+in: query
+schema:
+  type: string

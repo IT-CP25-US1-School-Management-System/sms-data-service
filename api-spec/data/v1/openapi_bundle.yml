@@ -135,7 +135,7 @@ paths:
         - Catalog
       summary: Search datasets
       parameters:
-        - $ref: '#/components/parameters/Q'
+        - $ref: '#/components/parameters/SearchWord'
         - $ref: '#/components/parameters/Domain'
         - $ref: '#/components/parameters/Tag'
         - $ref: '#/components/parameters/HasPII'
@@ -143,6 +143,7 @@ paths:
         - $ref: '#/components/parameters/Page'
         - $ref: '#/components/parameters/PageSize'
         - $ref: '#/components/parameters/Sort'
+        - $ref: '#/components/parameters/SortOrder'
       responses:
         '200':
           description: List of datasets
@@ -151,16 +152,30 @@ paths:
               schema:
                 type: object
                 properties:
-                  items:
+                  data:
                     type: array
                     items:
                       $ref: '#/components/schemas/Dataset'
                   page:
                     type: integer
-                  page_size:
+                  per_page:
                     type: integer
-                  total:
+                  total_pages:
                     type: integer
+                  total_rows:
+                    type: integer
+        '400':
+          description: BadRequest,
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: InternalServerError,
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
     post:
       tags:
         - Catalog
@@ -178,6 +193,18 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Dataset'
+        '400':
+          description: BadRequest,
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: InternalServerError,
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /datasets/{dataset}:
     get:
       tags:
@@ -1040,6 +1067,16 @@ components:
             type: string
         description:
           type: string
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+            message:
+              type: string
     DatasetUpsert:
       type: object
       required:
@@ -1092,18 +1129,6 @@ components:
             type: string
         description:
           type: string
-    ErrorResponse:
-      type: object
-      properties:
-        error:
-          type: object
-          properties:
-            code:
-              type: string
-            message:
-              type: string
-            details:
-              type: object
     DatasetVersion:
       type: object
       properties:
@@ -1520,8 +1545,8 @@ components:
         error_message:
           type: string
   parameters:
-    Q:
-      name: q
+    SearchWord:
+      name: search_word
       in: query
       schema:
         type: string
@@ -1553,7 +1578,7 @@ components:
         minimum: 1
         default: 1
     PageSize:
-      name: page_size
+      name: per_page
       in: query
       schema:
         type: integer
@@ -1561,11 +1586,20 @@ components:
         maximum: 200
         default: 20
     Sort:
-      name: sort
+      name: sort_by
       in: query
       schema:
         type: string
         description: field or -field
+    SortOrder:
+      name: sort_order
+      in: query
+      schema:
+        type: string
+        enum:
+          - asc
+          - desc
+        description: 'Sort order: ''asc'' for ascending, ''desc'' for descending'
     DatasetId:
       name: dataset
       in: path
