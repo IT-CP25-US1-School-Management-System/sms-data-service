@@ -4,12 +4,37 @@ import (
 	"net/http"
 
 	"github.com/IT-CP25-US1-School-Management-System/sms-data-service/errs"
+	"github.com/IT-CP25-US1-School-Management-System/sms-data-service/models/filter"
 	"github.com/IT-CP25-US1-School-Management-System/sms-data-service/service/data/v1"
 	"github.com/labstack/echo/v4"
 )
 
 type dataHandler struct {
 	dataUs data.DataUsecase
+}
+
+// FetchSchemasList implements data.DataHandler.
+func (d *dataHandler) FetchSchemasList(c echo.Context) error {
+	ctx := c.Request().Context()
+	var filter filter.SchemasFilter
+	if err := c.Bind(&filter); err != nil {
+		return errs.ErrBadRequest(err)
+	}
+	if err := c.Validate(&filter); err != nil {
+		return errs.ErrBadRequest(err)
+	}
+
+	schemas, err := d.dataUs.FetchSchemasList(ctx, &filter)
+	if err != nil {
+		return errs.ErrInternalServer(err)
+	}
+	if schemas == nil {
+		return errs.ErrNoContent()
+	}
+	res := map[string]interface{}{
+		"data": schemas,
+	}
+	return c.JSON(http.StatusOK, res)
 }
 
 // FetchSourceList implements data.DataHandler.
