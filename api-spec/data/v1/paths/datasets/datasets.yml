@@ -3,7 +3,7 @@ get:
   tags: [Catalog]
   summary: Search datasets
   parameters:
-    - $ref: "../../components/parameters/Q.yml"
+    - $ref: "../../components/parameters/SearchWord.yml"
     - $ref: "../../components/parameters/Domain.yml"
     - $ref: "../../components/parameters/Tag.yml"
     - $ref: "../../components/parameters/HasPII.yml"
@@ -11,6 +11,7 @@ get:
     - $ref: "../../components/parameters/Page.yml"
     - $ref: "../../components/parameters/PageSize.yml"
     - $ref: "../../components/parameters/Sort.yml"
+    - $ref: "../../components/parameters/SortOrder.yml"
   responses:
     "200":
       description: List of datasets

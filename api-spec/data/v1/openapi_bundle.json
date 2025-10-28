@@ -228,7 +228,7 @@
         "summary": "Search datasets",
         "parameters": [
           {
-            "$ref": "#/components/parameters/Q"
+            "$ref": "#/components/parameters/SearchWord"
           },
           {
             "$ref": "#/components/parameters/Domain"
@@ -250,6 +250,9 @@
           },
           {
             "$ref": "#/components/parameters/Sort"
+          },
+          {
+            "$ref": "#/components/parameters/SortOrder"
           }
         ],
         "responses": {
@@ -2463,8 +2466,8 @@
       }
     },
     "parameters": {
-      "Q": {
-        "name": "q",
+      "SearchWord": {
+        "name": "search_word",
         "in": "query",
         "schema": {
           "type": "string"
@@ -2523,6 +2526,18 @@
         "schema": {
           "type": "string",
           "description": "field or -field"
+        }
+      },
+      "SortOrder": {
+        "name": "sort_order",
+        "in": "query",
+        "schema": {
+          "type": "string",
+          "enum": [
+            "asc",
+            "desc"
+          ],
+          "description": "Sort order: 'asc' for ascending, 'desc' for descending"
         }
       },
       "DatasetId": {

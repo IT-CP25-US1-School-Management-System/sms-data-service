@@ -135,7 +135,7 @@ paths:
         - Catalog
       summary: Search datasets
       parameters:
-        - $ref: '#/components/parameters/Q'
+        - $ref: '#/components/parameters/SearchWord'
         - $ref: '#/components/parameters/Domain'
         - $ref: '#/components/parameters/Tag'
         - $ref: '#/components/parameters/HasPII'
@@ -143,6 +143,7 @@ paths:
         - $ref: '#/components/parameters/Page'
         - $ref: '#/components/parameters/PageSize'
         - $ref: '#/components/parameters/Sort'
+        - $ref: '#/components/parameters/SortOrder'
       responses:
         '200':
           description: List of datasets
@@ -1544,8 +1545,8 @@ components:
         error_message:
           type: string
   parameters:
-    Q:
-      name: q
+    SearchWord:
+      name: search_word
       in: query
       schema:
         type: string
@@ -1590,6 +1591,15 @@ components:
       schema:
         type: string
         description: field or -field
+    SortOrder:
+      name: sort_order
+      in: query
+      schema:
+        type: string
+        enum:
+          - asc
+          - desc
+        description: 'Sort order: ''asc'' for ascending, ''desc'' for descending'
     DatasetId:
       name: dataset
       in: path
