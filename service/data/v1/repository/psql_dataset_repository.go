@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"strings"
 
@@ -17,6 +18,37 @@ import (
 
 type psqlDatasetRepository struct {
 	client *psql.Client
+}
+
+// FetchDatasetByID implements data.PsqlDatasetRepository.
+func (p *psqlDatasetRepository) FetchDatasetByID(ctx context.Context, datasetID string) (*entity.Datasets, error) {
+	query := `
+		SELECT
+			id, name, domain, owner, sensitivity, has_pii, tags, description, created_at, updated_at
+		FROM datasets
+		WHERE id = $1
+	`
+	var data entity.Datasets
+	row := p.client.GetClient().QueryRowxContext(ctx, query, datasetID)
+	err := row.Scan(
+		&data.ID,
+		&data.Name,
+		&data.Domain,
+		&data.Owner,
+		&data.Sensitivity,
+		&data.HasPii,
+		pq.Array(&data.Tags),
+		&data.Description,
+		&data.CreatedAt,
+		&data.UpdatedAt,
+	)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &data, nil
 }
 
 // FetchDatasetList implements data.PsqlDatasetRepository.

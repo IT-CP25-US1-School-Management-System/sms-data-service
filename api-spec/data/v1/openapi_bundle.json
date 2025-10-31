@@ -357,7 +357,7 @@
         }
       }
     },
-    "/datasets/{dataset}": {
+    "/datasets/{id}": {
       "get": {
         "tags": [
           "Catalog"
@@ -379,8 +379,31 @@
               }
             }
           },
+          "204": {
+            "description": "No Content"
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
           "404": {
-            "description": "Not Found,",
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -2541,7 +2564,7 @@
         }
       },
       "DatasetId": {
-        "name": "dataset",
+        "name": "id",
         "in": "path",
         "required": true,
         "schema": {
