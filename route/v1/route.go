@@ -23,4 +23,5 @@ func (r *Route) RegisterDataRoute(handler data.DataHandler) {
 	// Datasets Route
 	datasetsGroup := r.e.Group("/v1/datasets")
 	datasetsGroup.GET("", handler.FetchDatasetList)
+	datasetsGroup.GET("/:id", handler.FetchDatasetByID)
 }

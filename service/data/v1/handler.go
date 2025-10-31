@@ -10,4 +10,5 @@ type DataHandler interface {
 
 	// Dataset
 	FetchDatasetList(c echo.Context) error
+	FetchDatasetByID(c echo.Context) error
 }

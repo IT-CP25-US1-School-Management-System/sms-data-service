@@ -1,4 +1,4 @@
-name: dataset
+name: id
 in: path
 required: true
 schema:
