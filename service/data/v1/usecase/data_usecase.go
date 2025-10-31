@@ -15,6 +15,16 @@ type dataUsecase struct {
 	redisRepo   data.RedisRepository
 }
 
+// FetchColumnsList implements data.DataUsecase.
+func (d *dataUsecase) FetchColumnsList(ctx context.Context, filter *filter.ColumnsFilter) ([]*entity.Columns, error) {
+	return d.datasetRepo.FetchColumnsList(ctx, filter)
+}
+
+// FetchTablesList implements data.DataUsecase.
+func (d *dataUsecase) FetchTablesList(ctx context.Context, filter *filter.TablesFilter) ([]*entity.Tables, error) {
+	return d.datasetRepo.FetchTablesList(ctx, filter)
+}
+
 // FetchDatasetList implements data.DataUsecase.
 func (d *dataUsecase) FetchDatasetList(ctx context.Context, filter *filter.DatasetsFilter, paginator *models.Paginator) ([]*entity.Datasets, error) {
 	return d.datasetRepo.FetchDatasetList(ctx, filter, paginator)
