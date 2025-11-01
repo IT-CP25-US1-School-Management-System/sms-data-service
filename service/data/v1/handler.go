@@ -7,6 +7,8 @@ import (
 type DataHandler interface {
 	FetchSourceList(c echo.Context) error
 	FetchSchemasList(c echo.Context) error
+	FetchTablesList(c echo.Context) error
+	FetchColumnsList(c echo.Context) error
 
 	// Dataset
 	FetchDatasetList(c echo.Context) error

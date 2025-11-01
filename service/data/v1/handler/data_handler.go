@@ -36,6 +36,54 @@ func (d *dataHandler) FetchDatasetByID(c echo.Context) error {
 	return c.JSON(http.StatusOK, res)
 }
 
+// FetchColumnsList implements data.DataHandler.
+func (d *dataHandler) FetchColumnsList(c echo.Context) error {
+	ctx := c.Request().Context()
+	var filter filter.ColumnsFilter
+	if err := c.Bind(&filter); err != nil {
+		return errs.ErrBadRequest(err)
+	}
+	if err := c.Validate(&filter); err != nil {
+		return errs.ErrBadRequest(err)
+	}
+
+	columns, err := d.dataUs.FetchColumnsList(ctx, &filter)
+	if err != nil {
+		return errs.ErrInternalServer(err)
+	}
+	if columns == nil {
+		return errs.ErrNoContent()
+	}
+	res := map[string]interface{}{
+		"data": columns,
+	}
+	return c.JSON(http.StatusOK, res)
+}
+
+// FetchTablesList implements data.DataHandler.
+func (d *dataHandler) FetchTablesList(c echo.Context) error {
+	ctx := c.Request().Context()
+	var filter filter.TablesFilter
+	if err := c.Bind(&filter); err != nil {
+		return errs.ErrBadRequest(err)
+	}
+	if err := c.Validate(&filter); err != nil {
+		return errs.ErrBadRequest(err)
+	}
+
+	tables, err := d.dataUs.FetchTablesList(ctx, &filter)
+	if err != nil {
+		return errs.ErrInternalServer(err)
+	}
+	if tables == nil {
+		return errs.ErrNoContent()
+	}
+	res := map[string]interface{}{
+		"data": tables,
+	}
+	return c.JSON(http.StatusOK, res)
+}
+
 // FetchDatasetList implements data.DataHandler.
 func (d *dataHandler) FetchDatasetList(c echo.Context) error {
 	ctx := c.Request().Context()

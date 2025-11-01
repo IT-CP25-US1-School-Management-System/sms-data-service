@@ -51,6 +51,113 @@ func (p *psqlDatasetRepository) FetchDatasetByID(ctx context.Context, datasetID 
 	return &data, nil
 }
 
+// FetchColumnsList implements data.PsqlDatasetRepository.
+func (p *psqlDatasetRepository) FetchColumnsList(ctx context.Context, filter *filter.ColumnsFilter) ([]*entity.Columns, error) {
+	var where string
+	var conds = make([]string, 0)
+	var valArgs = make([]interface{}, 0)
+	if filter != nil {
+		if filter.SourceID != nil {
+			conds = append(conds, "source_id=?")
+			valArgs = append(valArgs, filter.SourceID)
+		}
+		if filter.Schema != "" {
+			conds = append(conds, "schema=?")
+			valArgs = append(valArgs, filter.Schema)
+		}
+		if filter.Table != "" {
+			conds = append(conds, "table_name=?") // table column is table_name
+			valArgs = append(valArgs, filter.Table)
+		}
+	}
+	if len(conds) > 0 {
+		where = "WHERE " + strings.Join(conds, " AND ")
+	}
+
+	query := fmt.Sprintf(`SELECT * FROM physical_columns %s`, where)
+	query = sqlx.Rebind(sqlx.DOLLAR, query)
+	stmt, err := p.client.GetClient().PreparexContext(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+	defer stmt.Close()
+
+	rows, err := stmt.QueryxContext(ctx, valArgs...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var columns []*entity.Columns
+	for rows.Next() {
+		var column entity.Columns
+		if err := rows.Scan(
+			&column.ID,
+			&column.SourceID,
+			&column.Schema,
+			&column.TableName,
+			&column.ColumnsName,
+			&column.DataType,
+			&column.IsNullable,
+			&column.ColumnDefault,
+			&column.OrdinalPosition,
+			&column.DiscoveredAt,
+		); err != nil {
+			return nil, err
+		}
+		columns = append(columns, &column)
+	}
+	return columns, nil
+}
+
+// FetchTablesList implements data.PsqlDatasetRepository.
+func (p *psqlDatasetRepository) FetchTablesList(ctx context.Context, filter *filter.TablesFilter) ([]*entity.Tables, error) {
+	var where string
+	var conds = make([]string, 0)
+	var valArgs = make([]interface{}, 0)
+	if filter != nil {
+		if filter.SourceID != nil {
+			conds = append(conds, "source_id=?")
+			valArgs = append(valArgs, filter.SourceID)
+		}
+		if filter.Schema != "" {
+			conds = append(conds, "schema=?")
+			valArgs = append(valArgs, filter.Schema)
+		}
+	}
+	if len(conds) > 0 {
+		where = "WHERE " + strings.Join(conds, " AND ")
+	}
+
+	query := fmt.Sprintf(`SELECT id,source_id,schema,table_name,discovered_at FROM physical_tables %s`, where)
+	query = sqlx.Rebind(sqlx.DOLLAR, query)
+	stmt, err := p.client.GetClient().PreparexContext(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+	defer stmt.Close()
+
+	rows, err := stmt.QueryxContext(ctx, valArgs...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var tables []*entity.Tables
+	for rows.Next() {
+		var table entity.Tables
+		if err := rows.Scan(
+			&table.ID,
+			&table.SourceID,
+			&table.Schema,
+			&table.TableName,
+			&table.DiscoveredAt,
+		); err != nil {
+			return nil, err
+		}
+		tables = append(tables, &table)
+	}
+	return tables, nil
+}
+
 // FetchDatasetList implements data.PsqlDatasetRepository.
 func (p *psqlDatasetRepository) FetchDatasetList(ctx context.Context, filter *filter.DatasetsFilter, paginator *helperModel.Paginator) ([]*entity.Datasets, error) {
 	var (
@@ -209,7 +316,7 @@ func (p *psqlDatasetRepository) FetchSchemasList(ctx context.Context, filter *fi
 			&schema.ID,
 			&schema.SourceID,
 			&schema.Schema,
-			&schema.Discovered_at,
+			&schema.DiscoveredAt,
 		); err != nil {
 			return nil, err
 		}
