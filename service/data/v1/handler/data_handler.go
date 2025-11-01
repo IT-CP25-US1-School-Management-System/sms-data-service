@@ -1,9 +1,11 @@
 package handler
 
 import (
+	"errors"
 	"net/http"
 
 	helperModel "github.com/GodeFvt/go-backend/helper/models"
+	"github.com/IT-CP25-US1-School-Management-System/sms-data-service/constants"
 	"github.com/IT-CP25-US1-School-Management-System/sms-data-service/errs"
 	"github.com/IT-CP25-US1-School-Management-System/sms-data-service/models/filter"
 	"github.com/IT-CP25-US1-School-Management-System/sms-data-service/service/data/v1"
@@ -12,6 +14,26 @@ import (
 
 type dataHandler struct {
 	dataUs data.DataUsecase
+}
+
+// FetchDatasetByID implements data.DataHandler.
+func (d *dataHandler) FetchDatasetByID(c echo.Context) error {
+	ctx := c.Request().Context()
+	datasetID := c.Param("id")
+	if datasetID == "" {
+		return errs.ErrBadRequest(errors.New(constants.ERR_DATASET_ID_IS_REQUIRED))
+	}
+	dataset, err := d.dataUs.FetchDatasetByID(ctx, datasetID)
+	if err != nil {
+		return errs.ErrInternalServer(err)
+	}
+	if dataset == nil {
+		return errs.ErrNoContent()
+	}
+	res := map[string]interface{}{
+		"data": dataset,
+	}
+	return c.JSON(http.StatusOK, res)
 }
 
 // FetchColumnsList implements data.DataHandler.

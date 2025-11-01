@@ -40,8 +40,8 @@ paths:
   # -------------------- Catalog --------------------
   /datasets:
     $ref: paths/datasets/datasets.yml
-  /datasets/{dataset}:
-    $ref: paths/datasets/datasets_{dataset}.yml
+  /datasets/{id}:
+    $ref: paths/datasets/datasets_{id}.yml
   /datasets/{dataset}/versions:
     $ref: paths/datasets/datasets_{dataset}_versions.yml
 
