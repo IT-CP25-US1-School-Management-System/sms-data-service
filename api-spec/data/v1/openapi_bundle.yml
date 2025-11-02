@@ -269,7 +269,7 @@ paths:
     delete:
       tags:
         - Catalog
-      summary: Detlete dataset by id
+      summary: Delete dataset by id
       parameters:
         - $ref: '#/components/parameters/DatasetId'
       responses:
