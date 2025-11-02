@@ -20,6 +20,7 @@ type PsqlDatasetRepository interface {
 	// Dataset
 	FetchDatasetList(ctx context.Context, filter *filter.DatasetsFilter, paginator *helperModel.Paginator) ([]*entity.Datasets, error)
 	FetchDatasetByID(ctx context.Context, datasetID string) (*entity.Datasets, error)
+	UpsertDataset(ctx context.Context, dataset *entity.Datasets) error
 }
 
 type RedisRepository interface {

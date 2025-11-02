@@ -2,11 +2,20 @@ package usecase
 
 import (
 	"context"
+	"regexp"
 
-	"github.com/GodeFvt/go-backend/helper/models"
+	helperModel "github.com/GodeFvt/go-backend/helper/models"
+	"github.com/IT-CP25-US1-School-Management-System/sms-data-service/constants"
+	"github.com/IT-CP25-US1-School-Management-System/sms-data-service/errs"
 	"github.com/IT-CP25-US1-School-Management-System/sms-data-service/models/entity"
 	"github.com/IT-CP25-US1-School-Management-System/sms-data-service/models/filter"
 	"github.com/IT-CP25-US1-School-Management-System/sms-data-service/service/data/v1"
+)
+
+var (
+	// datasetIDPattern validates dataset ID format: only lowercase english letters, underscore, and hyphen, no spaces
+	// Pattern: ^[a-z_-]+$ means start to end with only lowercase letters a-z, underscore, and hyphen
+	datasetIDPattern = regexp.MustCompile("^[a-z_-]+$")
 )
 
 type dataUsecase struct {
@@ -15,8 +24,41 @@ type dataUsecase struct {
 	redisRepo   data.RedisRepository
 }
 
+// validateDatasetID validates the dataset ID format
+func (d *dataUsecase) validateDatasetID(id string) error {
+	if id == "" {
+		return errs.NewBadRequestError(constants.ERR_DATASET_ID_IS_REQUIRED)
+	}
+
+	if !datasetIDPattern.MatchString(id) {
+		return errs.NewBadRequestError(constants.ERR_DATASET_ID_INVALID_FORMAT)
+	}
+
+	return nil
+}
+
+// UpsertDataset implements data.DataUsecase.
+func (d *dataUsecase) UpsertDataset(ctx context.Context, dataset *entity.Datasets) error {
+	if dataset == nil {
+		return errs.NewBadRequestError(constants.ERR_INVALID_REQUEST_BODY)
+	}
+
+	if err := d.validateDatasetID(dataset.ID); err != nil {
+		return err
+	}
+
+	now := helperModel.NewTimestampFromNow()
+	dataset.CreatedAt = &now
+	dataset.UpdatedAt = &now
+
+	return d.datasetRepo.UpsertDataset(ctx, dataset)
+}
+
 // FetchDatasetByID implements data.DataUsecase.
 func (d *dataUsecase) FetchDatasetByID(ctx context.Context, datasetID string) (*entity.Datasets, error) {
+	if err := d.validateDatasetID(datasetID); err != nil {
+		return nil, err
+	}
 	return d.datasetRepo.FetchDatasetByID(ctx, datasetID)
 }
 
@@ -31,7 +73,7 @@ func (d *dataUsecase) FetchTablesList(ctx context.Context, filter *filter.Tables
 }
 
 // FetchDatasetList implements data.DataUsecase.
-func (d *dataUsecase) FetchDatasetList(ctx context.Context, filter *filter.DatasetsFilter, paginator *models.Paginator) ([]*entity.Datasets, error) {
+func (d *dataUsecase) FetchDatasetList(ctx context.Context, filter *filter.DatasetsFilter, paginator *helperModel.Paginator) ([]*entity.Datasets, error) {
 	return d.datasetRepo.FetchDatasetList(ctx, filter, paginator)
 }
 

@@ -42,8 +42,6 @@ paths:
     $ref: paths/datasets/datasets.yml
   /datasets/{id}:
     $ref: paths/datasets/datasets_{id}.yml
-  /datasets/{dataset}/versions:
-    $ref: paths/datasets/datasets_{dataset}_versions.yml
 
   # -------------------- Contracts (with runtime query plans only) --------------------
   /contracts/{dataset}:
