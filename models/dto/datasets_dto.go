@@ -9,7 +9,7 @@ type UpsertDatasetsDTO struct {
 	Domain      string   `json:"domain" validate:"required"`
 	Owner       string   `json:"owner" validate:"required"`
 	Sensitivity string   `json:"sensitivity" validate:"required,oneof=public internal confidential restricted"`
-	HasPii      bool     `json:"has_pii" validate:"required"`
+	HasPii      bool     `json:"has_pii" `
 	Tags        []string `json:"tags" validate:"required,dive,required"`
 }
 

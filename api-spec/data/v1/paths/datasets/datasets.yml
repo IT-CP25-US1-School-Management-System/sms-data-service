@@ -56,7 +56,7 @@ post:
         schema:
           $ref: "../../components/schemas/DatasetUpsert.yml"
   responses:
-    "201":
+    "200":
       description: Created
       content:
         application/json:

@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"errors"
 	"net/http"
 
 	helperModel "github.com/GodeFvt/go-backend/helper/models"
@@ -45,7 +44,7 @@ func (d *dataHandler) FetchDatasetByID(c echo.Context) error {
 	ctx := c.Request().Context()
 	datasetID := c.Param("id")
 	if datasetID == "" {
-		return errs.ErrBadRequest(errors.New(constants.ERR_DATASET_ID_IS_REQUIRED))
+		return errs.NewBadRequestError(constants.ERR_DATASET_ID_IS_REQUIRED)
 	}
 	dataset, err := d.dataUs.FetchDatasetByID(ctx, datasetID)
 	if err != nil {

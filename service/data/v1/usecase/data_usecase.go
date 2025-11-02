@@ -3,7 +3,6 @@ package usecase
 import (
 	"context"
 	"regexp"
-	"strings"
 
 	helperModel "github.com/GodeFvt/go-backend/helper/models"
 	"github.com/IT-CP25-US1-School-Management-System/sms-data-service/constants"
@@ -13,6 +12,12 @@ import (
 	"github.com/IT-CP25-US1-School-Management-System/sms-data-service/service/data/v1"
 )
 
+var (
+	// datasetIDPattern validates dataset ID format: only lowercase english letters, underscore, and hyphen, no spaces
+	// Pattern: ^[a-z_-]+$ means start to end with only lowercase letters a-z, underscore, and hyphen
+	datasetIDPattern = regexp.MustCompile("^[a-z_-]+$")
+)
+
 type dataUsecase struct {
 	dataRepo    data.PsqlDataRepository
 	datasetRepo data.PsqlDatasetRepository
@@ -20,18 +25,12 @@ type dataUsecase struct {
 }
 
 // validateDatasetID validates the dataset ID format
-// Returns error if ID is invalid (empty, has spaces, or contains invalid characters)
 func (d *dataUsecase) validateDatasetID(id string) error {
 	if id == "" {
 		return errs.NewBadRequestError(constants.ERR_DATASET_ID_IS_REQUIRED)
 	}
 
-	// Validate dataset ID format: only lowercase english letters, underscore, and hyphen, no spaces
-	// Pattern: ^[a-z_-]+$ means start to end with only lowercase letters a-z, underscore, and hyphen
-	idPattern := regexp.MustCompile("^[a-z_-]+$")
-
-	// Check for spaces or invalid characters
-	if strings.Contains(id, " ") || !idPattern.MatchString(id) {
+	if !datasetIDPattern.MatchString(id) {
 		return errs.NewBadRequestError(constants.ERR_DATASET_ID_INVALID_FORMAT)
 	}
 
