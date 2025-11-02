@@ -7,6 +7,7 @@ import (
 	"github.com/IT-CP25-US1-School-Management-System/sms-data-service/constants"
 	"github.com/IT-CP25-US1-School-Management-System/sms-data-service/errs"
 	"github.com/IT-CP25-US1-School-Management-System/sms-data-service/models/dto"
+	"github.com/IT-CP25-US1-School-Management-System/sms-data-service/models/entity"
 	"github.com/IT-CP25-US1-School-Management-System/sms-data-service/models/filter"
 	"github.com/IT-CP25-US1-School-Management-System/sms-data-service/service/data/v1"
 	"github.com/labstack/echo/v4"
@@ -14,6 +15,24 @@ import (
 
 type dataHandler struct {
 	dataUs data.DataUsecase
+}
+
+// DeleteDatasetByID implements data.DataHandler.
+func (d *dataHandler) DeleteDatasetByID(c echo.Context) error {
+	ctx := c.Request().Context()
+	datasetID := c.Param("id")
+	if datasetID == "" {
+		return errs.NewBadRequestError(constants.ERR_DATASET_ID_IS_REQUIRED)
+	}
+	err := d.dataUs.DeleteDatasetByID(ctx, datasetID)
+	if err != nil {
+		return err
+	}
+
+	res := map[string]interface{}{
+		"message": "success",
+	}
+	return c.JSON(http.StatusOK, res)
 }
 
 // UpsertDataset implements data.DataHandler.
@@ -51,7 +70,7 @@ func (d *dataHandler) FetchDatasetByID(c echo.Context) error {
 		return err
 	}
 	if dataset == nil {
-		return errs.ErrNoContent()
+		return errs.NewNotFoundError(constants.ERR_DATASET_NOT_FOUND)
 	}
 	res := map[string]interface{}{
 		"data": dataset,
@@ -75,7 +94,7 @@ func (d *dataHandler) FetchColumnsList(c echo.Context) error {
 		return err
 	}
 	if columns == nil {
-		return errs.ErrNoContent()
+		columns = []*entity.Columns{}
 	}
 	res := map[string]interface{}{
 		"data": columns,
@@ -99,7 +118,7 @@ func (d *dataHandler) FetchTablesList(c echo.Context) error {
 		return err
 	}
 	if tables == nil {
-		return errs.ErrNoContent()
+		tables = []*entity.Tables{}
 	}
 	res := map[string]interface{}{
 		"data": tables,
@@ -129,8 +148,8 @@ func (d *dataHandler) FetchDatasetList(c echo.Context) error {
 	if err != nil {
 		return err
 	}
-	if len(datasets) == 0 {
-		return errs.ErrNoContent()
+	if datasets == nil {
+		datasets = []*entity.Datasets{}
 	}
 	res := map[string]interface{}{
 		"data":        datasets,
@@ -158,7 +177,7 @@ func (d *dataHandler) FetchSchemasList(c echo.Context) error {
 		return err
 	}
 	if schemas == nil {
-		return errs.ErrNoContent()
+		schemas = []*entity.Schemas{}
 	}
 	res := map[string]interface{}{
 		"data": schemas,
@@ -174,7 +193,7 @@ func (d *dataHandler) FetchSourceList(c echo.Context) error {
 		return err
 	}
 	if sources == nil {
-		return errs.ErrNoContent()
+		sources = []*entity.Sources{}
 	}
 	res := map[string]interface{}{
 		"data": sources,

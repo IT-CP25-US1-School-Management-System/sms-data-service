@@ -78,6 +78,16 @@
                 }
               }
             }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
         }
       }
@@ -90,9 +100,8 @@
         "summary": "List schemas in a source",
         "parameters": [
           {
-            "name": "source",
+            "name": "source_id",
             "in": "query",
-            "required": true,
             "schema": {
               "type": "string"
             }
@@ -109,10 +118,35 @@
                     "data": {
                       "type": "array",
                       "items": {
-                        "type": "string"
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "integer"
+                          },
+                          "sources_id": {
+                            "type": "string"
+                          },
+                          "schema": {
+                            "type": "string"
+                          },
+                          "created_at": {
+                            "type": "string",
+                            "format": "date-time"
+                          }
+                        }
                       }
                     }
                   }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
@@ -128,9 +162,8 @@
         "summary": "List tables in a schema",
         "parameters": [
           {
-            "name": "source",
+            "name": "source_id",
             "in": "query",
-            "required": true,
             "schema": {
               "type": "string"
             }
@@ -138,7 +171,6 @@
           {
             "name": "schema",
             "in": "query",
-            "required": true,
             "schema": {
               "type": "string"
             }
@@ -155,7 +187,25 @@
                     "data": {
                       "type": "array",
                       "items": {
-                        "type": "string"
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "integer"
+                          },
+                          "sources_id": {
+                            "type": "string"
+                          },
+                          "schema": {
+                            "type": "string"
+                          },
+                          "table_name": {
+                            "type": "string"
+                          },
+                          "created_at": {
+                            "type": "string",
+                            "format": "date-time"
+                          }
+                        }
                       }
                     }
                   }
@@ -174,9 +224,8 @@
         "summary": "List columns for a table",
         "parameters": [
           {
-            "name": "source",
+            "name": "source_id",
             "in": "query",
-            "required": true,
             "schema": {
               "type": "string"
             }
@@ -184,7 +233,6 @@
           {
             "name": "schema",
             "in": "query",
-            "required": true,
             "schema": {
               "type": "string"
             }
@@ -192,7 +240,6 @@
           {
             "name": "table",
             "in": "query",
-            "required": true,
             "schema": {
               "type": "string"
             }
@@ -380,8 +427,58 @@
               }
             }
           },
-          "204": {
-            "description": "No Content"
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Catalog"
+        ],
+        "summary": "Delete dataset by id",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/DatasetId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Dataset",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Success"
+                }
+              }
+            }
           },
           "401": {
             "description": "Unauthorized",
@@ -1687,30 +1784,66 @@
           "type": {
             "type": "string",
             "enum": [
-              "jdbc",
-              "file",
-              "api"
+              "jdbc"
             ]
           },
-          "display_name": {
+          "name": {
             "type": "string"
+          },
+          "description": {
+            "type": "string"
+          }
+        }
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "object",
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              }
+            }
           }
         }
       },
       "PhysicalColumn": {
         "type": "object",
         "properties": {
-          "name": {
+          "id": {
+            "type": "integer"
+          },
+          "source_id": {
+            "type": "string"
+          },
+          "schema": {
+            "type": "string"
+          },
+          "table_name": {
+            "type": "string"
+          },
+          "column_name": {
             "type": "string"
           },
           "data_type": {
             "type": "string"
           },
-          "nullable": {
+          "is_nullable": {
             "type": "boolean"
           },
-          "default": {
+          "column_default": {
             "type": "string"
+          },
+          "ordinal_position": {
+            "type": "integer"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
           }
         }
       },
@@ -1752,22 +1885,6 @@
           },
           "description": {
             "type": "string"
-          }
-        }
-      },
-      "ErrorResponse": {
-        "type": "object",
-        "properties": {
-          "error": {
-            "type": "object",
-            "properties": {
-              "code": {
-                "type": "string"
-              },
-              "message": {
-                "type": "string"
-              }
-            }
           }
         }
       },
@@ -2497,7 +2614,7 @@
         "schema": {
           "type": "integer",
           "minimum": 1,
-          "maximum": 200,
+          "maximum": 100,
           "default": 20
         }
       },

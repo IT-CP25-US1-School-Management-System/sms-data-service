@@ -45,15 +45,20 @@ paths:
                     type: array
                     items:
                       $ref: '#/components/schemas/SourceInfo'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /introspect/schemas:
     get:
       tags:
         - Introspection
       summary: List schemas in a source
       parameters:
-        - name: source
+        - name: source_id
           in: query
-          required: true
           schema:
             type: string
       responses:
@@ -67,21 +72,35 @@ paths:
                   data:
                     type: array
                     items:
-                      type: string
+                      type: object
+                      properties:
+                        id:
+                          type: integer
+                        sources_id:
+                          type: string
+                        schema:
+                          type: string
+                        created_at:
+                          type: string
+                          format: date-time
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /introspect/tables:
     get:
       tags:
         - Introspection
       summary: List tables in a schema
       parameters:
-        - name: source
+        - name: source_id
           in: query
-          required: true
           schema:
             type: string
         - name: schema
           in: query
-          required: true
           schema:
             type: string
       responses:
@@ -95,26 +114,35 @@ paths:
                   data:
                     type: array
                     items:
-                      type: string
+                      type: object
+                      properties:
+                        id:
+                          type: integer
+                        sources_id:
+                          type: string
+                        schema:
+                          type: string
+                        table_name:
+                          type: string
+                        created_at:
+                          type: string
+                          format: date-time
   /introspect/columns:
     get:
       tags:
         - Introspection
       summary: List columns for a table
       parameters:
-        - name: source
+        - name: source_id
           in: query
-          required: true
           schema:
             type: string
         - name: schema
           in: query
-          required: true
           schema:
             type: string
         - name: table
           in: query
-          required: true
           schema:
             type: string
       responses:
@@ -220,8 +248,37 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/DatasetDetail'
-        '204':
-          description: No Content
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      tags:
+        - Catalog
+      summary: Delete dataset by id
+      parameters:
+        - $ref: '#/components/parameters/DatasetId'
+      responses:
+        '200':
+          description: Dataset
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
         '401':
           description: Unauthorized
           content:
@@ -1020,21 +1077,44 @@ components:
           type: string
           enum:
             - jdbc
-            - file
-            - api
-        display_name:
+        name:
           type: string
+        description:
+          type: string
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+            message:
+              type: string
     PhysicalColumn:
       type: object
       properties:
-        name:
+        id:
+          type: integer
+        source_id:
+          type: string
+        schema:
+          type: string
+        table_name:
+          type: string
+        column_name:
           type: string
         data_type:
           type: string
-        nullable:
+        is_nullable:
           type: boolean
-        default:
+        column_default:
           type: string
+        ordinal_position:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
     Dataset:
       type: object
       properties:
@@ -1063,16 +1143,6 @@ components:
             type: string
         description:
           type: string
-    ErrorResponse:
-      type: object
-      properties:
-        error:
-          type: object
-          properties:
-            code:
-              type: string
-            message:
-              type: string
     DatasetUpsert:
       type: object
       required:
@@ -1573,7 +1643,7 @@ components:
       schema:
         type: integer
         minimum: 1
-        maximum: 200
+        maximum: 100
         default: 20
     Sort:
       name: sort_by

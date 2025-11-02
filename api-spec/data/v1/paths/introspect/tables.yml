@@ -3,14 +3,12 @@ get:
   tags: [Introspection]
   summary: List tables in a schema
   parameters:
-    - name: source
+    - name: source_id
       in: query
-      required: true
       schema:
         type: string
     - name: schema
       in: query
-      required: true
       schema:
         type: string
   responses:
@@ -24,4 +22,16 @@ get:
               data:
                 type: array
                 items:
-                  type: string
+                  type: object
+                  properties:
+                    id:
+                      type: integer
+                    sources_id:
+                      type: string
+                    schema:
+                      type: string
+                    table_name:
+                      type: string
+                    created_at:
+                      type: string
+                      format: date-time

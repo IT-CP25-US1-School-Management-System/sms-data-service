@@ -37,6 +37,22 @@ func (d *dataUsecase) validateDatasetID(id string) error {
 	return nil
 }
 
+// DeleteDatasetByID implements data.DataUsecase.
+func (d *dataUsecase) DeleteDatasetByID(ctx context.Context, datasetID string) error {
+	if err := d.validateDatasetID(datasetID); err != nil {
+		return err
+	}
+	exist, err := d.datasetRepo.ExistDatasetByID(ctx, datasetID)
+	if err != nil {
+		return err
+	}
+	if !exist {
+		return errs.NewNotFoundError(constants.ERR_DATASET_NOT_FOUND)
+	}
+
+	return d.datasetRepo.DeleteDatasetByID(ctx, datasetID)
+}
+
 // UpsertDataset implements data.DataUsecase.
 func (d *dataUsecase) UpsertDataset(ctx context.Context, dataset *entity.Datasets) error {
 	if dataset == nil {

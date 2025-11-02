@@ -14,4 +14,5 @@ type DataHandler interface {
 	FetchDatasetList(c echo.Context) error
 	FetchDatasetByID(c echo.Context) error
 	UpsertDataset(c echo.Context) error
+	DeleteDatasetByID(c echo.Context) error
 }
