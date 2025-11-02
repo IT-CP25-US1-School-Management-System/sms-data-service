@@ -47,9 +47,10 @@ get:
 
 post:
   tags: [Catalog]
-  summary: Register a dataset
+  summary: New dataset and Update dataset
   requestBody:
     required: true
+    description: dataset id must contain only lowercase english letters, underscore, and hyphen without spaces
     content:
       application/json:
         schema:
@@ -60,7 +61,7 @@ post:
       content:
         application/json:
           schema:
-            $ref: "../../components/schemas/Dataset.yml"
+            $ref: "../../components/schemas/Success.yml"
     "400":
       description: BadRequest,
       content:

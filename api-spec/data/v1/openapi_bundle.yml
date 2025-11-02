@@ -179,9 +179,10 @@ paths:
     post:
       tags:
         - Catalog
-      summary: Register a dataset
+      summary: New dataset and Update dataset
       requestBody:
         required: true
+        description: dataset id must contain only lowercase english letters, underscore, and hyphen without spaces
         content:
           application/json:
             schema:
@@ -192,7 +193,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Dataset'
+                $ref: '#/components/schemas/Success'
         '400':
           description: BadRequest,
           content:
@@ -239,25 +240,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-  /datasets/{dataset}/versions:
-    get:
-      tags:
-        - Catalog
-      summary: List dataset versions
-      parameters:
-        - $ref: '#/components/parameters/DatasetId'
-      responses:
-        '200':
-          description: Versions
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  versions:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/DatasetVersion'
   /contracts/{dataset}:
     post:
       tags:
@@ -1095,11 +1077,18 @@ components:
       type: object
       required:
         - id
+        - name
         - domain
         - owner
         - sensitivity
+        - has_pii
+        - tags
+        - description
       properties:
         id:
+          type: string
+          example: mydata
+        name:
           type: string
         domain:
           type: string
@@ -1115,6 +1104,12 @@ components:
             type: string
         description:
           type: string
+    Success:
+      type: object
+      properties:
+        message:
+          type: string
+          example: success
     DatasetDetail:
       type: object
       properties:
@@ -1143,25 +1138,6 @@ components:
             type: string
         description:
           type: string
-    DatasetVersion:
-      type: object
-      properties:
-        version:
-          type: string
-        status:
-          type: string
-          enum:
-            - active
-            - preview
-            - deprecated
-        breaking:
-          type: boolean
-        created_at:
-          type: string
-          format: date-time
-        sunset:
-          type: string
-          format: date-time
     Column:
       type: object
       properties:

@@ -6,18 +6,65 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/BlackMocca/sqlx"
 	helperModel "github.com/GodeFvt/go-backend/helper/models"
 	"github.com/GodeFvt/go-backend/psql"
 	"github.com/IT-CP25-US1-School-Management-System/sms-data-service/constants"
 	"github.com/IT-CP25-US1-School-Management-System/sms-data-service/models/entity"
 	"github.com/IT-CP25-US1-School-Management-System/sms-data-service/models/filter"
 	"github.com/IT-CP25-US1-School-Management-System/sms-data-service/service/data/v1"
+	"github.com/jmoiron/sqlx"
+
 	"github.com/lib/pq"
 )
 
 type psqlDatasetRepository struct {
 	client *psql.Client
+}
+
+func (p *psqlDatasetRepository) upsertDataset(ctx context.Context, tx *sqlx.Tx, dataset *entity.Datasets) error {
+	query := `
+		INSERT INTO datasets (id, name, domain, owner, sensitivity, has_pii, tags, description, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+		ON CONFLICT (id) DO UPDATE SET
+			name = EXCLUDED.name,
+			domain = EXCLUDED.domain,
+			owner = EXCLUDED.owner,
+			sensitivity = EXCLUDED.sensitivity,
+			has_pii = EXCLUDED.has_pii,
+			tags = EXCLUDED.tags,
+			description = EXCLUDED.description,
+			updated_at = EXCLUDED.updated_at
+	`
+	if _, err := tx.ExecContext(ctx, query,
+		dataset.ID,
+		dataset.Name,
+		dataset.Domain,
+		dataset.Owner,
+		dataset.Sensitivity,
+		dataset.HasPii,
+		pq.Array(dataset.Tags),
+		dataset.Description,
+		dataset.CreatedAt,
+		dataset.UpdatedAt,
+	); err != nil {
+		return err
+	}
+	return nil
+}
+
+// UpsertDataset implements data.PsqlDatasetRepository.
+func (p *psqlDatasetRepository) UpsertDataset(ctx context.Context, dataset *entity.Datasets) error {
+	tx, err := p.client.GetClient().BeginTxx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	if err := p.upsertDataset(ctx, tx, dataset); err != nil {
+		return err
+	}
+
+	return tx.Commit()
 }
 
 // FetchDatasetByID implements data.PsqlDatasetRepository.

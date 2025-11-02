@@ -7,6 +7,7 @@ import (
 	helperModel "github.com/GodeFvt/go-backend/helper/models"
 	"github.com/IT-CP25-US1-School-Management-System/sms-data-service/constants"
 	"github.com/IT-CP25-US1-School-Management-System/sms-data-service/errs"
+	"github.com/IT-CP25-US1-School-Management-System/sms-data-service/models/dto"
 	"github.com/IT-CP25-US1-School-Management-System/sms-data-service/models/filter"
 	"github.com/IT-CP25-US1-School-Management-System/sms-data-service/service/data/v1"
 	"github.com/labstack/echo/v4"
@@ -14,6 +15,29 @@ import (
 
 type dataHandler struct {
 	dataUs data.DataUsecase
+}
+
+// UpsertDataset implements data.DataHandler.
+func (d *dataHandler) UpsertDataset(c echo.Context) error {
+	ctx := c.Request().Context()
+	var datasetDTO dto.UpsertDatasetsDTO
+	if err := c.Bind(&datasetDTO); err != nil {
+		return errs.ErrBadRequest(err)
+	}
+	if err := c.Validate(&datasetDTO); err != nil {
+		return errs.ErrBadRequest(err)
+	}
+
+	datasetEntity := datasetDTO.UpsertDatasetsDTOToEntity()
+	if err := d.dataUs.UpsertDataset(ctx, datasetEntity); err != nil {
+		return err
+	}
+
+	res := map[string]interface{}{
+		"message": "success",
+	}
+	return c.JSON(http.StatusOK, res)
+
 }
 
 // FetchDatasetByID implements data.DataHandler.
@@ -25,7 +49,7 @@ func (d *dataHandler) FetchDatasetByID(c echo.Context) error {
 	}
 	dataset, err := d.dataUs.FetchDatasetByID(ctx, datasetID)
 	if err != nil {
-		return errs.ErrInternalServer(err)
+		return err
 	}
 	if dataset == nil {
 		return errs.ErrNoContent()
@@ -49,7 +73,7 @@ func (d *dataHandler) FetchColumnsList(c echo.Context) error {
 
 	columns, err := d.dataUs.FetchColumnsList(ctx, &filter)
 	if err != nil {
-		return errs.ErrInternalServer(err)
+		return err
 	}
 	if columns == nil {
 		return errs.ErrNoContent()
@@ -73,7 +97,7 @@ func (d *dataHandler) FetchTablesList(c echo.Context) error {
 
 	tables, err := d.dataUs.FetchTablesList(ctx, &filter)
 	if err != nil {
-		return errs.ErrInternalServer(err)
+		return err
 	}
 	if tables == nil {
 		return errs.ErrNoContent()
@@ -104,7 +128,7 @@ func (d *dataHandler) FetchDatasetList(c echo.Context) error {
 
 	datasets, err := d.dataUs.FetchDatasetList(ctx, &filter, &paginator)
 	if err != nil {
-		return errs.ErrInternalServer(err)
+		return err
 	}
 	if len(datasets) == 0 {
 		return errs.ErrNoContent()
@@ -132,7 +156,7 @@ func (d *dataHandler) FetchSchemasList(c echo.Context) error {
 
 	schemas, err := d.dataUs.FetchSchemasList(ctx, &filter)
 	if err != nil {
-		return errs.ErrInternalServer(err)
+		return err
 	}
 	if schemas == nil {
 		return errs.ErrNoContent()
@@ -148,7 +172,7 @@ func (d *dataHandler) FetchSourceList(c echo.Context) error {
 	ctx := c.Request().Context()
 	sources, err := d.dataUs.FetchSourceList(ctx)
 	if err != nil {
-		return errs.ErrInternalServer(err)
+		return err
 	}
 	if sources == nil {
 		return errs.ErrNoContent()

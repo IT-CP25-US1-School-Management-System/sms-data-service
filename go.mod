@@ -3,11 +3,10 @@ module github.com/IT-CP25-US1-School-Management-System/sms-data-service
 go 1.25.1
 
 require (
-	github.com/BlackMocca/sqlx v1.0.0
 	github.com/GodeFvt/go-backend/grpc v0.0.0-20250901133359-98cdedb5f254
 	github.com/GodeFvt/go-backend/helper v0.0.0-20251004141120-5d49d55d8105
 	github.com/GodeFvt/go-backend/minio v0.0.0-20251004135016-6aed0f5a4382
-	github.com/GodeFvt/go-backend/psql v0.0.0-20250901133359-98cdedb5f254
+	github.com/GodeFvt/go-backend/psql v0.0.0-20251102115810-47e0785e3cc9
 	github.com/GodeFvt/go-backend/redis v0.0.0-20251004135016-6aed0f5a4382
 	github.com/MicahParks/keyfunc/v3 v3.6.2
 	github.com/getsentry/sentry-go v0.31.1
@@ -15,6 +14,7 @@ require (
 	github.com/go-playground/validator/v10 v10.27.0
 	github.com/gofrs/uuid v4.4.0+incompatible
 	github.com/golang-jwt/jwt/v5 v5.3.0
+	github.com/jmoiron/sqlx v1.4.0
 	github.com/labstack/echo/v4 v4.12.0
 	github.com/lib/pq v1.10.9
 	github.com/opentracing/opentracing-go v1.2.0
@@ -27,6 +27,7 @@ require (
 require (
 	4d63.com/embedfiles v0.0.0-20190311033909-995e0740726f // indirect
 	4d63.com/tz v1.2.0 // indirect
+	github.com/BlackMocca/sqlx v1.0.0 // indirect
 	github.com/ClickHouse/ch-go v0.61.5 // indirect
 	github.com/ClickHouse/clickhouse-go/v2 v2.23.1 // indirect
 	github.com/HdrHistogram/hdrhistogram-go v1.1.2 // indirect

@@ -1,11 +1,18 @@
 type: object
 required:
   - id
+  - name
   - domain
   - owner
   - sensitivity
+  - has_pii
+  - tags
+  - description
 properties:
   id:
+    type: string
+    example: "mydata"
+  name:
     type: string
   domain:
     type: string
