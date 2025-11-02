@@ -11,23 +11,51 @@ get:
         application/json:
           schema:
             $ref: "../../components/schemas/DatasetDetail.yml"
-    "204":
-      description: No Content
     "401":
-        description: Unauthorized
-        content:
-          application/json:
-            schema:
-              $ref: "../../components/schemas/ErrorResponse.yml"     
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yml"
     "404":
-        description: Not Found
-        content:
-          application/json:
-            schema:
-              $ref: "../../components/schemas/ErrorResponse.yml"
+      description: Not Found
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yml"
     "500":
-        description: Internal Server Error
-        content:
-          application/json:
-            schema:
-              $ref: "../../components/schemas/ErrorResponse.yml"   
+      description: Internal Server Error
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yml"
+delete:
+  tags: [Catalog]
+  summary: Detlete dataset by id
+  parameters:
+    - $ref: "../../components/parameters/DatasetId.yml"
+  responses:
+    "200":
+      description: Dataset
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/Success.yml"
+    "401":
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yml"
+    "404":
+      description: Not Found
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yml"
+    "500":
+      description: Internal Server Error
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yml"

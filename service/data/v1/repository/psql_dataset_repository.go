@@ -21,6 +21,50 @@ type psqlDatasetRepository struct {
 	client *psql.Client
 }
 
+// ExistDatasetByID implements data.PsqlDatasetRepository.
+func (p *psqlDatasetRepository) ExistDatasetByID(ctx context.Context, datasetID string) (bool, error) {
+	query := `
+		SELECT
+			COUNT(id)
+		FROM
+			datasets
+		WHERE
+			id = $1
+	`
+
+	var count int
+	if err := p.client.GetClient().QueryRowxContext(ctx, query, datasetID).Scan(&count); err != nil {
+		return false, err
+	}
+	return count > 0, nil
+}
+
+func (p *psqlDatasetRepository) deleteDatasetByID(ctx context.Context, tx *sqlx.Tx, datasetID string) error {
+	query := `
+		DELETE FROM datasets
+		WHERE id = $1
+	`
+	if _, err := tx.ExecContext(ctx, query, datasetID); err != nil {
+		return err
+	}
+	return nil
+}
+
+// DeleteDatasetByID implements data.PsqlDatasetRepository.
+func (p *psqlDatasetRepository) DeleteDatasetByID(ctx context.Context, datasetID string) error {
+	tx, err := p.client.GetClient().BeginTxx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	if err := p.deleteDatasetByID(ctx, tx, datasetID); err != nil {
+		return err
+	}
+
+	return tx.Commit()
+}
+
 func (p *psqlDatasetRepository) upsertDataset(ctx context.Context, tx *sqlx.Tx, dataset *entity.Datasets) error {
 	query := `
 		INSERT INTO datasets (id, name, domain, owner, sensitivity, has_pii, tags, description, created_at, updated_at)
@@ -121,7 +165,7 @@ func (p *psqlDatasetRepository) FetchColumnsList(ctx context.Context, filter *fi
 		where = "WHERE " + strings.Join(conds, " AND ")
 	}
 
-	query := fmt.Sprintf(`SELECT * FROM physical_columns %s`, where)
+	query := fmt.Sprintf(`SELECT id, source_id, schema, table_name, column_name, data_type, is_nullable, column_default, ordinal_position, created_at FROM physical_columns %s`, where)
 	query = sqlx.Rebind(sqlx.DOLLAR, query)
 	stmt, err := p.client.GetClient().PreparexContext(ctx, query)
 	if err != nil {
@@ -147,7 +191,7 @@ func (p *psqlDatasetRepository) FetchColumnsList(ctx context.Context, filter *fi
 			&column.IsNullable,
 			&column.ColumnDefault,
 			&column.OrdinalPosition,
-			&column.DiscoveredAt,
+			&column.CreatedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -175,7 +219,7 @@ func (p *psqlDatasetRepository) FetchTablesList(ctx context.Context, filter *fil
 		where = "WHERE " + strings.Join(conds, " AND ")
 	}
 
-	query := fmt.Sprintf(`SELECT id,source_id,schema,table_name,discovered_at FROM physical_tables %s`, where)
+	query := fmt.Sprintf(`SELECT id,source_id,schema,table_name,created_at FROM physical_tables %s`, where)
 	query = sqlx.Rebind(sqlx.DOLLAR, query)
 	stmt, err := p.client.GetClient().PreparexContext(ctx, query)
 	if err != nil {
@@ -196,7 +240,7 @@ func (p *psqlDatasetRepository) FetchTablesList(ctx context.Context, filter *fil
 			&table.SourceID,
 			&table.Schema,
 			&table.TableName,
-			&table.DiscoveredAt,
+			&table.CreatedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -343,7 +387,7 @@ func (p *psqlDatasetRepository) FetchSchemasList(ctx context.Context, filter *fi
 		where = "WHERE " + strings.Join(conds, " AND ")
 	}
 
-	query := fmt.Sprintf(`SELECT id,source_id,schema,discovered_at FROM physical_schemas %s`, where)
+	query := fmt.Sprintf(`SELECT id,source_id,schema,created_at FROM physical_schemas %s`, where)
 	query = sqlx.Rebind(sqlx.DOLLAR, query)
 	stmt, err := p.client.GetClient().PreparexContext(ctx, query)
 	if err != nil {
@@ -363,7 +407,7 @@ func (p *psqlDatasetRepository) FetchSchemasList(ctx context.Context, filter *fi
 			&schema.ID,
 			&schema.SourceID,
 			&schema.Schema,
-			&schema.DiscoveredAt,
+			&schema.CreatedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -374,7 +418,7 @@ func (p *psqlDatasetRepository) FetchSchemasList(ctx context.Context, filter *fi
 
 // FetchSourceList implements data.PsqlDatasetRepository.
 func (p *psqlDatasetRepository) FetchSourceList(ctx context.Context) ([]*entity.Sources, error) {
-	query := `SELECT id, name, type, connection_ref, sensitivity,config,created_at FROM sources`
+	query := `SELECT id, name, type, description, created_at FROM sources`
 	stmt, err := p.client.GetClient().PreparexContext(ctx, query)
 	if err != nil {
 		return nil, err
@@ -393,9 +437,7 @@ func (p *psqlDatasetRepository) FetchSourceList(ctx context.Context) ([]*entity.
 			&source.ID,
 			&source.Name,
 			&source.Type,
-			&source.ConnectionRef,
-			&source.Sensitivity,
-			&source.Config,
+			&source.Description,
 			&source.CreatedAt,
 		); err != nil {
 			return nil, err

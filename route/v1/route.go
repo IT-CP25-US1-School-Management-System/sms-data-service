@@ -27,4 +27,5 @@ func (r *Route) RegisterDataRoute(handler data.DataHandler) {
 	datasetsGroup.GET("", handler.FetchDatasetList)
 	datasetsGroup.GET("/:id", handler.FetchDatasetByID)
 	datasetsGroup.POST("", handler.UpsertDataset)
+	datasetsGroup.DELETE("/:id", handler.DeleteDatasetByID)
 }

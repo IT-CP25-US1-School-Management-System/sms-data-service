@@ -15,5 +15,5 @@ type Columns struct {
 	IsNullable      bool                   `json:"is_nullable" db:"is_nullable"`
 	ColumnDefault   *string                `json:"column_default" db:"column_default"`
 	OrdinalPosition *int                   `json:"ordinal_position" db:"ordinal_position"`
-	DiscoveredAt    *helperModel.Timestamp `json:"discovered_at" db:"discovered_at"`
+	CreatedAt       *helperModel.Timestamp `json:"created_at" db:"created_at"`
 }

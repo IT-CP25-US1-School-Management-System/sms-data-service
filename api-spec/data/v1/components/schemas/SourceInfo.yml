@@ -6,7 +6,7 @@ properties:
     type: string
     enum:
       - jdbc
-      - file
-      - api
-  display_name:
+  name:
+    type: string
+  description:
     type: string

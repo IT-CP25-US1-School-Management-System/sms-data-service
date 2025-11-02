@@ -1,10 +1,23 @@
 type: object
 properties:
-  name:
+  id:
+    type: integer
+  source_id:
+    type: string
+  schema:
+    type: string
+  table_name:
+    type: string
+  column_name:
     type: string
   data_type:
     type: string
-  nullable:
+  is_nullable:
     type: boolean
-  default:
+  column_default:
     type: string
+  ordinal_position:
+    type: integer
+  created_at:
+    type: string
+    format: date-time

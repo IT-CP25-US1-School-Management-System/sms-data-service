@@ -3,9 +3,8 @@ get:
   tags: [Introspection]
   summary: List schemas in a source
   parameters:
-    - name: source
+    - name: source_id
       in: query
-      required: true
       schema:
         type: string
   responses:
@@ -19,4 +18,20 @@ get:
               data:
                 type: array
                 items:
-                  type: string
+                  type: object
+                  properties:
+                    id:
+                      type: integer
+                    sources_id:
+                      type: string
+                    schema:
+                      type: string
+                    created_at:
+                      type: string
+                      format: date-time
+    "500":
+      description: Internal Server Error
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yml"
