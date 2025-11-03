@@ -79,13 +79,13 @@ func (d *dataUsecase) FetchDatasetByID(ctx context.Context, datasetID string) (*
 }
 
 // FetchColumnsList implements data.DataUsecase.
-func (d *dataUsecase) FetchColumnsList(ctx context.Context, filter *filter.ColumnsFilter) ([]*entity.Columns, error) {
-	return d.datasetRepo.FetchColumnsList(ctx, filter)
+func (d *dataUsecase) FetchColumnsList(ctx context.Context, filter *filter.ColumnsFilter, paginator *helperModel.Paginator) ([]*entity.Columns, error) {
+	return d.datasetRepo.FetchColumnsList(ctx, filter, paginator)
 }
 
 // FetchTablesList implements data.DataUsecase.
-func (d *dataUsecase) FetchTablesList(ctx context.Context, filter *filter.TablesFilter) ([]*entity.Tables, error) {
-	return d.datasetRepo.FetchTablesList(ctx, filter)
+func (d *dataUsecase) FetchTablesList(ctx context.Context, filter *filter.TablesFilter, paginator *helperModel.Paginator) ([]*entity.Tables, error) {
+	return d.datasetRepo.FetchTablesList(ctx, filter, paginator)
 }
 
 // FetchDatasetList implements data.DataUsecase.
@@ -94,13 +94,13 @@ func (d *dataUsecase) FetchDatasetList(ctx context.Context, filter *filter.Datas
 }
 
 // FetchSchemasList implements data.DataUsecase.
-func (d *dataUsecase) FetchSchemasList(ctx context.Context, filter *filter.SchemasFilter) ([]*entity.Schemas, error) {
-	return d.datasetRepo.FetchSchemasList(ctx, filter)
+func (d *dataUsecase) FetchSchemasList(ctx context.Context, filter *filter.SchemasFilter, paginator *helperModel.Paginator) ([]*entity.Schemas, error) {
+	return d.datasetRepo.FetchSchemasList(ctx, filter, paginator)
 }
 
 // FetchSourceList implements data.DataUsecase.
-func (d *dataUsecase) FetchSourceList(ctx context.Context) ([]*entity.Sources, error) {
-	return d.datasetRepo.FetchSourceList(ctx)
+func (d *dataUsecase) FetchSourceList(ctx context.Context, paginator *helperModel.Paginator) ([]*entity.Sources, error) {
+	return d.datasetRepo.FetchSourceList(ctx, paginator)
 }
 
 func NewDataUsecase(dataRepo data.PsqlDataRepository, datasetRepo data.PsqlDatasetRepository, redisRepo data.RedisRepository) data.DataUsecase {

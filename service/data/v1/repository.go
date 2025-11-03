@@ -12,10 +12,10 @@ type PsqlDataRepository interface {
 }
 
 type PsqlDatasetRepository interface {
-	FetchSourceList(ctx context.Context) ([]*entity.Sources, error)
-	FetchSchemasList(ctx context.Context, filter *filter.SchemasFilter) ([]*entity.Schemas, error)
-	FetchTablesList(ctx context.Context, filter *filter.TablesFilter) ([]*entity.Tables, error)
-	FetchColumnsList(ctx context.Context, filter *filter.ColumnsFilter) ([]*entity.Columns, error)
+	FetchSourceList(ctx context.Context, paginator *helperModel.Paginator) ([]*entity.Sources, error)
+	FetchSchemasList(ctx context.Context, filter *filter.SchemasFilter, paginator *helperModel.Paginator) ([]*entity.Schemas, error)
+	FetchTablesList(ctx context.Context, filter *filter.TablesFilter, paginator *helperModel.Paginator) ([]*entity.Tables, error)
+	FetchColumnsList(ctx context.Context, filter *filter.ColumnsFilter, paginator *helperModel.Paginator) ([]*entity.Columns, error)
 
 	// Dataset
 	FetchDatasetList(ctx context.Context, filter *filter.DatasetsFilter, paginator *helperModel.Paginator) ([]*entity.Datasets, error)
