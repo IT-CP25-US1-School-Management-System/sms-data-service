@@ -73,6 +73,18 @@
                       "items": {
                         "$ref": "#/components/schemas/SourceInfo"
                       }
+                    },
+                    "page": {
+                      "type": "integer"
+                    },
+                    "per_page": {
+                      "type": "integer"
+                    },
+                    "total_pages": {
+                      "type": "integer"
+                    },
+                    "total_rows": {
+                      "type": "integer"
                     }
                   }
                 }
@@ -135,6 +147,18 @@
                           }
                         }
                       }
+                    },
+                    "page": {
+                      "type": "integer"
+                    },
+                    "per_page": {
+                      "type": "integer"
+                    },
+                    "total_pages": {
+                      "type": "integer"
+                    },
+                    "total_rows": {
+                      "type": "integer"
                     }
                   }
                 }
@@ -207,6 +231,18 @@
                           }
                         }
                       }
+                    },
+                    "page": {
+                      "type": "integer"
+                    },
+                    "per_page": {
+                      "type": "integer"
+                    },
+                    "total_pages": {
+                      "type": "integer"
+                    },
+                    "total_rows": {
+                      "type": "integer"
                     }
                   }
                 }
@@ -258,6 +294,18 @@
                       "items": {
                         "$ref": "#/components/schemas/PhysicalColumn"
                       }
+                    },
+                    "page": {
+                      "type": "integer"
+                    },
+                    "per_page": {
+                      "type": "integer"
+                    },
+                    "total_pages": {
+                      "type": "integer"
+                    },
+                    "total_rows": {
+                      "type": "integer"
                     }
                   }
                 }

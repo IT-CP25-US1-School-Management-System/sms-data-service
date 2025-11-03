@@ -14,6 +14,14 @@ get:
                 type: array
                 items:
                   $ref: "../../components/schemas/SourceInfo.yml"
+              page:
+                type: integer
+              per_page:
+                type: integer
+              total_pages:
+                type: integer
+              total_rows:
+                type: integer
     "500":
       description: Internal Server Error
       content:

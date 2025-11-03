@@ -45,6 +45,14 @@ paths:
                     type: array
                     items:
                       $ref: '#/components/schemas/SourceInfo'
+                  page:
+                    type: integer
+                  per_page:
+                    type: integer
+                  total_pages:
+                    type: integer
+                  total_rows:
+                    type: integer
         '500':
           description: Internal Server Error
           content:
@@ -83,6 +91,14 @@ paths:
                         created_at:
                           type: string
                           format: date-time
+                  page:
+                    type: integer
+                  per_page:
+                    type: integer
+                  total_pages:
+                    type: integer
+                  total_rows:
+                    type: integer
         '500':
           description: Internal Server Error
           content:
@@ -127,6 +143,14 @@ paths:
                         created_at:
                           type: string
                           format: date-time
+                  page:
+                    type: integer
+                  per_page:
+                    type: integer
+                  total_pages:
+                    type: integer
+                  total_rows:
+                    type: integer
   /introspect/columns:
     get:
       tags:
@@ -157,6 +181,14 @@ paths:
                     type: array
                     items:
                       $ref: '#/components/schemas/PhysicalColumn'
+                  page:
+                    type: integer
+                  per_page:
+                    type: integer
+                  total_pages:
+                    type: integer
+                  total_rows:
+                    type: integer
   /datasets:
     get:
       tags:

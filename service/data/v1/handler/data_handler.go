@@ -1,7 +1,9 @@
 package handler
 
 import (
+	"fmt"
 	"net/http"
+	"strconv"
 
 	helperModel "github.com/GodeFvt/go-backend/helper/models"
 	"github.com/IT-CP25-US1-School-Management-System/sms-data-service/constants"
@@ -88,16 +90,25 @@ func (d *dataHandler) FetchColumnsList(c echo.Context) error {
 	if err := c.Validate(&filter); err != nil {
 		return errs.ErrBadRequest(err)
 	}
+	paginator := helperModel.NewPaginator()
+	if filter.Page > 0 && filter.PerPage > 0 {
+		paginator.Page = filter.Page
+		paginator.PerPage = filter.PerPage
+	}
 
-	columns, err := d.dataUs.FetchColumnsList(ctx, &filter)
+	columns, err := d.dataUs.FetchColumnsList(ctx, &filter, &paginator)
 	if err != nil {
 		return err
 	}
-	if columns == nil {
+	if len(columns) == 0 {
 		columns = []*entity.Columns{}
 	}
 	res := map[string]interface{}{
-		"data": columns,
+		"data":        columns,
+		"page":        paginator.Page,
+		"per_page":    paginator.PerPage,
+		"total_pages": paginator.TotalPages,
+		"total_rows":  paginator.TotalEntrySizes,
 	}
 	return c.JSON(http.StatusOK, res)
 }
@@ -112,16 +123,25 @@ func (d *dataHandler) FetchTablesList(c echo.Context) error {
 	if err := c.Validate(&filter); err != nil {
 		return errs.ErrBadRequest(err)
 	}
+	paginator := helperModel.NewPaginator()
+	if filter.Page > 0 && filter.PerPage > 0 {
+		paginator.Page = filter.Page
+		paginator.PerPage = filter.PerPage
+	}
 
-	tables, err := d.dataUs.FetchTablesList(ctx, &filter)
+	tables, err := d.dataUs.FetchTablesList(ctx, &filter, &paginator)
 	if err != nil {
 		return err
 	}
-	if tables == nil {
+	if len(tables) == 0 {
 		tables = []*entity.Tables{}
 	}
 	res := map[string]interface{}{
-		"data": tables,
+		"data":        tables,
+		"page":        paginator.Page,
+		"per_page":    paginator.PerPage,
+		"total_pages": paginator.TotalPages,
+		"total_rows":  paginator.TotalEntrySizes,
 	}
 	return c.JSON(http.StatusOK, res)
 }
@@ -171,16 +191,25 @@ func (d *dataHandler) FetchSchemasList(c echo.Context) error {
 	if err := c.Validate(&filter); err != nil {
 		return errs.ErrBadRequest(err)
 	}
+	paginator := helperModel.NewPaginator()
+	if filter.Page > 0 && filter.PerPage > 0 {
+		paginator.Page = filter.Page
+		paginator.PerPage = filter.PerPage
+	}
 
-	schemas, err := d.dataUs.FetchSchemasList(ctx, &filter)
+	schemas, err := d.dataUs.FetchSchemasList(ctx, &filter, &paginator)
 	if err != nil {
 		return err
 	}
-	if schemas == nil {
+	if len(schemas) == 0 {
 		schemas = []*entity.Schemas{}
 	}
 	res := map[string]interface{}{
-		"data": schemas,
+		"data":        schemas,
+		"page":        paginator.Page,
+		"per_page":    paginator.PerPage,
+		"total_pages": paginator.TotalPages,
+		"total_rows":  paginator.TotalEntrySizes,
 	}
 	return c.JSON(http.StatusOK, res)
 }
@@ -188,15 +217,35 @@ func (d *dataHandler) FetchSchemasList(c echo.Context) error {
 // FetchSourceList implements data.DataHandler.
 func (d *dataHandler) FetchSourceList(c echo.Context) error {
 	ctx := c.Request().Context()
-	sources, err := d.dataUs.FetchSourceList(ctx)
+	paginator := helperModel.NewPaginator()
+	page := c.QueryParam("page")
+	perPage := c.QueryParam("per_page")
+	if page != "" && perPage != "" {
+		p, err := strconv.Atoi(page)
+		if err != nil || p < 1 {
+			return errs.ErrBadRequest(fmt.Errorf("invalid page"))
+		}
+		pp, err := strconv.Atoi(perPage)
+		if err != nil || pp < 1 || pp > 100 {
+			return errs.ErrBadRequest(fmt.Errorf("invalid per_page"))
+		}
+		paginator.Page = p
+		paginator.PerPage = pp
+	}
+
+	sources, err := d.dataUs.FetchSourceList(ctx, &paginator)
 	if err != nil {
 		return err
 	}
-	if sources == nil {
+	if len(sources) == 0 {
 		sources = []*entity.Sources{}
 	}
 	res := map[string]interface{}{
-		"data": sources,
+		"data":        sources,
+		"page":        paginator.Page,
+		"per_page":    paginator.PerPage,
+		"total_pages": paginator.TotalPages,
+		"total_rows":  paginator.TotalEntrySizes,
 	}
 	return c.JSON(http.StatusOK, res)
 }

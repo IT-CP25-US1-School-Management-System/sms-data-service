@@ -143,10 +143,13 @@ func (p *psqlDatasetRepository) FetchDatasetByID(ctx context.Context, datasetID 
 }
 
 // FetchColumnsList implements data.PsqlDatasetRepository.
-func (p *psqlDatasetRepository) FetchColumnsList(ctx context.Context, filter *filter.ColumnsFilter) ([]*entity.Columns, error) {
-	var where string
-	var conds = make([]string, 0)
-	var valArgs = make([]interface{}, 0)
+func (p *psqlDatasetRepository) FetchColumnsList(ctx context.Context, filter *filter.ColumnsFilter, paginator *helperModel.Paginator) ([]*entity.Columns, error) {
+	var (
+		conds    []string
+		valArgs  []interface{}
+		where    string
+		limitSQL string
+	)
 	if filter != nil {
 		if filter.SourceID != nil {
 			conds = append(conds, "source_id=?")
@@ -165,7 +168,7 @@ func (p *psqlDatasetRepository) FetchColumnsList(ctx context.Context, filter *fi
 		where = "WHERE " + strings.Join(conds, " AND ")
 	}
 
-	query := fmt.Sprintf(`SELECT id, source_id, schema, table_name, column_name, data_type, is_nullable, column_default, ordinal_position, created_at FROM physical_columns %s`, where)
+	query := fmt.Sprintf(`SELECT id, source_id, schema, table_name, column_name, data_type, is_nullable, column_default, ordinal_position, created_at FROM physical_columns %s ORDER BY id ASC %s`, where, limitSQL)
 	query = sqlx.Rebind(sqlx.DOLLAR, query)
 	stmt, err := p.client.GetClient().PreparexContext(ctx, query)
 	if err != nil {
@@ -197,14 +200,32 @@ func (p *psqlDatasetRepository) FetchColumnsList(ctx context.Context, filter *fi
 		}
 		columns = append(columns, &column)
 	}
+	var totalRows int
+	countArgs := append([]interface{}(nil), valArgs...)
+	if paginator != nil {
+		countArgs = countArgs[:len(countArgs)-2]
+	}
+	countSQL := fmt.Sprintf(`SELECT COUNT(*) FROM physical_columns %s`, where)
+	countSQL = sqlx.Rebind(sqlx.DOLLAR, countSQL)
+
+	if err := p.client.GetClient().GetContext(ctx, &totalRows, countSQL, countArgs...); err != nil {
+		return nil, err
+	}
+
+	if paginator != nil {
+		paginator.SetPaginatorByAllRows(totalRows)
+	}
 	return columns, nil
 }
 
 // FetchTablesList implements data.PsqlDatasetRepository.
-func (p *psqlDatasetRepository) FetchTablesList(ctx context.Context, filter *filter.TablesFilter) ([]*entity.Tables, error) {
-	var where string
-	var conds = make([]string, 0)
-	var valArgs = make([]interface{}, 0)
+func (p *psqlDatasetRepository) FetchTablesList(ctx context.Context, filter *filter.TablesFilter, paginator *helperModel.Paginator) ([]*entity.Tables, error) {
+	var (
+		conds    []string
+		valArgs  []interface{}
+		where    string
+		limitSQL string
+	)
 	if filter != nil {
 		if filter.SourceID != nil {
 			conds = append(conds, "source_id=?")
@@ -218,8 +239,14 @@ func (p *psqlDatasetRepository) FetchTablesList(ctx context.Context, filter *fil
 	if len(conds) > 0 {
 		where = "WHERE " + strings.Join(conds, " AND ")
 	}
-
-	query := fmt.Sprintf(`SELECT id,source_id,schema,table_name,created_at FROM physical_tables %s`, where)
+	if paginator != nil {
+		limitSQL = `
+			LIMIT ?
+			OFFSET ?
+		`
+		valArgs = append(valArgs, paginator.GetLimit(), paginator.GetOffset())
+	}
+	query := fmt.Sprintf(`SELECT id,source_id,schema,table_name,created_at FROM physical_tables %s ORDER BY table_name ASC %s`, where, limitSQL)
 	query = sqlx.Rebind(sqlx.DOLLAR, query)
 	stmt, err := p.client.GetClient().PreparexContext(ctx, query)
 	if err != nil {
@@ -246,6 +273,22 @@ func (p *psqlDatasetRepository) FetchTablesList(ctx context.Context, filter *fil
 		}
 		tables = append(tables, &table)
 	}
+	var totalRows int
+	countArgs := append([]interface{}(nil), valArgs...)
+	if paginator != nil {
+		countArgs = countArgs[:len(countArgs)-2]
+	}
+	countSQL := fmt.Sprintf(`SELECT COUNT(*) FROM physical_tables %s`, where)
+	countSQL = sqlx.Rebind(sqlx.DOLLAR, countSQL)
+
+	if err := p.client.GetClient().GetContext(ctx, &totalRows, countSQL, countArgs...); err != nil {
+		return nil, err
+	}
+
+	if paginator != nil {
+		paginator.SetPaginatorByAllRows(totalRows)
+	}
+
 	return tables, nil
 }
 
@@ -373,10 +416,13 @@ func (p *psqlDatasetRepository) FetchDatasetList(ctx context.Context, filter *fi
 }
 
 // FetchSchemasList implements data.PsqlDatasetRepository.
-func (p *psqlDatasetRepository) FetchSchemasList(ctx context.Context, filter *filter.SchemasFilter) ([]*entity.Schemas, error) {
-	var where string
-	var conds = make([]string, 0)
-	var valArgs = make([]interface{}, 0)
+func (p *psqlDatasetRepository) FetchSchemasList(ctx context.Context, filter *filter.SchemasFilter, paginator *helperModel.Paginator) ([]*entity.Schemas, error) {
+	var (
+		conds    []string
+		valArgs  []interface{}
+		where    string
+		limitSQL string
+	)
 	if filter != nil {
 		if filter.SourceID != nil {
 			conds = append(conds, "source_id=?")
@@ -386,8 +432,15 @@ func (p *psqlDatasetRepository) FetchSchemasList(ctx context.Context, filter *fi
 	if len(conds) > 0 {
 		where = "WHERE " + strings.Join(conds, " AND ")
 	}
+	if paginator != nil {
+		limitSQL = `
+			LIMIT ?
+			OFFSET ?
+		`
+		valArgs = append(valArgs, paginator.GetLimit(), paginator.GetOffset())
+	}
 
-	query := fmt.Sprintf(`SELECT id,source_id,schema,created_at FROM physical_schemas %s`, where)
+	query := fmt.Sprintf(`SELECT id,source_id,schema,created_at FROM physical_schemas %s ORDER BY schema ASC %s`, where, limitSQL)
 	query = sqlx.Rebind(sqlx.DOLLAR, query)
 	stmt, err := p.client.GetClient().PreparexContext(ctx, query)
 	if err != nil {
@@ -413,19 +466,47 @@ func (p *psqlDatasetRepository) FetchSchemasList(ctx context.Context, filter *fi
 		}
 		schemas = append(schemas, &schema)
 	}
+	var totalRows int
+	countArgs := append([]interface{}(nil), valArgs...)
+	if paginator != nil {
+		countArgs = countArgs[:len(countArgs)-2]
+	}
+	countSQL := fmt.Sprintf(`SELECT COUNT(*) FROM physical_schemas %s`, where)
+	countSQL = sqlx.Rebind(sqlx.DOLLAR, countSQL)
+
+	if err := p.client.GetClient().GetContext(ctx, &totalRows, countSQL, countArgs...); err != nil {
+		return nil, err
+	}
+
+	if paginator != nil {
+		paginator.SetPaginatorByAllRows(totalRows)
+	}
+
 	return schemas, nil
 }
 
 // FetchSourceList implements data.PsqlDatasetRepository.
-func (p *psqlDatasetRepository) FetchSourceList(ctx context.Context) ([]*entity.Sources, error) {
-	query := `SELECT id, name, type, description, created_at FROM sources`
+func (p *psqlDatasetRepository) FetchSourceList(ctx context.Context, paginator *helperModel.Paginator) ([]*entity.Sources, error) {
+	var (
+		valArgs  []interface{}
+		limitSQL string
+	)
+	if paginator != nil {
+		limitSQL = `
+			LIMIT ?
+			OFFSET ?
+		`
+		valArgs = append(valArgs, paginator.GetLimit(), paginator.GetOffset())
+	}
+	query := fmt.Sprintf(`SELECT id, name, type, description, created_at FROM sources %s`, limitSQL)
+	query = sqlx.Rebind(sqlx.DOLLAR, query)
 	stmt, err := p.client.GetClient().PreparexContext(ctx, query)
 	if err != nil {
 		return nil, err
 	}
 	defer stmt.Close()
 
-	rows, err := stmt.QueryxContext(ctx)
+	rows, err := stmt.QueryxContext(ctx, valArgs...)
 	if err != nil {
 		return nil, err
 	}
@@ -444,6 +525,15 @@ func (p *psqlDatasetRepository) FetchSourceList(ctx context.Context) ([]*entity.
 		}
 		sources = append(sources, &source)
 	}
+	var totalRows int
+	countSQL := `SELECT COUNT(*) FROM sources`
+	if err := p.client.GetClient().GetContext(ctx, &totalRows, countSQL); err != nil {
+		return nil, err
+	}
+	if paginator != nil {
+		paginator.SetPaginatorByAllRows(totalRows)
+	}
+
 	return sources, nil
 }
 
