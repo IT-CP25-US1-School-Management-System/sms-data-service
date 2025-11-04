@@ -393,6 +393,13 @@ func (p *psqlDatasetRepository) FetchColumnsList(ctx context.Context, filter *fi
 		where    string
 		limitSQL string
 	)
+	if paginator != nil {
+		limitSQL = `
+			LIMIT ?
+			OFFSET ?
+		`
+		valArgs = append(valArgs, paginator.GetLimit(), paginator.GetOffset())
+	}
 	if filter != nil {
 		if filter.SourceID != nil {
 			conds = append(conds, "source_id=?")
