@@ -6,7 +6,7 @@ import (
 )
 
 type Columns struct {
-	ID              int64                  `json:"id" db:"id"`
+	ID              *uuid.UUID             `json:"id" db:"id"`
 	SourceID        *uuid.UUID             `json:"sources_id" db:"sources_id"`
 	Schema          string                 `json:"schema" db:"schema"`
 	TableName       string                 `json:"table_name" db:"table_name"`
@@ -16,4 +16,9 @@ type Columns struct {
 	ColumnDefault   *string                `json:"column_default" db:"column_default"`
 	OrdinalPosition *int                   `json:"ordinal_position" db:"ordinal_position"`
 	CreatedAt       *helperModel.Timestamp `json:"created_at" db:"created_at"`
+}
+
+func (u *Columns) GenUUID() {
+	id, _ := uuid.NewV4()
+	u.ID = &id
 }

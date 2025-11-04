@@ -24,6 +24,8 @@ type GoMiddlewareInf interface {
 	Permission(resourceName string, requiredScopes []string) echo.MiddlewareFunc
 
 	ErrorHandlerMiddleware(next echo.HandlerFunc) echo.HandlerFunc
+
+	ValidateParamId(key string) echo.MiddlewareFunc
 }
 
 type GoMiddleware struct {

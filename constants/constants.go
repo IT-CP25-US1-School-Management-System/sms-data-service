@@ -1,5 +1,7 @@
 package constants
 
+import "regexp"
+
 const (
 	// Sort Datasets
 	DATASET_SORT_BY_NAME       = "name"
@@ -9,4 +11,10 @@ const (
 	// Sort Order
 	SORT_ORDER_ASC  = "asc"
 	SORT_ORDER_DESC = "desc"
+)
+
+var (
+	// datasetIDPattern validates dataset ID format: only lowercase english letters, underscore, and hyphen, no spaces
+	// Pattern: ^[a-z_-]+$ means start to end with only lowercase letters a-z, underscore, and hyphen
+	DATASET_ID_PATTERN = regexp.MustCompile("^[a-z_-]+$")
 )

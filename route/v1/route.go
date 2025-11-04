@@ -21,6 +21,10 @@ func (r *Route) RegisterDataRoute(handler data.DataHandler) {
 	introspectGroup.GET("/schemas", handler.FetchSchemasList)
 	introspectGroup.GET("/tables", handler.FetchTablesList)
 	introspectGroup.GET("/columns", handler.FetchColumnsList)
+	introspectGroup.POST("/sources", handler.InsertSource)
+	introspectGroup.PUT("/sources/:id", handler.UpdateSource)
+	introspectGroup.PATCH("/sources/:id/activate", handler.ActivateSourceByID, r.middl.ValidateParamId("id"))
+	introspectGroup.PATCH("/sources/:id/deactivate", handler.DeactivateSourceByID, r.middl.ValidateParamId("id"))
 
 	// Datasets Route
 	datasetsGroup := r.e.Group("/v1/datasets")

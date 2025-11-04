@@ -25,6 +25,7 @@ import (
 	_psqldataset_repo "github.com/IT-CP25-US1-School-Management-System/sms-data-service/service/data/v1/repository"
 	_redis_repo "github.com/IT-CP25-US1-School-Management-System/sms-data-service/service/data/v1/repository"
 	_data_usecase "github.com/IT-CP25-US1-School-Management-System/sms-data-service/service/data/v1/usecase"
+	_db_connection_manager_repo "github.com/IT-CP25-US1-School-Management-System/sms-data-service/service/database/v1/repository"
 	"github.com/getsentry/sentry-go"
 	sentryecho "github.com/getsentry/sentry-go/echo"
 	"github.com/go-playground/validator/v10"
@@ -67,6 +68,8 @@ var (
 	COOKIE_HTTPONLY = cast.ToBool(helper.GetENV("COOKIE_HTTPONLY", "true"))
 
 	REDIS_ADDRESS = helper.GetENV("REDIS_ADDRESS", "")
+
+	CRYPTO_SECRET = helper.GetENV("CRYPTO_SECRET", "")
 )
 
 func connectPsqlDB(con string) *psql.Client {
@@ -174,12 +177,14 @@ func main() {
 	e.Use(middL.SetTracer)
 
 	/* repository */
-	psqlDataRepo := _psqldata_repo.NewPsqlDataRepository(psqlDataClient)
 	psqlDatasetRepo := _psqldataset_repo.NewPsqlDatasetRepository(psqlDatasetClient)
+	dbConnectionManager := _db_connection_manager_repo.NewDBConnectionManagerRepository(psqlDatasetRepo, CRYPTO_SECRET)
+	defer dbConnectionManager.CloseAll()
 	redisRepo := _redis_repo.NewRedisRepository(redisClient)
 
+	psqlDataRepo := _psqldata_repo.NewPsqlDataRepository(dbConnectionManager)
 	/* usecase */
-	dataUsecase := _data_usecase.NewDataUsecase(psqlDataRepo, psqlDatasetRepo, redisRepo)
+	dataUsecase := _data_usecase.NewDataUsecase(psqlDataRepo, psqlDatasetRepo, redisRepo, CRYPTO_SECRET)
 
 	/* handler */
 	dataHandler := _data_handler.NewDataHandler(dataUsecase)
