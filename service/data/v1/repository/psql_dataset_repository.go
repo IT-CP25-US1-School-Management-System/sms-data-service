@@ -109,17 +109,17 @@ func (p *psqlDatasetRepository) BatchInsertInformationDatabase(ctx context.Conte
 	}
 	defer tx.Rollback()
 
-	if schemas != nil || len(schemas) > 0 {
+	if len(schemas) > 0 {
 		if err := p.batchInsertPhysicalSchemas(ctx, tx, schemas); err != nil {
 			return err
 		}
 	}
-	if tables != nil || len(tables) > 0 {
+	if len(tables) > 0 {
 		if err := p.batchInsertPhysicalTables(ctx, tx, tables); err != nil {
 			return err
 		}
 	}
-	if columns != nil || len(columns) > 0 {
+	if len(columns) > 0 {
 		if err := p.batchInsertPhysicalColumns(ctx, tx, columns); err != nil {
 			return err
 		}

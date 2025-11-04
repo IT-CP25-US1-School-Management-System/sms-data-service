@@ -35,12 +35,11 @@ func (cm *dbConnectionManagerRepository) createConnectionDetails(source *entity.
 	if err != nil {
 		return "", psql.Postgres, fmt.Errorf("failed to decrypt password: %w", err)
 	}
-	source.Password = decryptedPass
 
 	switch source.DBType {
 	case "postgres":
 		user := url.QueryEscape(source.Username)
-		pass := url.QueryEscape(source.Password)
+		pass := url.QueryEscape(decryptedPass)
 		host := source.Host
 		connStr := fmt.Sprintf("postgres://%s:%s@%s:%d/%s?sslmode=disable",
 			user, pass, host, source.Port, source.DatabaseName)
@@ -48,13 +47,13 @@ func (cm *dbConnectionManagerRepository) createConnectionDetails(source *entity.
 
 	case "mysql":
 		user := url.QueryEscape(source.Username)
-		pass := url.QueryEscape(source.Password)
+		pass := url.QueryEscape(decryptedPass)
 		dsn := fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?parseTime=true&charset=utf8mb4&loc=Local",
 			user, pass, source.Host, source.Port, source.DatabaseName)
 		return dsn, psql.MySQL, nil
 
 	default:
-		return "", psql.Postgres, fmt.Errorf("unsupported database type: %s", source.Type)
+		return "", psql.Postgres, fmt.Errorf("unsupported database type: %s", source.DBType)
 	}
 }
 
