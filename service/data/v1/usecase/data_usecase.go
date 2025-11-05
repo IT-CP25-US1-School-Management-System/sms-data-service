@@ -2,26 +2,154 @@ package usecase
 
 import (
 	"context"
-	"regexp"
 
 	helperModel "github.com/GodeFvt/go-backend/helper/models"
 	"github.com/IT-CP25-US1-School-Management-System/sms-data-service/constants"
 	"github.com/IT-CP25-US1-School-Management-System/sms-data-service/errs"
+	"github.com/IT-CP25-US1-School-Management-System/sms-data-service/models/dto"
 	"github.com/IT-CP25-US1-School-Management-System/sms-data-service/models/entity"
 	"github.com/IT-CP25-US1-School-Management-System/sms-data-service/models/filter"
 	"github.com/IT-CP25-US1-School-Management-System/sms-data-service/service/data/v1"
-)
-
-var (
-	// datasetIDPattern validates dataset ID format: only lowercase english letters, underscore, and hyphen, no spaces
-	// Pattern: ^[a-z_-]+$ means start to end with only lowercase letters a-z, underscore, and hyphen
-	datasetIDPattern = regexp.MustCompile("^[a-z_-]+$")
+	"github.com/IT-CP25-US1-School-Management-System/sms-data-service/utils/crypto"
+	"github.com/gofrs/uuid"
 )
 
 type dataUsecase struct {
-	dataRepo    data.PsqlDataRepository
-	datasetRepo data.PsqlDatasetRepository
-	redisRepo   data.RedisRepository
+	dataRepo     data.PsqlDataRepository
+	datasetRepo  data.PsqlDatasetRepository
+	redisRepo    data.RedisRepository
+	cryptoSecret string
+}
+
+// ActivateSourceByID implements data.DataUsecase.
+func (d *dataUsecase) ActivateSourceByID(ctx context.Context, sourceID *uuid.UUID) error {
+	exist, err := d.datasetRepo.ExistSourceByID(ctx, sourceID)
+	if err != nil {
+		return err
+	}
+	if !exist {
+		return errs.NewNotFoundError(constants.ERR_SOURCE_NOT_FOUND)
+	}
+
+	return d.datasetRepo.ActivateSourceByID(ctx, sourceID)
+}
+
+// DeactivateSourceByID implements data.DataUsecase.
+func (d *dataUsecase) DeactivateSourceByID(ctx context.Context, sourceID *uuid.UUID) error {
+	exist, err := d.datasetRepo.ExistSourceByID(ctx, sourceID)
+	if err != nil {
+		return err
+	}
+	if !exist {
+		return errs.NewNotFoundError(constants.ERR_SOURCE_NOT_FOUND)
+	}
+
+	return d.datasetRepo.DeactivateSourceByID(ctx, sourceID)
+}
+
+// InsertSource implements data.DataUsecase.
+func (d *dataUsecase) InsertSource(ctx context.Context, source *entity.Sources) error {
+	if source == nil {
+		return errs.NewBadRequestError(constants.ERR_INVALID_REQUEST_BODY)
+	}
+	encryptPass, err := crypto.Encrypt(source.Password, d.cryptoSecret)
+	if err != nil {
+		return err
+	}
+	source.Password = encryptPass
+
+	now := helperModel.NewTimestampFromNow()
+	source.CreatedAt = &now
+	source.UpdatedAt = &now
+
+	err = d.datasetRepo.UpsertSource(ctx, source)
+	if err != nil {
+		return err
+	}
+
+	infoSchema, err := d.dataRepo.FetchInformationSchemasBySourceID(ctx, source.DBType, source.ID)
+	if err != nil {
+		d.datasetRepo.DeleteSourceByID(ctx, source.ID)
+		return err
+	}
+	infoTables, err := d.dataRepo.FetchInformationTablesBySourceID(ctx, source.DBType, source.ID)
+	if err != nil {
+		d.datasetRepo.DeleteSourceByID(ctx, source.ID)
+		return err
+	}
+	infoColumns, err := d.dataRepo.FetchInformationColumnsBySourceID(ctx, source.DBType, source.ID)
+	if err != nil {
+		d.datasetRepo.DeleteSourceByID(ctx, source.ID)
+		return err
+	}
+	err = d.datasetRepo.BatchInsertInformationDatabase(ctx, infoSchema, infoTables, infoColumns)
+	if err != nil {
+		d.datasetRepo.DeleteSourceByID(ctx, source.ID)
+		return err
+	}
+
+	return nil
+}
+
+// UpdateSource implements data.DataUsecase.
+func (d *dataUsecase) UpdateSource(ctx context.Context, sourceID *uuid.UUID, sourceUpdate *dto.UpdateSourcesDTO) error {
+	if sourceUpdate == nil {
+		return errs.NewBadRequestError(constants.ERR_INVALID_REQUEST_BODY)
+	}
+	oldSource, err := d.datasetRepo.FetchSourceByID(ctx, sourceID)
+	if err != nil {
+		return err
+	}
+	if oldSource == nil {
+		return errs.NewNotFoundError(constants.ERR_SOURCE_NOT_FOUND)
+	}
+
+	oldSource.ID = sourceID
+	if sourceUpdate.Name != nil {
+		oldSource.Name = *sourceUpdate.Name
+	}
+	if sourceUpdate.Description != nil {
+		oldSource.Description = sourceUpdate.Description
+	}
+	if sourceUpdate.Type != nil {
+		oldSource.Type = *sourceUpdate.Type
+	}
+	if sourceUpdate.IsActive != nil {
+		oldSource.IsActive = *sourceUpdate.IsActive
+	}
+	if sourceUpdate.Sensitivity != nil {
+		oldSource.Sensitivity = *sourceUpdate.Sensitivity
+	}
+	if sourceUpdate.DBType != nil {
+		oldSource.DBType = *sourceUpdate.DBType
+	}
+	if sourceUpdate.Host != nil {
+		oldSource.Host = *sourceUpdate.Host
+	}
+	if sourceUpdate.Port != nil {
+		oldSource.Port = *sourceUpdate.Port
+	}
+	if sourceUpdate.Username != nil {
+		oldSource.Username = *sourceUpdate.Username
+	}
+	if sourceUpdate.DatabaseName != nil {
+		oldSource.DatabaseName = *sourceUpdate.DatabaseName
+	}
+	if sourceUpdate.Params != nil {
+		oldSource.Params = sourceUpdate.Params
+	}
+	if sourceUpdate.IsUpdatePassword != nil && *sourceUpdate.IsUpdatePassword && sourceUpdate.Password != nil {
+		encryptPass, err := crypto.Encrypt(*sourceUpdate.Password, d.cryptoSecret)
+		if err != nil {
+			return err
+		}
+		oldSource.Password = encryptPass
+	}
+
+	now := helperModel.NewTimestampFromNow()
+	oldSource.UpdatedAt = &now
+
+	return d.datasetRepo.UpsertSource(ctx, oldSource)
 }
 
 // validateDatasetID validates the dataset ID format
@@ -30,7 +158,7 @@ func (d *dataUsecase) validateDatasetID(id string) error {
 		return errs.NewBadRequestError(constants.ERR_DATASET_ID_IS_REQUIRED)
 	}
 
-	if !datasetIDPattern.MatchString(id) {
+	if !constants.DATASET_ID_PATTERN.MatchString(id) {
 		return errs.NewBadRequestError(constants.ERR_DATASET_ID_INVALID_FORMAT)
 	}
 
@@ -103,10 +231,11 @@ func (d *dataUsecase) FetchSourceList(ctx context.Context, paginator *helperMode
 	return d.datasetRepo.FetchSourceList(ctx, paginator)
 }
 
-func NewDataUsecase(dataRepo data.PsqlDataRepository, datasetRepo data.PsqlDatasetRepository, redisRepo data.RedisRepository) data.DataUsecase {
+func NewDataUsecase(dataRepo data.PsqlDataRepository, datasetRepo data.PsqlDatasetRepository, redisRepo data.RedisRepository, cryptoSecret string) data.DataUsecase {
 	return &dataUsecase{
-		dataRepo:    dataRepo,
-		datasetRepo: datasetRepo,
-		redisRepo:   redisRepo,
+		dataRepo:     dataRepo,
+		datasetRepo:  datasetRepo,
+		redisRepo:    redisRepo,
+		cryptoSecret: cryptoSecret,
 	}
 }

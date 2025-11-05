@@ -6,7 +6,7 @@ require (
 	github.com/GodeFvt/go-backend/grpc v0.0.0-20250901133359-98cdedb5f254
 	github.com/GodeFvt/go-backend/helper v0.0.0-20251004141120-5d49d55d8105
 	github.com/GodeFvt/go-backend/minio v0.0.0-20251004135016-6aed0f5a4382
-	github.com/GodeFvt/go-backend/psql v0.0.0-20251102115810-47e0785e3cc9
+	github.com/GodeFvt/go-backend/psql v0.0.0-20251104163700-f195ca3cc038
 	github.com/GodeFvt/go-backend/redis v0.0.0-20251004135016-6aed0f5a4382
 	github.com/MicahParks/keyfunc/v3 v3.6.2
 	github.com/getsentry/sentry-go v0.31.1
@@ -27,6 +27,7 @@ require (
 require (
 	4d63.com/embedfiles v0.0.0-20190311033909-995e0740726f // indirect
 	4d63.com/tz v1.2.0 // indirect
+	filippo.io/edwards25519 v1.1.0 // indirect
 	github.com/BlackMocca/sqlx v1.0.0 // indirect
 	github.com/ClickHouse/ch-go v0.61.5 // indirect
 	github.com/ClickHouse/clickhouse-go/v2 v2.23.1 // indirect
@@ -54,6 +55,7 @@ require (
 	github.com/go-playground/locales v0.14.1 // indirect
 	github.com/go-playground/universal-translator v0.18.1 // indirect
 	github.com/go-resty/resty/v2 v2.3.0 // indirect
+	github.com/go-sql-driver/mysql v1.8.1 // indirect
 	github.com/goccy/go-json v0.10.5 // indirect
 	github.com/golang-jwt/jwt v3.2.2+incompatible // indirect
 	github.com/golang-sql/civil v0.0.0-20190719163853-cb61b32ac6fe // indirect

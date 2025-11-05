@@ -12,11 +12,102 @@ import (
 	"github.com/IT-CP25-US1-School-Management-System/sms-data-service/models/entity"
 	"github.com/IT-CP25-US1-School-Management-System/sms-data-service/models/filter"
 	"github.com/IT-CP25-US1-School-Management-System/sms-data-service/service/data/v1"
+	"github.com/gofrs/uuid"
 	"github.com/labstack/echo/v4"
 )
 
 type dataHandler struct {
 	dataUs data.DataUsecase
+}
+
+// ActivateSourceByID implements data.DataHandler.
+func (d *dataHandler) ActivateSourceByID(c echo.Context) error {
+	ctx := c.Request().Context()
+	sourceIDParam := c.Param("id")
+	sourceIDUUID, err := uuid.FromString(sourceIDParam)
+	if err != nil {
+		return errs.NewBadRequestError(constants.ERR_INVALID_SOURCE_ID)
+	}
+	err = d.dataUs.ActivateSourceByID(ctx, &sourceIDUUID)
+	if err != nil {
+		return err
+	}
+
+	res := map[string]interface{}{
+		"message": "success",
+	}
+	return c.JSON(http.StatusOK, res)
+}
+
+// DeactivateSourceByID implements data.DataHandler.
+func (d *dataHandler) DeactivateSourceByID(c echo.Context) error {
+	ctx := c.Request().Context()
+	sourceIDParam := c.Param("id")
+	sourceIDUUID, err := uuid.FromString(sourceIDParam)
+	if err != nil {
+		return errs.NewBadRequestError(constants.ERR_INVALID_SOURCE_ID)
+	}
+	err = d.dataUs.DeactivateSourceByID(ctx, &sourceIDUUID)
+	if err != nil {
+		return err
+	}
+
+	res := map[string]interface{}{
+		"message": "success",
+	}
+	return c.JSON(http.StatusOK, res)
+}
+
+// InsertSource implements data.DataHandler.
+func (d *dataHandler) InsertSource(c echo.Context) error {
+	ctx := c.Request().Context()
+	var sourceDTO dto.SourcesDTO
+	if err := c.Bind(&sourceDTO); err != nil {
+		return errs.ErrBadRequest(err)
+	}
+	if err := c.Validate(&sourceDTO); err != nil {
+		return errs.ErrBadRequest(err)
+	}
+
+	sourceEntity := sourceDTO.SourcesDTOToEntity()
+	sourceEntity.GenUUID()
+	if err := d.dataUs.InsertSource(ctx, sourceEntity); err != nil {
+		return err
+	}
+
+	res := map[string]interface{}{
+		"message": "success",
+		"id":      sourceEntity.ID,
+	}
+	return c.JSON(http.StatusOK, res)
+}
+
+// UpdateSource implements data.DataHandler.
+func (d *dataHandler) UpdateSource(c echo.Context) error {
+	ctx := c.Request().Context()
+	sourceIDParam := c.Param("id")
+	sourceIDUUID, err := uuid.FromString(sourceIDParam)
+	if err != nil {
+		return errs.NewBadRequestError(constants.ERR_INVALID_SOURCE_ID)
+	}
+
+	var updateSourceDTO dto.UpdateSourcesDTO
+	if err := c.Bind(&updateSourceDTO); err != nil {
+		return errs.ErrBadRequest(err)
+	}
+	if err := c.Validate(&updateSourceDTO); err != nil {
+		return errs.ErrBadRequest(err)
+	}
+
+	if err := d.dataUs.UpdateSource(ctx, &sourceIDUUID, &updateSourceDTO); err != nil {
+		return err
+	}
+
+	res := map[string]interface{}{
+		"message": "success",
+		"id":      sourceIDUUID,
+	}
+	return c.JSON(http.StatusOK, res)
 }
 
 // DeleteDatasetByID implements data.DataHandler.
@@ -237,11 +328,9 @@ func (d *dataHandler) FetchSourceList(c echo.Context) error {
 	if err != nil {
 		return err
 	}
-	if len(sources) == 0 {
-		sources = []*entity.Sources{}
-	}
+
 	res := map[string]interface{}{
-		"data":        sources,
+		"data":        dto.SourcesEntityToSourcesResponseDTO(sources),
 		"page":        paginator.Page,
 		"per_page":    paginator.PerPage,
 		"total_pages": paginator.TotalPages,

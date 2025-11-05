@@ -12,6 +12,7 @@ import (
 	"github.com/IT-CP25-US1-School-Management-System/sms-data-service/models/entity"
 	"github.com/IT-CP25-US1-School-Management-System/sms-data-service/models/filter"
 	"github.com/IT-CP25-US1-School-Management-System/sms-data-service/service/data/v1"
+	"github.com/gofrs/uuid"
 	"github.com/jmoiron/sqlx"
 
 	"github.com/lib/pq"
@@ -19,6 +20,248 @@ import (
 
 type psqlDatasetRepository struct {
 	client *psql.Client
+}
+
+func (p *psqlDatasetRepository) deleteSourceByID(ctx context.Context, tx *sqlx.Tx, sourceID string) error {
+	query := `
+		DELETE FROM sources WHERE id = $1
+	`
+	if _, err := tx.ExecContext(ctx, query, sourceID); err != nil {
+		return err
+	}
+	return nil
+}
+
+// DeleteSourceByID implements data.PsqlDatasetRepository.
+func (p *psqlDatasetRepository) DeleteSourceByID(ctx context.Context, sourceID *uuid.UUID) error {
+	tx, err := p.client.GetClient().BeginTxx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	if err := p.deleteSourceByID(ctx, tx, sourceID.String()); err != nil {
+		return err
+	}
+
+	return tx.Commit()
+}
+
+func (p *psqlDatasetRepository) batchInsertPhysicalSchemas(ctx context.Context, tx *sqlx.Tx, schemas []*entity.Schemas) error {
+	valueStrings := make([]string, 0, len(schemas))
+	valueArgs := make([]interface{}, 0, len(schemas)*4)
+
+	for _, schema := range schemas {
+		valueStrings = append(valueStrings, "(?, ?, ?, ?)")
+		valueArgs = append(valueArgs, schema.ID, schema.SourceID, schema.Schema, schema.CreatedAt)
+	}
+
+	query := `INSERT INTO physical_schemas (id, source_id, schema, created_at) VALUES ` + strings.Join(valueStrings, ",") + `;`
+
+	query = sqlx.Rebind(sqlx.DOLLAR, query)
+	if _, err := tx.ExecContext(ctx, query, valueArgs...); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (p *psqlDatasetRepository) batchInsertPhysicalTables(ctx context.Context, tx *sqlx.Tx, tables []*entity.Tables) error {
+	valueStrings := make([]string, 0, len(tables))
+	valueArgs := make([]interface{}, 0, len(tables)*5)
+
+	for _, table := range tables {
+		valueStrings = append(valueStrings, "(?, ?, ?, ?, ?)")
+		valueArgs = append(valueArgs, table.ID, table.SourceID, table.Schema, table.TableName, table.CreatedAt)
+	}
+
+	query := `INSERT INTO physical_tables (id, source_id, schema, table_name, created_at) VALUES ` + strings.Join(valueStrings, ",") + `;`
+
+	query = sqlx.Rebind(sqlx.DOLLAR, query)
+	if _, err := tx.ExecContext(ctx, query, valueArgs...); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (p *psqlDatasetRepository) batchInsertPhysicalColumns(ctx context.Context, tx *sqlx.Tx, columns []*entity.Columns) error {
+	valueStrings := make([]string, 0, len(columns))
+	valueArgs := make([]interface{}, 0, len(columns)*10)
+
+	for _, column := range columns {
+		valueStrings = append(valueStrings, "(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
+		valueArgs = append(valueArgs, column.ID, column.SourceID, column.Schema, column.TableName, column.ColumnsName, column.DataType, column.IsNullable, column.ColumnDefault, column.OrdinalPosition, column.CreatedAt)
+	}
+
+	query := `INSERT INTO physical_columns (id, source_id, schema, table_name, column_name, data_type, is_nullable, column_default, ordinal_position, created_at) VALUES ` + strings.Join(valueStrings, ",") + `;`
+
+	query = sqlx.Rebind(sqlx.DOLLAR, query)
+	if _, err := tx.ExecContext(ctx, query, valueArgs...); err != nil {
+		return err
+	}
+	return nil
+}
+
+// BatchInsertInformationDatabase implements data.PsqlDatasetRepository.
+func (p *psqlDatasetRepository) BatchInsertInformationDatabase(ctx context.Context, schemas []*entity.Schemas, tables []*entity.Tables, columns []*entity.Columns) error {
+	tx, err := p.client.GetClient().BeginTxx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	if len(schemas) > 0 {
+		if err := p.batchInsertPhysicalSchemas(ctx, tx, schemas); err != nil {
+			return err
+		}
+	}
+	if len(tables) > 0 {
+		if err := p.batchInsertPhysicalTables(ctx, tx, tables); err != nil {
+			return err
+		}
+	}
+	if len(columns) > 0 {
+		if err := p.batchInsertPhysicalColumns(ctx, tx, columns); err != nil {
+			return err
+		}
+	}
+
+	return tx.Commit()
+}
+
+// ExistSourceByID implements data.PsqlDatasetRepository.
+func (p *psqlDatasetRepository) ExistSourceByID(ctx context.Context, sourceID *uuid.UUID) (bool, error) {
+	query := `
+		SELECT EXISTS (
+			SELECT 1
+			FROM sources
+			WHERE id = $1
+		)
+	`
+	var exists bool
+	if err := p.client.GetClient().QueryRowxContext(ctx, query, sourceID).Scan(&exists); err != nil {
+		return false, err
+	}
+	return exists, nil
+}
+
+// ActivateSourceByID implements data.PsqlDatasetRepository.
+func (p *psqlDatasetRepository) ActivateSourceByID(ctx context.Context, sourceID *uuid.UUID) error {
+	query := `
+		UPDATE sources
+		SET is_active = TRUE
+		WHERE id = $1
+	`
+	if _, err := p.client.GetClient().ExecContext(ctx, query, sourceID); err != nil {
+		return err
+	}
+	return nil
+}
+
+// DeactivateSourceByID implements data.PsqlDatasetRepository.
+func (p *psqlDatasetRepository) DeactivateSourceByID(ctx context.Context, sourceID *uuid.UUID) error {
+	query := `
+		UPDATE sources
+		SET is_active = FALSE
+		WHERE id = $1
+	`
+	if _, err := p.client.GetClient().ExecContext(ctx, query, sourceID); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (p *psqlDatasetRepository) upsertSource(ctx context.Context, tx *sqlx.Tx, source *entity.Sources) error {
+	query := `
+		INSERT INTO sources (id, name, description, is_active, type, db_type, created_at, updated_at,
+			host, port, username, password, database_name, params, sensitivity)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+		ON CONFLICT (id) DO UPDATE SET
+			name = EXCLUDED.name,
+			description = EXCLUDED.description,
+			is_active = EXCLUDED.is_active,
+			type = EXCLUDED.type,
+			db_type = EXCLUDED.db_type,
+			updated_at = EXCLUDED.updated_at,
+			host = EXCLUDED.host,
+			port = EXCLUDED.port,
+			username = EXCLUDED.username,
+			password = EXCLUDED.password,
+			database_name = EXCLUDED.database_name,
+			params = EXCLUDED.params,
+			sensitivity = EXCLUDED.sensitivity
+	`
+	if _, err := tx.ExecContext(ctx, query,
+		source.ID,
+		source.Name,
+		source.Description,
+		source.IsActive,
+		source.Type,
+		source.DBType,
+		source.CreatedAt,
+		source.UpdatedAt,
+		source.Host,
+		source.Port,
+		source.Username,
+		source.Password,
+		source.DatabaseName,
+		source.Params,
+		source.Sensitivity,
+	); err != nil {
+		return err
+	}
+	return nil
+}
+
+// UpsertSource implements data.PsqlDatasetRepository.
+func (p *psqlDatasetRepository) UpsertSource(ctx context.Context, source *entity.Sources) error {
+	tx, err := p.client.GetClient().BeginTxx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	if err := p.upsertSource(ctx, tx, source); err != nil {
+		return err
+	}
+
+	return tx.Commit()
+}
+
+// FetchSourceByID implements data.PsqlDatasetRepository.
+func (p *psqlDatasetRepository) FetchSourceByID(ctx context.Context, sourceID *uuid.UUID) (*entity.Sources, error) {
+	query := `
+		SELECT
+			id, name, description, is_active, sensitivity, type, db_type, created_at, updated_at,
+			host, port, username, password, database_name, params
+		FROM sources
+		WHERE id = $1
+	`
+	var source entity.Sources
+	row := p.client.GetClient().QueryRowxContext(ctx, query, sourceID)
+	err := row.Scan(
+		&source.ID,
+		&source.Name,
+		&source.Description,
+		&source.IsActive,
+		&source.Sensitivity,
+		&source.Type,
+		&source.DBType,
+		&source.CreatedAt,
+		&source.UpdatedAt,
+		&source.Host,
+		&source.Port,
+		&source.Username,
+		&source.Password,
+		&source.DatabaseName,
+		&source.Params,
+	)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &source, nil
 }
 
 // ExistDatasetByID implements data.PsqlDatasetRepository.
@@ -324,7 +567,7 @@ func (p *psqlDatasetRepository) FetchDatasetList(ctx context.Context, filter *fi
 			valArgs = append(valArgs, sw, sw)
 		}
 		if len(filter.Tags) > 0 {
-			conds = append(conds, "COALESCE(tags, '{}'::text[]) && ?::text[]")
+			conds = append(conds, "COALESCE(tags, '{}'::text[]) @> ?::text[]")
 			valArgs = append(valArgs, pq.Array(filter.Tags))
 		}
 		if filter.HasPii != nil {
@@ -505,7 +748,7 @@ func (p *psqlDatasetRepository) FetchSourceList(ctx context.Context, paginator *
 		`
 		valArgs = append(valArgs, paginator.GetLimit(), paginator.GetOffset())
 	}
-	query := fmt.Sprintf(`SELECT id, name, type, description, created_at FROM sources %s`, limitSQL)
+	query := fmt.Sprintf(`SELECT id, name, description, type, is_active, sensitivity, db_type, host, port, username, database_name, params, created_at, updated_at FROM sources %s`, limitSQL)
 	query = sqlx.Rebind(sqlx.DOLLAR, query)
 	stmt, err := p.client.GetClient().PreparexContext(ctx, query)
 	if err != nil {
@@ -524,9 +767,18 @@ func (p *psqlDatasetRepository) FetchSourceList(ctx context.Context, paginator *
 		if err := rows.Scan(
 			&source.ID,
 			&source.Name,
-			&source.Type,
 			&source.Description,
+			&source.Type,
+			&source.IsActive,
+			&source.Sensitivity,
+			&source.DBType,
+			&source.Host,
+			&source.Port,
+			&source.Username,
+			&source.DatabaseName,
+			&source.Params,
 			&source.CreatedAt,
+			&source.UpdatedAt,
 		); err != nil {
 			return nil, err
 		}
