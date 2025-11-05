@@ -52,7 +52,6 @@ var (
 	}()
 	ALLOW_ORIGIN_HEADER       = strings.Split(helper.GetENV("ALLOW_ORIGIN_HEADER", ""), ",")
 	ALLOW_ORIGIN_CREDENTIAL   = cast.ToBool(helper.GetENV("ALLOW_ORIGIN_CREDENTIAL", "true"))
-	PSQL_DATABASE_DATA_URL    = helper.GetENV("PSQL_DATABASE_DATA_URL", "postgres://postgres:postgres@psql_db:5432/app_example?sslmode=disable")
 	PSQL_DATABASE_DATASET_URL = helper.GetENV("PSQL_DATABASE_DATASET_URL", "postgres://postgres:postgres@psql_db:5432/app_example?sslmode=disable")
 
 	SENTRY_DSN = helper.GetENV("SENTRY_DSN", "")
@@ -122,10 +121,8 @@ func main() {
 	})
 
 	// /* init psqlClient */
-	psqlDataClient := connectPsqlDB(PSQL_DATABASE_DATA_URL)
 	psqlDatasetClient := connectPsqlDB(PSQL_DATABASE_DATASET_URL)
 
-	defer psqlDataClient.GetClient().Close()
 	defer psqlDatasetClient.GetClient().Close()
 
 	// /* init redisClient */

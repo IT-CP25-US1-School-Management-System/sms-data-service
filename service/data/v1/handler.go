@@ -13,7 +13,7 @@ type DataHandler interface {
 	UpdateSource(c echo.Context) error
 	ActivateSourceByID(c echo.Context) error
 	DeactivateSourceByID(c echo.Context) error
-
+	DeleteSourceByID(c echo.Context) error
 	// Dataset
 	FetchDatasetList(c echo.Context) error
 	FetchDatasetByID(c echo.Context) error

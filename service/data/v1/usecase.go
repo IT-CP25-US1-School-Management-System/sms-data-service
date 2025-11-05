@@ -19,6 +19,7 @@ type DataUsecase interface {
 	UpdateSource(ctx context.Context, sourceID *uuid.UUID, sourceUpdate *dto.UpdateSourcesDTO) error
 	ActivateSourceByID(ctx context.Context, sourceID *uuid.UUID) error
 	DeactivateSourceByID(ctx context.Context, sourceID *uuid.UUID) error
+	DeleteSourceByID(ctx context.Context, sourceID *uuid.UUID) error
 
 	// Dataset
 	FetchDatasetList(ctx context.Context, filter *filter.DatasetsFilter, paginator *helperModel.Paginator) ([]*entity.Datasets, error)
