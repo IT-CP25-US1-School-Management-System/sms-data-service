@@ -20,6 +20,25 @@ type dataHandler struct {
 	dataUs data.DataUsecase
 }
 
+// DeleteSourceByID implements data.DataHandler.
+func (d *dataHandler) DeleteSourceByID(c echo.Context) error {
+	ctx := c.Request().Context()
+	sourceIDParam := c.Param("id")
+	sourceIDUUID, err := uuid.FromString(sourceIDParam)
+	if err != nil {
+		return errs.NewBadRequestError(constants.ERR_INVALID_SOURCE_ID)
+	}
+	err = d.dataUs.DeleteSourceByID(ctx, &sourceIDUUID)
+	if err != nil {
+		return err
+	}
+
+	res := map[string]interface{}{
+		"message": "success",
+	}
+	return c.JSON(http.StatusOK, res)
+}
+
 // ActivateSourceByID implements data.DataHandler.
 func (d *dataHandler) ActivateSourceByID(c echo.Context) error {
 	ctx := c.Request().Context()

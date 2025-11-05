@@ -26,7 +26,6 @@ type PsqlDatasetRepository interface {
 	DeactivateSourceByID(ctx context.Context, sourceID *uuid.UUID) error
 	ExistSourceByID(ctx context.Context, sourceID *uuid.UUID) (bool, error)
 	DeleteSourceByID(ctx context.Context, sourceID *uuid.UUID) error
-
 	BatchInsertInformationDatabase(ctx context.Context, schemas []*entity.Schemas, tables []*entity.Tables, columns []*entity.Columns) error
 
 	// Dataset
