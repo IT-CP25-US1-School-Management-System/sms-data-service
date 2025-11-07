@@ -19,4 +19,19 @@ type DataHandler interface {
 	FetchDatasetByID(c echo.Context) error
 	UpsertDataset(c echo.Context) error
 	DeleteDatasetByID(c echo.Context) error
+
+	// Dataset Version
+	FetchDatasetVersionByID(c echo.Context) error
+	FetchDatasetVersionsList(c echo.Context) error
+	UpsertDatasetVersion(c echo.Context) error
+	DeleteDatasetVersionByID(c echo.Context) error
+
+	// Serving
+	ServingDatasetVersionData(c echo.Context) error
+	ServingDatasetVersionDataByKey(c echo.Context) error
+
+	// Data Modification (requires write policies)
+	CreateDatasetVersionData(c echo.Context) error
+	UpdateDatasetVersionDataByKey(c echo.Context) error
+	DeleteDatasetVersionDataByKey(c echo.Context) error
 }

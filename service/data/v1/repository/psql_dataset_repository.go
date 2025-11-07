@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -794,6 +795,233 @@ func (p *psqlDatasetRepository) FetchSourceList(ctx context.Context, paginator *
 	}
 
 	return sources, nil
+}
+
+// FetchDatasetVersionByID implements data.PsqlDatasetRepository.
+func (p *psqlDatasetRepository) FetchDatasetVersionByID(ctx context.Context, datasetID string, version string) (*entity.DatasetVersion, error) {
+	query := `
+		SELECT
+			dataset_id, version, status, schema_json, access_policies, policies, source_id
+		FROM dataset_versions
+		WHERE dataset_id = $1 AND version = $2
+	`
+	var data entity.DatasetVersion
+	var schemaJSON, accessPoliciesJSON, policiesJSON []byte
+
+	row := p.client.GetClient().QueryRowxContext(ctx, query, datasetID, version)
+	err := row.Scan(
+		&data.DatasetID,
+		&data.Version,
+		&data.Status,
+		&schemaJSON,
+		&accessPoliciesJSON,
+		&policiesJSON,
+		&data.SourceID,
+	)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	// Unmarshal JSON fields
+	if err := json.Unmarshal(schemaJSON, &data.Schema); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal schema: %w", err)
+	}
+
+	if err := json.Unmarshal(accessPoliciesJSON, &data.AccessPolicies); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal access_policies: %w", err)
+	}
+
+	if err := json.Unmarshal(policiesJSON, &data.Policies); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal policies: %w", err)
+	}
+
+	return &data, nil
+}
+
+// FetchDatasetVersionsList implements data.PsqlDatasetRepository.
+func (p *psqlDatasetRepository) FetchDatasetVersionsList(ctx context.Context, datasetID string, paginator *helperModel.Paginator) ([]*entity.DatasetVersion, error) {
+	var (
+		valArgs  []interface{}
+		limitSQL string
+	)
+
+	valArgs = append(valArgs, datasetID)
+
+	if paginator != nil {
+		limitSQL = `
+			LIMIT $2
+			OFFSET $3
+		`
+		valArgs = append(valArgs, paginator.GetLimit(), paginator.GetOffset())
+	}
+
+	query := fmt.Sprintf(`
+		SELECT dataset_id, version, status, schema_json, access_policies, policies, source_id
+		FROM dataset_versions
+		WHERE dataset_id = $1
+		ORDER BY version DESC %s
+	`, limitSQL)
+
+	rows, err := p.client.GetClient().QueryxContext(ctx, query, valArgs...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var versions []*entity.DatasetVersion
+	for rows.Next() {
+		var data entity.DatasetVersion
+		var schemaJSON, accessPoliciesJSON, policiesJSON []byte
+
+		if err := rows.Scan(
+			&data.DatasetID,
+			&data.Version,
+			&data.Status,
+			&schemaJSON,
+			&accessPoliciesJSON,
+			&policiesJSON,
+			&data.SourceID,
+		); err != nil {
+			return nil, err
+		}
+
+		// Unmarshal JSON fields
+		if err := json.Unmarshal(schemaJSON, &data.Schema); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal schema for version %s: %w", data.Version, err)
+		}
+
+		if err := json.Unmarshal(accessPoliciesJSON, &data.AccessPolicies); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal access_policies for version %s: %w", data.Version, err)
+		}
+
+		if err := json.Unmarshal(policiesJSON, &data.Policies); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal policies for version %s: %w", data.Version, err)
+		}
+
+		versions = append(versions, &data)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	// Get total count for pagination
+	if paginator != nil {
+		var totalRows int
+		countSQL := `SELECT COUNT(*) FROM dataset_versions WHERE dataset_id = $1`
+		if err := p.client.GetClient().GetContext(ctx, &totalRows, countSQL, datasetID); err != nil {
+			return nil, err
+		}
+		paginator.SetPaginatorByAllRows(totalRows)
+	}
+
+	return versions, nil
+}
+
+func (p *psqlDatasetRepository) upsertDatasetVersion(ctx context.Context, tx *sqlx.Tx, datasetVersion *entity.DatasetVersion) error {
+	// Marshal JSON fields
+	schemaJSON, err := json.Marshal(datasetVersion.Schema)
+	if err != nil {
+		return fmt.Errorf("failed to marshal schema: %w", err)
+	}
+
+	accessPoliciesJSON, err := json.Marshal(datasetVersion.AccessPolicies)
+	if err != nil {
+		return fmt.Errorf("failed to marshal access_policies: %w", err)
+	}
+
+	policiesJSON, err := json.Marshal(datasetVersion.Policies)
+	if err != nil {
+		return fmt.Errorf("failed to marshal policies: %w", err)
+	}
+
+	query := `
+		INSERT INTO dataset_versions (dataset_id, version, status, schema_json, access_policies, policies, source_id, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+		ON CONFLICT (dataset_id, version) DO UPDATE SET
+			status = EXCLUDED.status,
+			schema_json = EXCLUDED.schema_json,
+			access_policies = EXCLUDED.access_policies,
+			policies = EXCLUDED.policies,
+			source_id = EXCLUDED.source_id,
+			updated_at = EXCLUDED.updated_at
+	`
+
+	if _, err := tx.ExecContext(ctx, query,
+		datasetVersion.DatasetID,
+		datasetVersion.Version,
+		datasetVersion.Status,
+		schemaJSON,
+		accessPoliciesJSON,
+		policiesJSON,
+		datasetVersion.SourceID,
+		datasetVersion.CreatedAt,
+		datasetVersion.UpdatedAt,
+	); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// UpsertDatasetVersion implements data.PsqlDatasetRepository.
+func (p *psqlDatasetRepository) UpsertDatasetVersion(ctx context.Context, datasetVersion *entity.DatasetVersion) error {
+	tx, err := p.client.GetClient().BeginTxx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	if err := p.upsertDatasetVersion(ctx, tx, datasetVersion); err != nil {
+		return err
+	}
+
+	return tx.Commit()
+}
+
+func (p *psqlDatasetRepository) deleteDatasetVersionByID(ctx context.Context, tx *sqlx.Tx, datasetID string, version string) error {
+	query := `
+		DELETE FROM dataset_versions
+		WHERE dataset_id = $1 AND version = $2
+	`
+	if _, err := tx.ExecContext(ctx, query, datasetID, version); err != nil {
+		return err
+	}
+	return nil
+}
+
+// DeleteDatasetVersionByID implements data.PsqlDatasetRepository.
+func (p *psqlDatasetRepository) DeleteDatasetVersionByID(ctx context.Context, datasetID string, version string) error {
+	tx, err := p.client.GetClient().BeginTxx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	if err := p.deleteDatasetVersionByID(ctx, tx, datasetID, version); err != nil {
+		return err
+	}
+
+	return tx.Commit()
+}
+
+// ExistDatasetVersionByID implements data.PsqlDatasetRepository.
+func (p *psqlDatasetRepository) ExistDatasetVersionByID(ctx context.Context, datasetID string, version string) (bool, error) {
+	query := `
+		SELECT EXISTS (
+			SELECT 1
+			FROM dataset_versions
+			WHERE dataset_id = $1 AND version = $2
+		)
+	`
+	var exists bool
+	if err := p.client.GetClient().QueryRowxContext(ctx, query, datasetID, version).Scan(&exists); err != nil {
+		return false, err
+	}
+	return exists, nil
 }
 
 func NewPsqlDatasetRepository(client *psql.Client) data.PsqlDatasetRepository {

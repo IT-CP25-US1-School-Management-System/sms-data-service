@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 
 	helperModel "github.com/GodeFvt/go-backend/helper/models"
 	"github.com/IT-CP25-US1-School-Management-System/sms-data-service/constants"
@@ -354,6 +355,348 @@ func (d *dataHandler) FetchSourceList(c echo.Context) error {
 		"per_page":    paginator.PerPage,
 		"total_pages": paginator.TotalPages,
 		"total_rows":  paginator.TotalEntrySizes,
+	}
+	return c.JSON(http.StatusOK, res)
+}
+
+// FetchDatasetVersionByID implements data.DataHandler.
+func (d *dataHandler) FetchDatasetVersionByID(c echo.Context) error {
+	ctx := c.Request().Context()
+	datasetID := c.Param("dataset_id")
+	version := c.Param("version")
+
+	if datasetID == "" {
+		return errs.NewBadRequestError(constants.ERR_DATASET_ID_IS_REQUIRED)
+	}
+	if version == "" {
+		return errs.NewBadRequestError("version is required")
+	}
+
+	datasetVersion, err := d.dataUs.FetchDatasetVersionByID(ctx, datasetID, version)
+	if err != nil {
+		return err
+	}
+	if datasetVersion == nil {
+		return errs.NewNotFoundError("dataset version not found")
+	}
+
+	res := map[string]interface{}{
+		"data": datasetVersion,
+	}
+	return c.JSON(http.StatusOK, res)
+}
+
+// FetchDatasetVersionsList implements data.DataHandler.
+func (d *dataHandler) FetchDatasetVersionsList(c echo.Context) error {
+	ctx := c.Request().Context()
+	datasetID := c.Param("dataset_id")
+
+	if datasetID == "" {
+		return errs.NewBadRequestError(constants.ERR_DATASET_ID_IS_REQUIRED)
+	}
+
+	paginator := helperModel.NewPaginator()
+	page := c.QueryParam("page")
+	perPage := c.QueryParam("per_page")
+
+	if page != "" && perPage != "" {
+		p, err := strconv.Atoi(page)
+		if err != nil || p < 1 {
+			return errs.ErrBadRequest(fmt.Errorf("invalid page"))
+		}
+		pp, err := strconv.Atoi(perPage)
+		if err != nil || pp < 1 || pp > 100 {
+			return errs.ErrBadRequest(fmt.Errorf("invalid per_page"))
+		}
+		paginator.Page = p
+		paginator.PerPage = pp
+	}
+
+	versions, err := d.dataUs.FetchDatasetVersionsList(ctx, datasetID, &paginator)
+	if err != nil {
+		return err
+	}
+	if versions == nil {
+		versions = []*entity.DatasetVersion{}
+	}
+
+	res := map[string]interface{}{
+		"data":        versions,
+		"page":        paginator.Page,
+		"per_page":    paginator.PerPage,
+		"total_pages": paginator.TotalPages,
+		"total_rows":  paginator.TotalEntrySizes,
+	}
+	return c.JSON(http.StatusOK, res)
+}
+
+// UpsertDatasetVersion implements data.DataHandler.
+func (d *dataHandler) UpsertDatasetVersion(c echo.Context) error {
+	ctx := c.Request().Context()
+	datasetID := c.Param("dataset_id")
+
+	if datasetID == "" {
+		return errs.NewBadRequestError(constants.ERR_DATASET_ID_IS_REQUIRED)
+	}
+
+	var datasetVersion entity.DatasetVersion
+	if err := c.Bind(&datasetVersion); err != nil {
+		return errs.ErrBadRequest(err)
+	}
+	if err := c.Validate(&datasetVersion); err != nil {
+		return errs.ErrBadRequest(err)
+	}
+
+	// Ensure the dataset_id from URL matches the one in the body
+	datasetVersion.DatasetID = datasetID
+
+	if err := d.dataUs.UpsertDatasetVersion(ctx, &datasetVersion); err != nil {
+		return err
+	}
+
+	res := map[string]interface{}{
+		"message": "success",
+	}
+	return c.JSON(http.StatusOK, res)
+}
+
+// DeleteDatasetVersionByID implements data.DataHandler.
+func (d *dataHandler) DeleteDatasetVersionByID(c echo.Context) error {
+	ctx := c.Request().Context()
+	datasetID := c.Param("dataset_id")
+	version := c.Param("version")
+
+	if datasetID == "" {
+		return errs.NewBadRequestError(constants.ERR_DATASET_ID_IS_REQUIRED)
+	}
+	if version == "" {
+		return errs.NewBadRequestError("version is required")
+	}
+
+	err := d.dataUs.DeleteDatasetVersionByID(ctx, datasetID, version)
+	if err != nil {
+		return err
+	}
+
+	res := map[string]interface{}{
+		"message": "success",
+	}
+	return c.JSON(http.StatusOK, res)
+}
+
+// ServingDatasetVersionData implements data.DataHandler.
+func (d *dataHandler) ServingDatasetVersionData(c echo.Context) error {
+	ctx := c.Request().Context()
+	datasetID := c.Param("dataset")
+	version := c.Param("version")
+
+	if datasetID == "" {
+		return errs.NewBadRequestError("dataset parameter is required")
+	}
+	if version == "" {
+		return errs.NewBadRequestError("version parameter is required")
+	}
+
+	paginator := helperModel.NewPaginator()
+	page := c.QueryParam("page")
+	perPage := c.QueryParam("per_page")
+
+	if page != "" && perPage != "" {
+		p, err := strconv.Atoi(page)
+		if err != nil || p < 1 {
+			return errs.ErrBadRequest(fmt.Errorf("invalid page"))
+		}
+		pp, err := strconv.Atoi(perPage)
+		if err != nil || pp < 1 || pp > 100 {
+			return errs.ErrBadRequest(fmt.Errorf("invalid per_page"))
+		}
+		paginator.Page = p
+		paginator.PerPage = pp
+	}
+
+	// Get view and columns query parameters
+	viewName := c.QueryParam("view")
+	columnsParam := c.QueryParam("columns")
+	var requestedColumns []string
+	if columnsParam != "" {
+		requestedColumns = strings.Split(columnsParam, ",")
+		// Trim whitespace
+		for i, col := range requestedColumns {
+			requestedColumns[i] = strings.TrimSpace(col)
+		}
+	}
+
+	data, err := d.dataUs.ServingDatasetVersionData(ctx, datasetID, version, &paginator, viewName, requestedColumns)
+	if err != nil {
+		return err
+	}
+	if data == nil {
+		data = []map[string]interface{}{}
+	}
+
+	res := map[string]interface{}{
+		"data":        data,
+		"page":        paginator.Page,
+		"per_page":    paginator.PerPage,
+		"total_pages": paginator.TotalPages,
+		"total_rows":  paginator.TotalEntrySizes,
+	}
+	return c.JSON(http.StatusOK, res)
+}
+
+// ServingDatasetVersionDataByKey implements data.DataHandler.
+func (d *dataHandler) ServingDatasetVersionDataByKey(c echo.Context) error {
+	ctx := c.Request().Context()
+	datasetID := c.Param("dataset")
+	version := c.Param("version")
+	key := c.Param("key")
+
+	if datasetID == "" {
+		return errs.NewBadRequestError("dataset parameter is required")
+	}
+	if version == "" {
+		return errs.NewBadRequestError("version parameter is required")
+	}
+	if key == "" {
+		return errs.NewBadRequestError("key parameter is required")
+	}
+
+	paginator := helperModel.NewPaginator()
+	page := c.QueryParam("page")
+	perPage := c.QueryParam("per_page")
+
+	if page != "" && perPage != "" {
+		p, err := strconv.Atoi(page)
+		if err != nil || p < 1 {
+			return errs.ErrBadRequest(fmt.Errorf("invalid page"))
+		}
+		pp, err := strconv.Atoi(perPage)
+		if err != nil || pp < 1 || pp > 100 {
+			return errs.ErrBadRequest(fmt.Errorf("invalid per_page"))
+		}
+		paginator.Page = p
+		paginator.PerPage = pp
+	}
+
+	// Get view and columns query parameters
+	viewName := c.QueryParam("view")
+	columnsParam := c.QueryParam("columns")
+	var requestedColumns []string
+	if columnsParam != "" {
+		requestedColumns = strings.Split(columnsParam, ",")
+		// Trim whitespace
+		for i, col := range requestedColumns {
+			requestedColumns[i] = strings.TrimSpace(col)
+		}
+	}
+
+	data, err := d.dataUs.ServingDatasetVersionDataByKey(ctx, datasetID, version, key, &paginator, viewName, requestedColumns)
+	if err != nil {
+		return err
+	}
+
+	// For key-based access, return single object instead of array
+	var responseData interface{}
+	if data == nil || len(data) == 0 {
+		responseData = nil
+	} else {
+		responseData = data[0] // Return first (and should be only) record as single object
+	}
+
+	res := map[string]interface{}{
+		"data": responseData,
+	}
+	return c.JSON(http.StatusOK, res)
+}
+
+// CreateDatasetVersionData implements data.DataHandler.
+func (d *dataHandler) CreateDatasetVersionData(c echo.Context) error {
+	ctx := c.Request().Context()
+	datasetID := c.Param("dataset")
+	version := c.Param("version")
+
+	if datasetID == "" {
+		return errs.NewBadRequestError("dataset parameter is required")
+	}
+	if version == "" {
+		return errs.NewBadRequestError("version parameter is required")
+	}
+
+	var data map[string]interface{}
+	if err := c.Bind(&data); err != nil {
+		return errs.ErrBadRequest(err)
+	}
+
+	result, err := d.dataUs.CreateDatasetVersionData(ctx, datasetID, version, data)
+	if err != nil {
+		return err
+	}
+
+	res := map[string]interface{}{
+		"message": "success",
+		"data":    result,
+	}
+	return c.JSON(http.StatusCreated, res)
+}
+
+// UpdateDatasetVersionDataByKey implements data.DataHandler.
+func (d *dataHandler) UpdateDatasetVersionDataByKey(c echo.Context) error {
+	ctx := c.Request().Context()
+	datasetID := c.Param("dataset")
+	version := c.Param("version")
+	key := c.Param("key")
+
+	if datasetID == "" {
+		return errs.NewBadRequestError("dataset parameter is required")
+	}
+	if version == "" {
+		return errs.NewBadRequestError("version parameter is required")
+	}
+	if key == "" {
+		return errs.NewBadRequestError("key parameter is required")
+	}
+
+	var data map[string]interface{}
+	if err := c.Bind(&data); err != nil {
+		return errs.ErrBadRequest(err)
+	}
+
+	result, err := d.dataUs.UpdateDatasetVersionDataByKey(ctx, datasetID, version, key, data)
+	if err != nil {
+		return err
+	}
+
+	res := map[string]interface{}{
+		"message": "success",
+		"data":    result,
+	}
+	return c.JSON(http.StatusOK, res)
+}
+
+// DeleteDatasetVersionDataByKey implements data.DataHandler.
+func (d *dataHandler) DeleteDatasetVersionDataByKey(c echo.Context) error {
+	ctx := c.Request().Context()
+	datasetID := c.Param("dataset")
+	version := c.Param("version")
+	key := c.Param("key")
+
+	if datasetID == "" {
+		return errs.NewBadRequestError("dataset parameter is required")
+	}
+	if version == "" {
+		return errs.NewBadRequestError("version parameter is required")
+	}
+	if key == "" {
+		return errs.NewBadRequestError("key parameter is required")
+	}
+
+	err := d.dataUs.DeleteDatasetVersionDataByKey(ctx, datasetID, version, key)
+	if err != nil {
+		return err
+	}
+
+	res := map[string]interface{}{
+		"message": "success",
 	}
 	return c.JSON(http.StatusOK, res)
 }

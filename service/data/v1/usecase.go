@@ -26,4 +26,19 @@ type DataUsecase interface {
 	FetchDatasetByID(ctx context.Context, datasetID string) (*entity.Datasets, error)
 	UpsertDataset(ctx context.Context, dataset *entity.Datasets) error
 	DeleteDatasetByID(ctx context.Context, datasetID string) error
+
+	// DatasetVersion methods
+	FetchDatasetVersionByID(ctx context.Context, datasetID, version string) (*entity.DatasetVersion, error)
+	FetchDatasetVersionsList(ctx context.Context, datasetID string, paginator *helperModel.Paginator) ([]*entity.DatasetVersion, error)
+	UpsertDatasetVersion(ctx context.Context, datasetVersion *entity.DatasetVersion) error
+	DeleteDatasetVersionByID(ctx context.Context, datasetID, version string) error
+
+	// Serving methods
+	ServingDatasetVersionData(ctx context.Context, datasetID, version string, paginator *helperModel.Paginator, viewName string, requestedColumns []string) ([]map[string]interface{}, error)
+	ServingDatasetVersionDataByKey(ctx context.Context, datasetID, version, key string, paginator *helperModel.Paginator, viewName string, requestedColumns []string) ([]map[string]interface{}, error)
+
+	// Data Modification methods (requires write policies)
+	CreateDatasetVersionData(ctx context.Context, datasetID, version string, data map[string]interface{}) (map[string]interface{}, error)
+	UpdateDatasetVersionDataByKey(ctx context.Context, datasetID, version, key string, data map[string]interface{}) (map[string]interface{}, error)
+	DeleteDatasetVersionDataByKey(ctx context.Context, datasetID, version, key string) error
 }

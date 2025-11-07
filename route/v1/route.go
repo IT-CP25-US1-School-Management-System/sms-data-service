@@ -33,4 +33,22 @@ func (r *Route) RegisterDataRoute(handler data.DataHandler) {
 	datasetsGroup.GET("/:id", handler.FetchDatasetByID)
 	datasetsGroup.POST("", handler.UpsertDataset)
 	datasetsGroup.DELETE("/:id", handler.DeleteDatasetByID)
+
+	// Dataset Versions Route
+	datasetVersionsGroup := r.e.Group("/v1/datasets/:dataset_id/versions")
+	datasetVersionsGroup.GET("", handler.FetchDatasetVersionsList)
+	datasetVersionsGroup.GET("/:version", handler.FetchDatasetVersionByID)
+	datasetVersionsGroup.POST("", handler.UpsertDatasetVersion)
+	datasetVersionsGroup.PUT("/:version", handler.UpsertDatasetVersion)
+	datasetVersionsGroup.DELETE("/:version", handler.DeleteDatasetVersionByID)
+
+	// Serving Routes
+	servingGroup := r.e.Group("/v1/data")
+	servingGroup.GET("/:dataset/versions/:version", handler.ServingDatasetVersionData)
+	servingGroup.GET("/:dataset/versions/:version/key/:key", handler.ServingDatasetVersionDataByKey)
+
+	// Data Modification Routes
+	servingGroup.POST("/:dataset/versions/:version", handler.CreateDatasetVersionData)
+	servingGroup.PUT("/:dataset/versions/:version/key/:key", handler.UpdateDatasetVersionDataByKey)
+	servingGroup.DELETE("/:dataset/versions/:version/key/:key", handler.DeleteDatasetVersionDataByKey)
 }
