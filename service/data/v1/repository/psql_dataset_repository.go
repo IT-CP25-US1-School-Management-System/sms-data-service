@@ -860,8 +860,8 @@ func (p *psqlDatasetRepository) FetchDatasetVersionsList(ctx context.Context, da
 		}
 		if filter.SearchWord != "" {
 			sw := fmt.Sprintf("%%%s%%", strings.ToLower(strings.ReplaceAll(filter.SearchWord, " ", "")))
-			conds = append(conds, "(LOWER(REPLACE(name,' ','')) LIKE ? OR LOWER(REPLACE(description,' ','')) LIKE ?)")
-			valArgs = append(valArgs, sw, sw)
+			conds = append(conds, "LOWER(REPLACE(version,' ','')) LIKE ?")
+			valArgs = append(valArgs, sw)
 		}
 		if filter.Status != "" {
 			conds = append(conds, "status = ?")

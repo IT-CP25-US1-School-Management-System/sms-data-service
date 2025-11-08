@@ -425,7 +425,7 @@ func (d *dataHandler) FetchSourceList(c echo.Context) error {
 // FetchDatasetVersionByID implements data.DataHandler.
 func (d *dataHandler) FetchDatasetVersionByID(c echo.Context) error {
 	ctx := c.Request().Context()
-	datasetID := c.Param("dataset_id")
+	datasetID := c.Param("id")
 	version := c.Param("version")
 
 	if datasetID == "" {
@@ -490,7 +490,7 @@ func (d *dataHandler) FetchDatasetVersionsList(c echo.Context) error {
 // DeleteDatasetVersionByID implements data.DataHandler.
 func (d *dataHandler) DeleteDatasetVersionByID(c echo.Context) error {
 	ctx := c.Request().Context()
-	datasetID := c.Param("dataset_id")
+	datasetID := c.Param("id")
 	version := c.Param("version")
 
 	if datasetID == "" {
