@@ -842,28 +842,56 @@ func (p *psqlDatasetRepository) FetchDatasetVersionByID(ctx context.Context, dat
 }
 
 // FetchDatasetVersionsList implements data.PsqlDatasetRepository.
-func (p *psqlDatasetRepository) FetchDatasetVersionsList(ctx context.Context, datasetID string, paginator *helperModel.Paginator) ([]*entity.DatasetVersion, error) {
+func (p *psqlDatasetRepository) FetchDatasetVersionsList(ctx context.Context, datasetID string, filter *filter.DatasetVersionsFilter, paginator *helperModel.Paginator) ([]*entity.DatasetVersion, error) {
 	var (
+		conds    []string
 		valArgs  []interface{}
+		where    string
 		limitSQL string
 	)
+	if datasetID != "" {
+		conds = append(conds, "dataset_id = ?")
+		valArgs = append(valArgs, datasetID)
+	}
+	if filter != nil {
+		if filter.SourceID != "" {
+			conds = append(conds, "source_id = ?")
+			valArgs = append(valArgs, filter.SourceID)
+		}
+		if filter.SearchWord != "" {
+			sw := fmt.Sprintf("%%%s%%", strings.ToLower(strings.ReplaceAll(filter.SearchWord, " ", "")))
+			conds = append(conds, "(LOWER(REPLACE(name,' ','')) LIKE ? OR LOWER(REPLACE(description,' ','')) LIKE ?)")
+			valArgs = append(valArgs, sw, sw)
+		}
+		if filter.Status != "" {
+			conds = append(conds, "status = ?")
+			valArgs = append(valArgs, filter.Status)
+		}
+	}
 
-	valArgs = append(valArgs, datasetID)
+	if len(conds) > 0 {
+		where = "WHERE " + strings.Join(conds, " AND ")
+	}
 
 	if paginator != nil {
 		limitSQL = `
-			LIMIT $2
-			OFFSET $3
-		`
+            LIMIT ?
+            OFFSET ?
+        `
 		valArgs = append(valArgs, paginator.GetLimit(), paginator.GetOffset())
 	}
-
 	query := fmt.Sprintf(`
 		SELECT dataset_id, version, status, schema_json, access_policies, policies, source_id
 		FROM dataset_versions
-		WHERE dataset_id = $1
+		%s
 		ORDER BY version DESC %s
-	`, limitSQL)
+	`, where, limitSQL)
+	query = sqlx.Rebind(sqlx.DOLLAR, query)
+	stmt, err := p.client.GetClient().PreparexContext(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+	defer stmt.Close()
 
 	rows, err := p.client.GetClient().QueryxContext(ctx, query, valArgs...)
 	if err != nil {
@@ -889,16 +917,20 @@ func (p *psqlDatasetRepository) FetchDatasetVersionsList(ctx context.Context, da
 		}
 
 		// Unmarshal JSON fields
-		if err := json.Unmarshal(schemaJSON, &data.Schema); err != nil {
-			return nil, fmt.Errorf("failed to unmarshal schema for version %s: %w", data.Version, err)
+		if len(schemaJSON) > 0 {
+			if err := json.Unmarshal(schemaJSON, &data.Schema); err != nil {
+				return nil, fmt.Errorf("failed to unmarshal schema for version %s: %w", data.Version, err)
+			}
 		}
-
-		if err := json.Unmarshal(accessPoliciesJSON, &data.AccessPolicies); err != nil {
-			return nil, fmt.Errorf("failed to unmarshal access_policies for version %s: %w", data.Version, err)
+		if len(accessPoliciesJSON) > 0 {
+			if err := json.Unmarshal(accessPoliciesJSON, &data.AccessPolicies); err != nil {
+				return nil, fmt.Errorf("failed to unmarshal access_policies for version %s: %w", data.Version, err)
+			}
 		}
-
-		if err := json.Unmarshal(policiesJSON, &data.Policies); err != nil {
-			return nil, fmt.Errorf("failed to unmarshal policies for version %s: %w", data.Version, err)
+		if len(policiesJSON) > 0 {
+			if err := json.Unmarshal(policiesJSON, &data.Policies); err != nil {
+				return nil, fmt.Errorf("failed to unmarshal policies for version %s: %w", data.Version, err)
+			}
 		}
 
 		versions = append(versions, &data)
@@ -911,8 +943,14 @@ func (p *psqlDatasetRepository) FetchDatasetVersionsList(ctx context.Context, da
 	// Get total count for pagination
 	if paginator != nil {
 		var totalRows int
-		countSQL := `SELECT COUNT(*) FROM dataset_versions WHERE dataset_id = $1`
-		if err := p.client.GetClient().GetContext(ctx, &totalRows, countSQL, datasetID); err != nil {
+		countArgs := append([]interface{}(nil), valArgs...)
+		// remove LIMIT/OFFSET from args if present
+		if paginator != nil && len(countArgs) >= 2 {
+			countArgs = countArgs[:len(countArgs)-2]
+		}
+		countSQL := fmt.Sprintf(`SELECT COUNT(*) FROM dataset_versions %s`, where)
+		countSQL = sqlx.Rebind(sqlx.DOLLAR, countSQL)
+		if err := p.client.GetClient().GetContext(ctx, &totalRows, countSQL, countArgs...); err != nil {
 			return nil, err
 		}
 		paginator.SetPaginatorByAllRows(totalRows)
