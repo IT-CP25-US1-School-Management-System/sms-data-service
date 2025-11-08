@@ -23,7 +23,8 @@ type DataHandler interface {
 	// Dataset Version
 	FetchDatasetVersionByID(c echo.Context) error
 	FetchDatasetVersionsList(c echo.Context) error
-	UpsertDatasetVersion(c echo.Context) error
+	InsertDatasetVersion(c echo.Context) error
+	UpdateDatasetVersion(c echo.Context) error
 	DeleteDatasetVersionByID(c echo.Context) error
 
 	// Serving

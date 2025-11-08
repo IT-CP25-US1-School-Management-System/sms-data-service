@@ -180,6 +180,19 @@ func (d *dataUsecase) validateDatasetID(id string) error {
 	return nil
 }
 
+func (d *dataUsecase) validateVersionFormat(version string) error {
+	if version == "" {
+		return errs.NewBadRequestError(constants.ERR_DATASET_VERSION_IS_REQUIRED)
+	}
+
+	// Regex pattern for semantic version: v + digit + . + digit + . + digit
+	if !constants.DATASET_VERSION_PATTERN.MatchString(version) {
+		return errs.NewBadRequestError(constants.ERR_DATASET_VERSION_INVALID_FORMAT)
+	}
+
+	return nil
+}
+
 // DeleteDatasetByID implements data.DataUsecase.
 func (d *dataUsecase) DeleteDatasetByID(ctx context.Context, datasetID string) error {
 	if err := d.validateDatasetID(datasetID); err != nil {
@@ -255,11 +268,11 @@ func (d *dataUsecase) FetchDatasetVersionByID(ctx context.Context, datasetID str
 }
 
 // FetchDatasetVersionsList implements data.DataUsecase.
-func (d *dataUsecase) FetchDatasetVersionsList(ctx context.Context, datasetID string, paginator *helperModel.Paginator) ([]*entity.DatasetVersion, error) {
+func (d *dataUsecase) FetchDatasetVersionsList(ctx context.Context, datasetID string, filter *filter.DatasetVersionsFilter, paginator *helperModel.Paginator) ([]*entity.DatasetVersion, error) {
 	if err := d.validateDatasetID(datasetID); err != nil {
 		return nil, err
 	}
-	return d.datasetRepo.FetchDatasetVersionsList(ctx, datasetID, paginator)
+	return d.datasetRepo.FetchDatasetVersionsList(ctx, datasetID, filter, paginator)
 }
 
 // UpsertDatasetVersion implements data.DataUsecase.
@@ -284,6 +297,49 @@ func (d *dataUsecase) UpsertDatasetVersion(ctx context.Context, datasetVersion *
 	datasetVersion.CreatedAt = &now
 	datasetVersion.UpdatedAt = &now
 
+	return d.datasetRepo.UpsertDatasetVersion(ctx, datasetVersion)
+}
+
+func (d *dataUsecase) InsertDatasetVersion(ctx context.Context, datasetVersion *entity.DatasetVersion, datasetID string) error {
+	if err := d.validateDatasetID(datasetID); err != nil {
+		return err
+	}
+	if err := d.validateVersionFormat(datasetVersion.Version); err != nil {
+		return err
+	}
+	exists, err := d.datasetRepo.ExistDatasetByID(ctx, datasetID)
+	if err != nil {
+		return err
+	}
+	if !exists {
+		return errs.NewNotFoundError(constants.ERR_DATASET_NOT_FOUND)
+	}
+	datasetVersion.DatasetID = datasetID
+	now := helperModel.NewTimestampFromNow()
+	datasetVersion.CreatedAt = &now
+	datasetVersion.UpdatedAt = &now
+	return d.datasetRepo.UpsertDatasetVersion(ctx, datasetVersion)
+}
+
+func (d *dataUsecase) UpdateDatasetVersion(ctx context.Context, datasetVersion *entity.DatasetVersion, datasetID, version string) error {
+	if err := d.validateDatasetID(datasetID); err != nil {
+		return err
+	}
+	if err := d.validateVersionFormat(version); err != nil {
+		return err
+	}
+	exists, err := d.datasetRepo.ExistDatasetVersionByID(ctx, datasetID, version)
+	if err != nil {
+		return err
+	}
+	if !exists {
+		return errs.NewNotFoundError(constants.ERR_DATASET_VERSION_NOT_FOUND)
+	}
+	datasetVersion.DatasetID = datasetID
+	datasetVersion.Version = version
+	now := helperModel.NewTimestampFromNow()
+	datasetVersion.CreatedAt = &now
+	datasetVersion.UpdatedAt = &now
 	return d.datasetRepo.UpsertDatasetVersion(ctx, datasetVersion)
 }
 
@@ -464,9 +520,11 @@ func (d *dataUsecase) ServingDatasetVersionData(ctx context.Context, datasetID s
 	if datasetVersion == nil {
 		return nil, errs.NewNotFoundError("dataset version not found")
 	}
-
+	if datasetVersion.Policies.Runtime == nil {
+		return nil, errs.NewConflictError("runtime policy is not configured for this dataset version")
+	}
 	// 2. Validate view and columns
-	filteredRuntime, err := d.filterRuntimePolicyByViewAndColumns(datasetVersion.Policies.Runtime, viewName, requestedColumns, datasetVersion.Policies.Views)
+	filteredRuntime, err := d.filterRuntimePolicyByViewAndColumns(*datasetVersion.Policies.Runtime, viewName, requestedColumns, datasetVersion.Policies.Views)
 	if err != nil {
 		return nil, err
 	}
@@ -502,10 +560,11 @@ func (d *dataUsecase) ServingDatasetVersionDataByKey(ctx context.Context, datase
 	}
 
 	// 2. Use runtime policy and prepare for key-based filtering
-	selectedPolicy := &datasetVersion.Policies.Runtime
-
+	if datasetVersion.Policies.Runtime == nil {
+		return nil, errs.NewConflictError("runtime policy is not configured for this dataset version")
+	}
 	// 3. Filter policy by view and columns
-	filteredPolicy, err := d.filterRuntimePolicyByViewAndColumns(*selectedPolicy, viewName, requestedColumns, datasetVersion.Policies.Views)
+	filteredPolicy, err := d.filterRuntimePolicyByViewAndColumns(*datasetVersion.Policies.Runtime, viewName, requestedColumns, datasetVersion.Policies.Views)
 	if err != nil {
 		return nil, err
 	}

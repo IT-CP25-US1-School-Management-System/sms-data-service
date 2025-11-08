@@ -52,7 +52,7 @@ type PsqlDatasetRepository interface {
 
 	// Dataset Version
 	FetchDatasetVersionByID(ctx context.Context, datasetID string, version string) (*entity.DatasetVersion, error)
-	FetchDatasetVersionsList(ctx context.Context, datasetID string, paginator *helperModel.Paginator) ([]*entity.DatasetVersion, error)
+	FetchDatasetVersionsList(ctx context.Context, datasetID string, filter *filter.DatasetVersionsFilter, paginator *helperModel.Paginator) ([]*entity.DatasetVersion, error)
 	UpsertDatasetVersion(ctx context.Context, datasetVersion *entity.DatasetVersion) error
 	DeleteDatasetVersionByID(ctx context.Context, datasetID string, version string) error
 	ExistDatasetVersionByID(ctx context.Context, datasetID string, version string) (bool, error)

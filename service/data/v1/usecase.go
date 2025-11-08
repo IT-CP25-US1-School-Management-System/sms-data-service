@@ -29,8 +29,9 @@ type DataUsecase interface {
 
 	// DatasetVersion methods
 	FetchDatasetVersionByID(ctx context.Context, datasetID, version string) (*entity.DatasetVersion, error)
-	FetchDatasetVersionsList(ctx context.Context, datasetID string, paginator *helperModel.Paginator) ([]*entity.DatasetVersion, error)
-	UpsertDatasetVersion(ctx context.Context, datasetVersion *entity.DatasetVersion) error
+	FetchDatasetVersionsList(ctx context.Context, datasetID string, filter *filter.DatasetVersionsFilter, paginator *helperModel.Paginator) ([]*entity.DatasetVersion, error)
+	InsertDatasetVersion(ctx context.Context, datasetVersion *entity.DatasetVersion, datasetID string) error
+	UpdateDatasetVersion(ctx context.Context, datasetVersion *entity.DatasetVersion, datasetID, version string) error
 	DeleteDatasetVersionByID(ctx context.Context, datasetID, version string) error
 
 	// Serving methods

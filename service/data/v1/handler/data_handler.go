@@ -21,6 +21,69 @@ type dataHandler struct {
 	dataUs data.DataUsecase
 }
 
+// InsertDatasetVersion implements data.DataHandler.
+func (d *dataHandler) InsertDatasetVersion(c echo.Context) error {
+	ctx := c.Request().Context()
+	datasetID := c.Param("id")
+
+	if datasetID == "" {
+		return errs.NewBadRequestError(constants.ERR_DATASET_ID_IS_REQUIRED)
+	}
+
+	var datasetVersion dto.UpsertDatasetVersionDTO
+	if err := c.Bind(&datasetVersion); err != nil {
+		return errs.ErrBadRequest(err)
+	}
+	if err := c.Validate(&datasetVersion); err != nil {
+		return errs.ErrBadRequest(err)
+	}
+	datasetVersionEntity, err := datasetVersion.UpsertDatasetVersionDTOToEntity()
+	if err != nil {
+		return errs.ErrBadRequest(err)
+	}
+
+	if err := d.dataUs.InsertDatasetVersion(ctx, datasetVersionEntity, datasetID); err != nil {
+		return err
+	}
+
+	res := map[string]interface{}{
+		"message": "success",
+	}
+	return c.JSON(http.StatusOK, res)
+}
+
+// UpdateDatasetVersion implements data.DataHandler.
+func (d *dataHandler) UpdateDatasetVersion(c echo.Context) error {
+	ctx := c.Request().Context()
+	datasetID := c.Param("id")
+	datasetVersion := c.Param("version")
+
+	if datasetID == "" {
+		return errs.NewBadRequestError(constants.ERR_DATASET_ID_IS_REQUIRED)
+	}
+
+	var datasetVersionDTO dto.UpsertDatasetVersionDTO
+	if err := c.Bind(&datasetVersionDTO); err != nil {
+		return errs.ErrBadRequest(err)
+	}
+	if err := c.Validate(&datasetVersionDTO); err != nil {
+		return errs.ErrBadRequest(err)
+	}
+	datasetVersionEntity, err := datasetVersionDTO.UpsertDatasetVersionDTOToEntity()
+	if err != nil {
+		return errs.ErrBadRequest(err)
+	}
+
+	if err := d.dataUs.UpdateDatasetVersion(ctx, datasetVersionEntity, datasetID, datasetVersion); err != nil {
+		return err
+	}
+
+	res := map[string]interface{}{
+		"message": "success",
+	}
+	return c.JSON(http.StatusOK, res)
+}
+
 // DeleteSourceByID implements data.DataHandler.
 func (d *dataHandler) DeleteSourceByID(c echo.Context) error {
 	ctx := c.Request().Context()
@@ -389,30 +452,24 @@ func (d *dataHandler) FetchDatasetVersionByID(c echo.Context) error {
 // FetchDatasetVersionsList implements data.DataHandler.
 func (d *dataHandler) FetchDatasetVersionsList(c echo.Context) error {
 	ctx := c.Request().Context()
-	datasetID := c.Param("dataset_id")
-
+	datasetID := c.Param("id")
 	if datasetID == "" {
 		return errs.NewBadRequestError(constants.ERR_DATASET_ID_IS_REQUIRED)
 	}
-
+	var filter filter.DatasetVersionsFilter
+	if err := c.Bind(&filter); err != nil {
+		return errs.ErrBadRequest(err)
+	}
+	if err := c.Validate(&filter); err != nil {
+		return errs.ErrBadRequest(err)
+	}
 	paginator := helperModel.NewPaginator()
-	page := c.QueryParam("page")
-	perPage := c.QueryParam("per_page")
-
-	if page != "" && perPage != "" {
-		p, err := strconv.Atoi(page)
-		if err != nil || p < 1 {
-			return errs.ErrBadRequest(fmt.Errorf("invalid page"))
-		}
-		pp, err := strconv.Atoi(perPage)
-		if err != nil || pp < 1 || pp > 100 {
-			return errs.ErrBadRequest(fmt.Errorf("invalid per_page"))
-		}
-		paginator.Page = p
-		paginator.PerPage = pp
+	if filter.Page > 0 && filter.PerPage > 0 {
+		paginator.Page = filter.Page
+		paginator.PerPage = filter.PerPage
 	}
 
-	versions, err := d.dataUs.FetchDatasetVersionsList(ctx, datasetID, &paginator)
+	versions, err := d.dataUs.FetchDatasetVersionsList(ctx, datasetID, &filter, &paginator)
 	if err != nil {
 		return err
 	}
@@ -426,36 +483,6 @@ func (d *dataHandler) FetchDatasetVersionsList(c echo.Context) error {
 		"per_page":    paginator.PerPage,
 		"total_pages": paginator.TotalPages,
 		"total_rows":  paginator.TotalEntrySizes,
-	}
-	return c.JSON(http.StatusOK, res)
-}
-
-// UpsertDatasetVersion implements data.DataHandler.
-func (d *dataHandler) UpsertDatasetVersion(c echo.Context) error {
-	ctx := c.Request().Context()
-	datasetID := c.Param("dataset_id")
-
-	if datasetID == "" {
-		return errs.NewBadRequestError(constants.ERR_DATASET_ID_IS_REQUIRED)
-	}
-
-	var datasetVersion entity.DatasetVersion
-	if err := c.Bind(&datasetVersion); err != nil {
-		return errs.ErrBadRequest(err)
-	}
-	if err := c.Validate(&datasetVersion); err != nil {
-		return errs.ErrBadRequest(err)
-	}
-
-	// Ensure the dataset_id from URL matches the one in the body
-	datasetVersion.DatasetID = datasetID
-
-	if err := d.dataUs.UpsertDatasetVersion(ctx, &datasetVersion); err != nil {
-		return err
-	}
-
-	res := map[string]interface{}{
-		"message": "success",
 	}
 	return c.JSON(http.StatusOK, res)
 }
@@ -597,7 +624,7 @@ func (d *dataHandler) ServingDatasetVersionDataByKey(c echo.Context) error {
 
 	// For key-based access, return single object instead of array
 	var responseData interface{}
-	if data == nil || len(data) == 0 {
+	if len(data) == 0 {
 		responseData = nil
 	} else {
 		responseData = data[0] // Return first (and should be only) record as single object
