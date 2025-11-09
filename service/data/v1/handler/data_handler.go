@@ -31,14 +31,14 @@ func (d *dataHandler) InsertDatasetVersion(c echo.Context) error {
 		return errs.NewBadRequestError(constants.ERR_DATASET_ID_IS_REQUIRED)
 	}
 
-	var datasetVersion dto.UpsertDatasetVersionDTO
+	var datasetVersion dto.InsertDatasetVersionDTO
 	if err := c.Bind(&datasetVersion); err != nil {
 		return errs.ErrBadRequest(err)
 	}
 	if err := c.Validate(&datasetVersion); err != nil {
 		return errs.ErrBadRequest(err)
 	}
-	datasetVersionEntity, err := datasetVersion.UpsertDatasetVersionDTOToEntity()
+	datasetVersionEntity, err := datasetVersion.InsertDatasetVersionDTOToEntity()
 	if err != nil {
 		return errs.ErrBadRequest(err)
 	}
@@ -63,14 +63,14 @@ func (d *dataHandler) UpdateDatasetVersion(c echo.Context) error {
 		return errs.NewBadRequestError(constants.ERR_DATASET_ID_IS_REQUIRED)
 	}
 
-	var datasetVersionDTO dto.UpsertDatasetVersionDTO
+	var datasetVersionDTO dto.UpdateDatasetVersionDTO
 	if err := c.Bind(&datasetVersionDTO); err != nil {
 		return errs.ErrBadRequest(err)
 	}
 	if err := c.Validate(&datasetVersionDTO); err != nil {
 		return errs.ErrBadRequest(err)
 	}
-	datasetVersionEntity, err := datasetVersionDTO.UpsertDatasetVersionDTOToEntity()
+	datasetVersionEntity, err := datasetVersionDTO.UpdateDatasetVersionDTOToEntity()
 	if err != nil {
 		return errs.ErrBadRequest(err)
 	}
@@ -488,21 +488,20 @@ func (d *dataHandler) FetchDatasetVersionsList(c echo.Context) error {
 	return c.JSON(http.StatusOK, res)
 }
 
-// DeleteDatasetVersionByID implements data.DataHandler.
-func (d *dataHandler) DeleteDatasetVersionByID(c echo.Context) error {
+// UpdateDatasetVersionStatus implements data.DataHandler.
+func (d *dataHandler) UpdateDatasetVersionStatus(c echo.Context) error {
 	ctx := c.Request().Context()
-	datasetID := c.Param("dataset_id")
+	datasetID := c.Param("id")
 	version := c.Param("version")
-
-	if datasetID == "" {
-		return errs.NewBadRequestError(constants.ERR_DATASET_ID_IS_REQUIRED)
+	var status dto.UpdateDatasetVersionStatusDTO
+	if err := c.Bind(&status); err != nil {
+		return errs.ErrBadRequest(err)
 	}
-	if version == "" {
-		return errs.NewBadRequestError("version is required")
+	if err := c.Validate(&status); err != nil {
+		return errs.ErrBadRequest(err)
 	}
 
-	err := d.dataUs.DeleteDatasetVersionByID(ctx, datasetID, version)
-	if err != nil {
+	if err := d.dataUs.UpdateDatasetVersionStatus(ctx, datasetID, version, status.Status); err != nil {
 		return err
 	}
 

@@ -23,6 +23,7 @@ type psqlDatasetRepository struct {
 	client *psql.Client
 }
 
+
 func (p *psqlDatasetRepository) deleteSourceByID(ctx context.Context, tx *sqlx.Tx, sourceID string) error {
 	query := `
 		DELETE FROM sources WHERE id = $1
@@ -883,8 +884,8 @@ func (p *psqlDatasetRepository) FetchDatasetVersionsList(ctx context.Context, da
 		}
 		if filter.SearchWord != "" {
 			sw := fmt.Sprintf("%%%s%%", strings.ToLower(strings.ReplaceAll(filter.SearchWord, " ", "")))
-			conds = append(conds, "(LOWER(REPLACE(name,' ','')) LIKE ? OR LOWER(REPLACE(description,' ','')) LIKE ?)")
-			valArgs = append(valArgs, sw, sw)
+			conds = append(conds, "LOWER(REPLACE(version,' ','')) LIKE ?")
+			valArgs = append(valArgs, sw)
 		}
 		if filter.Status != "" {
 			conds = append(conds, "status = ?")
@@ -1049,6 +1050,17 @@ func (p *psqlDatasetRepository) deleteDatasetVersionByID(ctx context.Context, tx
 		WHERE dataset_id = $1 AND version = $2
 	`
 	if _, err := tx.ExecContext(ctx, query, datasetID, version); err != nil {
+		return err
+	}
+	return nil
+}
+func (p *psqlDatasetRepository) UpdateDatasetVersionStatus(ctx context.Context, datasetID string, version string, status string) error {
+	query := `
+		UPDATE dataset_versions
+		SET status = $1
+		WHERE dataset_id = $2 AND version = $3
+	`
+	if _, err := p.client.GetClient().ExecContext(ctx, query, status, datasetID, version); err != nil {
 		return err
 	}
 	return nil

@@ -33,7 +33,7 @@ func NewDBConnectionManagerRepository(datasetRepo data.PsqlDatasetRepository, cr
 func (cm *dbConnectionManagerRepository) createConnectionDetails(source *entity.Sources) (string, psql.Driver, error) {
 	decryptedPass, err := crypto.Decrypt(source.Password, cm.cryptoSecret)
 	if err != nil {
-		return "", psql.Postgres, fmt.Errorf("failed to decrypt password: %w", err)
+		return "", psql.Postgres, fmt.Errorf("failed to decrypt")
 	}
 
 	switch source.DBType {
@@ -70,6 +70,9 @@ func (cm *dbConnectionManagerRepository) GetConnection(ctx context.Context, sour
 	source, err := cm.datasetRepo.FetchSourceByID(ctxFetch, &sourceID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get source: %w", err)
+	}
+	if source == nil {
+		return nil, fmt.Errorf("source not found")
 	}
 
 	connStr, drv, err := cm.createConnectionDetails(source)

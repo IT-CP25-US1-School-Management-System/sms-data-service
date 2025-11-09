@@ -10,13 +10,25 @@ import (
 )
 
 // DTO used for inserting a new dataset version.
-type UpsertDatasetVersionDTO struct {
+type InsertDatasetVersionDTO struct {
 	Version        string            `json:"version" validate:"required"`
 	SourceID       string            `json:"source_id" validate:"required,uuid"`
 	Status         string            `json:"status" validate:"required,oneof=active preview deprecated"`
 	Schema         SchemaDTO         `json:"schema" validate:"required"`
 	AccessPolicies []AccessPolicyDTO `json:"access_policies" validate:"required,min=1,dive"`
 	Policies       PoliciesDTO       `json:"policies" validate:"required"`
+}
+
+type UpdateDatasetVersionDTO struct {
+	SourceID       string            `json:"source_id" validate:"required,uuid"`
+	Status         string            `json:"status" validate:"required,oneof=active preview deprecated"`
+	Schema         SchemaDTO         `json:"schema" validate:"required"`
+	AccessPolicies []AccessPolicyDTO `json:"access_policies" validate:"required,min=1,dive"`
+	Policies       PoliciesDTO       `json:"policies" validate:"required"`
+}
+
+type UpdateDatasetVersionStatusDTO struct {
+	Status string `json:"status" validate:"required,oneof=active preview deprecated"`
 }
 
 type SchemaDTO struct {
@@ -117,7 +129,8 @@ type DeletePolicyDTO struct {
 	Query    QueryPlanDTO `json:"query" validate:"required"`
 }
 
-func (dto *UpsertDatasetVersionDTO) UpsertDatasetVersionDTOToEntity() (*entity.DatasetVersion, error) {
+func (dto *InsertDatasetVersionDTO) InsertDatasetVersionDTOToEntity() (*entity.DatasetVersion, error) {
+	// Convert source_id to UUID
 	var sourceID *uuid.UUID
 	if dto.SourceID != "" {
 		id, err := uuid.FromString(dto.SourceID)
@@ -127,7 +140,28 @@ func (dto *UpsertDatasetVersionDTO) UpsertDatasetVersionDTOToEntity() (*entity.D
 		sourceID = &id
 	}
 
-	entityResult, err := helperModel.ConvertStruct[UpsertDatasetVersionDTO, entity.DatasetVersion](*dto)
+	entityResult, err := helperModel.ConvertStruct[InsertDatasetVersionDTO, entity.DatasetVersion](*dto)
+	if err != nil {
+		return nil, fmt.Errorf("failed to convert DTO to entity: %w", err)
+	}
+
+	entityResult.SourceID = sourceID
+
+	return &entityResult, nil
+}
+
+func (dto *UpdateDatasetVersionDTO) UpdateDatasetVersionDTOToEntity() (*entity.DatasetVersion, error) {
+	// Convert source_id to UUID
+	var sourceID *uuid.UUID
+	if dto.SourceID != "" {
+		id, err := uuid.FromString(dto.SourceID)
+		if err != nil {
+			return nil, fmt.Errorf("invalid source_id: %w", err)
+		}
+		sourceID = &id
+	}
+
+	entityResult, err := helperModel.ConvertStruct[UpdateDatasetVersionDTO, entity.DatasetVersion](*dto)
 	if err != nil {
 		return nil, fmt.Errorf("failed to convert DTO to entity: %w", err)
 	}

@@ -266,6 +266,9 @@ func (d *dataUsecase) FetchDatasetVersionByID(ctx context.Context, datasetID str
 	if err := d.validateDatasetID(datasetID); err != nil {
 		return nil, err
 	}
+	if err := d.validateVersionFormat(version); err != nil {
+		return nil, err
+	}
 	return d.datasetRepo.FetchDatasetVersionByID(ctx, datasetID, version)
 }
 
@@ -338,6 +341,7 @@ func (d *dataUsecase) UpdateDatasetVersion(ctx context.Context, datasetVersion *
 	if err := d.validateVersionFormat(version); err != nil {
 		return err
 	}
+
 	exists, err := d.datasetRepo.ExistDatasetVersionByID(ctx, datasetID, version)
 	if err != nil {
 		return err
@@ -346,19 +350,21 @@ func (d *dataUsecase) UpdateDatasetVersion(ctx context.Context, datasetVersion *
 		return errs.NewNotFoundError(constants.ERR_DATASET_VERSION_NOT_FOUND)
 	}
 	datasetVersion.DatasetID = datasetID
-	datasetVersion.Version = version
+	// datasetVersion.Version = version
 	now := helperModel.NewTimestampFromNow()
 	datasetVersion.CreatedAt = &now
 	datasetVersion.UpdatedAt = &now
 	return d.datasetRepo.UpsertDatasetVersion(ctx, datasetVersion)
 }
 
-// DeleteDatasetVersionByID implements data.DataUsecase.
-func (d *dataUsecase) DeleteDatasetVersionByID(ctx context.Context, datasetID string, version string) error {
+// UpdateDatasetVersionStatus implements data.DataUsecase.
+func (d *dataUsecase) UpdateDatasetVersionStatus(ctx context.Context, datasetID string, version string, status string) error {
 	if err := d.validateDatasetID(datasetID); err != nil {
 		return err
 	}
-
+	if err := d.validateVersionFormat(version); err != nil {
+		return err
+	}
 	exists, err := d.datasetRepo.ExistDatasetVersionByID(ctx, datasetID, version)
 	if err != nil {
 		return err
@@ -367,7 +373,7 @@ func (d *dataUsecase) DeleteDatasetVersionByID(ctx context.Context, datasetID st
 		return errs.NewNotFoundError("dataset version not found")
 	}
 
-	return d.datasetRepo.DeleteDatasetVersionByID(ctx, datasetID, version)
+	return d.datasetRepo.UpdateDatasetVersionStatus(ctx, datasetID, version, status)
 }
 
 func (d *dataUsecase) ServingDatasetVersionData(
@@ -381,6 +387,12 @@ func (d *dataUsecase) ServingDatasetVersionData(
 	sortBy string,
 	sortOrder string,
 ) ([]map[string]interface{}, error) {
+	if err := d.validateDatasetID(datasetID); err != nil {
+		return nil, err
+	}
+	if err := d.validateVersionFormat(version); err != nil {
+		return nil, err
+	}
 	datasetVersion, err := d.datasetRepo.FetchDatasetVersionByID(ctx, datasetID, version)
 	if err != nil {
 		return nil, err
@@ -416,6 +428,9 @@ func (d *dataUsecase) ServingDatasetVersionDataByKey(ctx context.Context, datase
 	if err := d.validateDatasetID(datasetID); err != nil {
 		return nil, err
 	}
+	if err := d.validateVersionFormat(version); err != nil {
+		return nil, err
+	}
 
 	// Get dataset version to get policies
 	datasetVersion, err := d.datasetRepo.FetchDatasetVersionByID(ctx, datasetID, version)
@@ -442,6 +457,9 @@ func (d *dataUsecase) ServingDatasetVersionDataByKey(ctx context.Context, datase
 // CreateDatasetVersionData implements data.DataUsecase.
 func (d *dataUsecase) CreateDatasetVersionData(ctx context.Context, datasetID string, version string, data map[string]interface{}) (map[string]interface{}, error) {
 	if err := d.validateDatasetID(datasetID); err != nil {
+		return nil, err
+	}
+	if err := d.validateVersionFormat(version); err != nil {
 		return nil, err
 	}
 
@@ -475,6 +493,9 @@ func (d *dataUsecase) CreateDatasetVersionData(ctx context.Context, datasetID st
 // UpdateDatasetVersionDataByKey implements data.DataUsecase.
 func (d *dataUsecase) UpdateDatasetVersionDataByKey(ctx context.Context, datasetID string, version string, key string, data map[string]interface{}) (map[string]interface{}, error) {
 	if err := d.validateDatasetID(datasetID); err != nil {
+		return nil, err
+	}
+	if err := d.validateVersionFormat(version); err != nil {
 		return nil, err
 	}
 	datasetVersion, err := d.datasetRepo.FetchDatasetVersionByID(ctx, datasetID, version)
@@ -511,6 +532,9 @@ func (d *dataUsecase) UpdateDatasetVersionDataByKey(ctx context.Context, dataset
 // DeleteDatasetVersionDataByKey implements data.DataUsecase.
 func (d *dataUsecase) DeleteDatasetVersionDataByKey(ctx context.Context, datasetID string, version string, key string) error {
 	if err := d.validateDatasetID(datasetID); err != nil {
+		return err
+	}
+	if err := d.validateVersionFormat(version); err != nil {
 		return err
 	}
 	datasetVersion, err := d.datasetRepo.FetchDatasetVersionByID(ctx, datasetID, version)
