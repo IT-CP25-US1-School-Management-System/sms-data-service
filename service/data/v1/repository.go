@@ -56,6 +56,7 @@ type PsqlDatasetRepository interface {
 	UpsertDatasetVersion(ctx context.Context, datasetVersion *entity.DatasetVersion) error
 	DeleteDatasetVersionByID(ctx context.Context, datasetID string, version string) error
 	ExistDatasetVersionByID(ctx context.Context, datasetID string, version string) (bool, error)
+	UpdateDatasetVersionStatus(ctx context.Context, datasetID string, version string, status string) error
 }
 
 type RedisRepository interface {

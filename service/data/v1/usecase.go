@@ -32,7 +32,7 @@ type DataUsecase interface {
 	FetchDatasetVersionsList(ctx context.Context, datasetID string, filter *filter.DatasetVersionsFilter, paginator *helperModel.Paginator) ([]*entity.DatasetVersion, error)
 	InsertDatasetVersion(ctx context.Context, datasetVersion *entity.DatasetVersion, datasetID string) error
 	UpdateDatasetVersion(ctx context.Context, datasetVersion *entity.DatasetVersion, datasetID, version string) error
-	DeleteDatasetVersionByID(ctx context.Context, datasetID, version string) error
+	UpdateDatasetVersionStatus(ctx context.Context, datasetID, version, status string) error
 
 	// Serving methods
 	ServingDatasetVersionData(ctx context.Context, datasetID, version string, paginator *helperModel.Paginator, viewName string, requestedColumns []string) ([]map[string]interface{}, error)

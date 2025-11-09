@@ -38,9 +38,9 @@ func (r *Route) RegisterDataRoute(handler data.DataHandler) {
 	datasetVersionsGroup := r.e.Group("/v1/datasets/:id/versions")
 	datasetVersionsGroup.GET("", handler.FetchDatasetVersionsList) // filter validate // finish
 	datasetVersionsGroup.GET("/:version", handler.FetchDatasetVersionByID)
-	datasetVersionsGroup.POST("", handler.InsertDatasetVersion)                //insert + DTO validate //REPO function ไม่ต้องแก้
-	datasetVersionsGroup.PUT("/:version", handler.UpdateDatasetVersion)        //update + DTO validate
-	datasetVersionsGroup.DELETE("/:version", handler.DeleteDatasetVersionByID) // patch update status active,preview,deprecated + DTO validate รับ status
+	datasetVersionsGroup.POST("", handler.InsertDatasetVersion)                 //insert + DTO validate //REPO function ไม่ต้องแก้
+	datasetVersionsGroup.PUT("/:version", handler.UpdateDatasetVersion)         //update + DTO validate
+	datasetVersionsGroup.PATCH("/:version", handler.UpdateDatasetVersionStatus) // patch update status active,preview,deprecated + DTO validate รับ status
 
 	// Serving Routes
 	servingGroup := r.e.Group("/v1/data")
