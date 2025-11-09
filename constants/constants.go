@@ -16,6 +16,7 @@ const (
 var (
 	// datasetIDPattern validates dataset ID format: only lowercase english letters, underscore, and hyphen, no spaces
 	// Pattern: ^[a-z_-]+$ means start to end with only lowercase letters a-z, underscore, and hyphen
-	DATASET_ID_PATTERN      = regexp.MustCompile("^[a-z_-]+$")
+	DATASET_ID_PATTERN = regexp.MustCompile("^[a-z_-]+$")
+	// Regex pattern for semantic version: v + digit + . + digit + . + digit
 	DATASET_VERSION_PATTERN = regexp.MustCompile("^v\\d+\\.\\d+\\.\\d+$")
 )

@@ -1,4 +1,3 @@
-version: "3"
 services:
   sms-data-service:
     build:
@@ -7,7 +6,7 @@ services:
     container_name: sms-data-service
     env_file: .env
     networks:
-      - default
+      - sms-project
     ports:
       - 3000:3000
       - 3100:3100
@@ -15,6 +14,6 @@ services:
       - .:/go/src/github.com/IT-CP25-US1-School-Management-System/sms-data-service
 
 networks:
-  default:
-    external:
-      name: sms
+  sms-project:
+    external: true
+    name: sms

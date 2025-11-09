@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -425,7 +426,7 @@ func (d *dataHandler) FetchSourceList(c echo.Context) error {
 // FetchDatasetVersionByID implements data.DataHandler.
 func (d *dataHandler) FetchDatasetVersionByID(c echo.Context) error {
 	ctx := c.Request().Context()
-	datasetID := c.Param("dataset_id")
+	datasetID := c.Param("id")
 	version := c.Param("version")
 
 	if datasetID == "" {
@@ -514,7 +515,7 @@ func (d *dataHandler) DeleteDatasetVersionByID(c echo.Context) error {
 // ServingDatasetVersionData implements data.DataHandler.
 func (d *dataHandler) ServingDatasetVersionData(c echo.Context) error {
 	ctx := c.Request().Context()
-	datasetID := c.Param("dataset")
+	datasetID := c.Param("id")
 	version := c.Param("version")
 
 	if datasetID == "" {
@@ -541,19 +542,32 @@ func (d *dataHandler) ServingDatasetVersionData(c echo.Context) error {
 		paginator.PerPage = pp
 	}
 
-	// Get view and columns query parameters
 	viewName := c.QueryParam("view")
-	columnsParam := c.QueryParam("columns")
-	var requestedColumns []string
-	if columnsParam != "" {
-		requestedColumns = strings.Split(columnsParam, ",")
-		// Trim whitespace
-		for i, col := range requestedColumns {
-			requestedColumns[i] = strings.TrimSpace(col)
-		}
+	logicalOperator := c.QueryParam("where_logical_operator")
+	if logicalOperator == "" {
+		logicalOperator = "AND"
+	}
+	logicalOperator = strings.ToUpper(logicalOperator)
+	if logicalOperator != "AND" && logicalOperator != "OR" {
+		return errs.ErrBadRequest(fmt.Errorf("invalid logical_operator: must be 'AND' or 'OR'"))
 	}
 
-	data, err := d.dataUs.ServingDatasetVersionData(ctx, datasetID, version, &paginator, viewName, requestedColumns)
+	var filterGroups [][]entity.FilterInput
+	filtersQueryParam := c.QueryParam("where")
+
+	if filtersQueryParam != "" && filtersQueryParam != "[]" {
+		if err := json.Unmarshal([]byte(filtersQueryParam), &filterGroups); err != nil {
+			return errs.ErrBadRequest(fmt.Errorf("invalid 'filters' JSON structure: %w", err))
+		}
+	} else {
+		// ถ้าไม่ส่งมา, ให้สร้างเป็น slice ว่าง (ไม่มี filter)
+		filterGroups = make([][]entity.FilterInput, 0)
+	}
+
+	sortBy := c.QueryParam("sort_by")
+	sortOrder := c.QueryParam("sort_order")
+
+	data, err := d.dataUs.ServingDatasetVersionData(ctx, datasetID, version, &paginator, viewName, filterGroups, logicalOperator, sortBy, sortOrder)
 	if err != nil {
 		return err
 	}
@@ -574,7 +588,7 @@ func (d *dataHandler) ServingDatasetVersionData(c echo.Context) error {
 // ServingDatasetVersionDataByKey implements data.DataHandler.
 func (d *dataHandler) ServingDatasetVersionDataByKey(c echo.Context) error {
 	ctx := c.Request().Context()
-	datasetID := c.Param("dataset")
+	datasetID := c.Param("id")
 	version := c.Param("version")
 	key := c.Param("key")
 
@@ -588,50 +602,18 @@ func (d *dataHandler) ServingDatasetVersionDataByKey(c echo.Context) error {
 		return errs.NewBadRequestError("key parameter is required")
 	}
 
-	paginator := helperModel.NewPaginator()
-	page := c.QueryParam("page")
-	perPage := c.QueryParam("per_page")
-
-	if page != "" && perPage != "" {
-		p, err := strconv.Atoi(page)
-		if err != nil || p < 1 {
-			return errs.ErrBadRequest(fmt.Errorf("invalid page"))
-		}
-		pp, err := strconv.Atoi(perPage)
-		if err != nil || pp < 1 || pp > 100 {
-			return errs.ErrBadRequest(fmt.Errorf("invalid per_page"))
-		}
-		paginator.Page = p
-		paginator.PerPage = pp
-	}
-
-	// Get view and columns query parameters
 	viewName := c.QueryParam("view")
-	columnsParam := c.QueryParam("columns")
-	var requestedColumns []string
-	if columnsParam != "" {
-		requestedColumns = strings.Split(columnsParam, ",")
-		// Trim whitespace
-		for i, col := range requestedColumns {
-			requestedColumns[i] = strings.TrimSpace(col)
-		}
-	}
 
-	data, err := d.dataUs.ServingDatasetVersionDataByKey(ctx, datasetID, version, key, &paginator, viewName, requestedColumns)
+	data, err := d.dataUs.ServingDatasetVersionDataByKey(ctx, datasetID, version, key, viewName)
 	if err != nil {
 		return err
 	}
-
-	// For key-based access, return single object instead of array
-	var responseData interface{}
-	if len(data) == 0 {
-		responseData = nil
-	} else {
-		responseData = data[0] // Return first (and should be only) record as single object
+	if data == nil {
+		return errs.NewNotFoundError("data not found for the given key")
 	}
 
 	res := map[string]interface{}{
-		"data": responseData,
+		"data": data,
 	}
 	return c.JSON(http.StatusOK, res)
 }
@@ -639,7 +621,7 @@ func (d *dataHandler) ServingDatasetVersionDataByKey(c echo.Context) error {
 // CreateDatasetVersionData implements data.DataHandler.
 func (d *dataHandler) CreateDatasetVersionData(c echo.Context) error {
 	ctx := c.Request().Context()
-	datasetID := c.Param("dataset")
+	datasetID := c.Param("id")
 	version := c.Param("version")
 
 	if datasetID == "" {
@@ -669,7 +651,7 @@ func (d *dataHandler) CreateDatasetVersionData(c echo.Context) error {
 // UpdateDatasetVersionDataByKey implements data.DataHandler.
 func (d *dataHandler) UpdateDatasetVersionDataByKey(c echo.Context) error {
 	ctx := c.Request().Context()
-	datasetID := c.Param("dataset")
+	datasetID := c.Param("id")
 	version := c.Param("version")
 	key := c.Param("key")
 
@@ -703,7 +685,7 @@ func (d *dataHandler) UpdateDatasetVersionDataByKey(c echo.Context) error {
 // DeleteDatasetVersionDataByKey implements data.DataHandler.
 func (d *dataHandler) DeleteDatasetVersionDataByKey(c echo.Context) error {
 	ctx := c.Request().Context()
-	datasetID := c.Param("dataset")
+	datasetID := c.Param("id")
 	version := c.Param("version")
 	key := c.Param("key")
 

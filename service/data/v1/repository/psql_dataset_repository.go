@@ -102,8 +102,26 @@ func (p *psqlDatasetRepository) batchInsertPhysicalColumns(ctx context.Context, 
 	return nil
 }
 
+func (p *psqlDatasetRepository) batchInsertPhysicalTableRelations(ctx context.Context, tx *sqlx.Tx, tableRelations []*entity.TableRelations) error {
+	valueStrings := make([]string, 0, len(tableRelations))
+	valueArgs := make([]interface{}, 0, len(tableRelations)*6)
+
+	for _, tr := range tableRelations {
+		valueStrings = append(valueStrings, "(?, ?, ?, ?, ?, ?, ?)")
+		valueArgs = append(valueArgs, tr.ID, tr.SourceID, tr.TableFrom, tr.ColumnFrom, tr.TableTo, tr.ColumnTo, tr.CreatedAt)
+	}
+
+	query := `INSERT INTO table_relations (id, source_id, table_from, column_from, table_to, column_to, created_at) VALUES ` + strings.Join(valueStrings, ",") + `;`
+
+	query = sqlx.Rebind(sqlx.DOLLAR, query)
+	if _, err := tx.ExecContext(ctx, query, valueArgs...); err != nil {
+		return err
+	}
+	return nil
+}
+
 // BatchInsertInformationDatabase implements data.PsqlDatasetRepository.
-func (p *psqlDatasetRepository) BatchInsertInformationDatabase(ctx context.Context, schemas []*entity.Schemas, tables []*entity.Tables, columns []*entity.Columns) error {
+func (p *psqlDatasetRepository) BatchInsertInformationDatabase(ctx context.Context, schemas []*entity.Schemas, tables []*entity.Tables, columns []*entity.Columns, tableRelations []*entity.TableRelations) error {
 	tx, err := p.client.GetClient().BeginTxx(ctx, nil)
 	if err != nil {
 		return err
@@ -122,6 +140,11 @@ func (p *psqlDatasetRepository) BatchInsertInformationDatabase(ctx context.Conte
 	}
 	if len(columns) > 0 {
 		if err := p.batchInsertPhysicalColumns(ctx, tx, columns); err != nil {
+			return err
+		}
+	}
+	if len(tableRelations) > 0 {
+		if err := p.batchInsertPhysicalTableRelations(ctx, tx, tableRelations); err != nil {
 			return err
 		}
 	}
@@ -945,7 +968,7 @@ func (p *psqlDatasetRepository) FetchDatasetVersionsList(ctx context.Context, da
 		var totalRows int
 		countArgs := append([]interface{}(nil), valArgs...)
 		// remove LIMIT/OFFSET from args if present
-		if paginator != nil && len(countArgs) >= 2 {
+		if len(countArgs) >= 2 {
 			countArgs = countArgs[:len(countArgs)-2]
 		}
 		countSQL := fmt.Sprintf(`SELECT COUNT(*) FROM dataset_versions %s`, where)

@@ -43,12 +43,12 @@ func (r *Route) RegisterDataRoute(handler data.DataHandler) {
 	datasetVersionsGroup.DELETE("/:version", handler.DeleteDatasetVersionByID) // patch update status active,preview,deprecated + DTO validate รับ status
 
 	// Serving Routes
-	servingGroup := r.e.Group("/v1/data")
-	servingGroup.GET("/:dataset/versions/:version", handler.ServingDatasetVersionData)
-	servingGroup.GET("/:dataset/versions/:version/key/:key", handler.ServingDatasetVersionDataByKey)
+	servingGroup := r.e.Group("/v1/datasets/:id/versions/:version")
+	servingGroup.GET("/data", handler.ServingDatasetVersionData)
+	servingGroup.GET("/data/key/:key", handler.ServingDatasetVersionDataByKey)
 
 	// Data Modification Routes
-	servingGroup.POST("/:dataset/versions/:version", handler.CreateDatasetVersionData)
-	servingGroup.PUT("/:dataset/versions/:version/key/:key", handler.UpdateDatasetVersionDataByKey)
-	servingGroup.DELETE("/:dataset/versions/:version/key/:key", handler.DeleteDatasetVersionDataByKey)
+	servingGroup.POST("/data", handler.CreateDatasetVersionData)
+	servingGroup.PUT("/data/key/:key", handler.UpdateDatasetVersionDataByKey)
+	servingGroup.DELETE("/data/key/:key", handler.DeleteDatasetVersionDataByKey)
 }
