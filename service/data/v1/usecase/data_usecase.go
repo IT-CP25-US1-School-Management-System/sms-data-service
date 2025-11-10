@@ -453,7 +453,7 @@ func (d *dataUsecase) ServingDatasetVersionDataByKey(ctx context.Context, datase
 		return nil, errs.NewConflictError("runtime policy is not configured for this dataset version")
 	}
 
-	results, err := d.dataRepo.ExecuteQueryByKey(ctx, datasetVersion.SourceID, &datasetVersion.Schema, &datasetVersion.Policies, key, datasetVersion.Policies.Runtime.DefaultView)
+	results, err := d.dataRepo.ExecuteQueryByKey(ctx, datasetVersion.SourceID, &datasetVersion.Schema, &datasetVersion.Policies, key, viewName)
 	if err != nil {
 		return nil, err
 	}

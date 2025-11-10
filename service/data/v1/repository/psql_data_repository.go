@@ -1045,7 +1045,7 @@ func (p *psqlDataRepository) ExecuteQueryByKey(
 	}
 	viewConfigs, ok := policies.Views[activeViewName]
 	if !ok || len(viewConfigs) == 0 {
-		return nil, fmt.Errorf("view '%s' not found or is empty in policies", activeViewName)
+		return nil, errs.NewNotFoundError(fmt.Sprintf("view '%s' not found or is empty in policies", activeViewName))
 	}
 	viewMap := createViewMap(viewConfigs)
 
