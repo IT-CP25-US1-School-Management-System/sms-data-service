@@ -9,8 +9,11 @@ const (
 	DATASET_SORT_BY_UPDATED_AT = "updated_at"
 
 	// Sort Order
-	SORT_ORDER_ASC  = "asc"
-	SORT_ORDER_DESC = "desc"
+	SORT_ORDER_ASC  = "ASC"
+	SORT_ORDER_DESC = "DESC"
+	// Logical Operators
+	LOGICAL_OPERATOR_AND = "AND"
+	LOGICAL_OPERATOR_OR  = "OR"
 )
 
 var (

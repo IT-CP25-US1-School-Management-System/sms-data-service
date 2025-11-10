@@ -152,7 +152,7 @@ func (p *Policies) UnmarshalJSON(data []byte) error {
 								}
 							}
 							p.Views[key] = []View{{
-								TableName: "", // Will be empty for simplified format
+								TableName: "",
 								Columns:   columns,
 							}}
 						} else {

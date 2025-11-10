@@ -23,7 +23,6 @@ type psqlDatasetRepository struct {
 	client *psql.Client
 }
 
-
 func (p *psqlDatasetRepository) deleteSourceByID(ctx context.Context, tx *sqlx.Tx, sourceID string) error {
 	query := `
 		DELETE FROM sources WHERE id = $1
@@ -105,7 +104,7 @@ func (p *psqlDatasetRepository) batchInsertPhysicalColumns(ctx context.Context, 
 
 func (p *psqlDatasetRepository) batchInsertPhysicalTableRelations(ctx context.Context, tx *sqlx.Tx, tableRelations []*entity.TableRelations) error {
 	valueStrings := make([]string, 0, len(tableRelations))
-	valueArgs := make([]interface{}, 0, len(tableRelations)*6)
+	valueArgs := make([]interface{}, 0, len(tableRelations)*7)
 
 	for _, tr := range tableRelations {
 		valueStrings = append(valueStrings, "(?, ?, ?, ?, ?, ?, ?)")
@@ -611,8 +610,9 @@ func (p *psqlDatasetRepository) FetchDatasetList(ctx context.Context, filter *fi
 		}
 		if filter.SortBy != "" && validSortColumns[filter.SortBy] {
 			order := constants.SORT_ORDER_DESC
-			if validSortOrders[filter.SortOrder] {
-				order = filter.SortOrder
+			sortOrder := strings.ToUpper(filter.SortOrder)
+			if validSortOrders[sortOrder] {
+				order = sortOrder
 			}
 			orderBy = fmt.Sprintf("ORDER BY %s %s", filter.SortBy, order)
 		}

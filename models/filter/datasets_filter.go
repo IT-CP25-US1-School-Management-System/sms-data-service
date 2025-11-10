@@ -9,5 +9,5 @@ type DatasetsFilter struct {
 	Page       int      `query:"page" validate:"omitempty,min=1"`
 	PerPage    int      `query:"per_page" validate:"omitempty,min=1,max=100"`
 	SortBy     string   `query:"sort_by" validate:"omitempty,oneof=name created_at updated_at"`
-	SortOrder  string   `query:"sort_order" validate:"omitempty,oneof=asc desc"`
+	SortOrder  string   `query:"sort_order" validate:"omitempty,oneof=ASC DESC asc desc"`
 }

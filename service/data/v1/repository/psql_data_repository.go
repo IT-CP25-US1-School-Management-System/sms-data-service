@@ -11,6 +11,8 @@ import (
 
 	"github.com/GodeFvt/go-backend/helper/models"
 	helperModel "github.com/GodeFvt/go-backend/helper/models"
+	"github.com/IT-CP25-US1-School-Management-System/sms-data-service/constants"
+	"github.com/IT-CP25-US1-School-Management-System/sms-data-service/errs"
 	"github.com/IT-CP25-US1-School-Management-System/sms-data-service/models/entity"
 	"github.com/IT-CP25-US1-School-Management-System/sms-data-service/service/data/v1"
 	"github.com/IT-CP25-US1-School-Management-System/sms-data-service/service/database/v1"
@@ -355,7 +357,6 @@ func (am *aliasManager) Get(tableName string) (string, bool) {
 //
 //	t1.column_to = t0.column_from ต้องมีการทำ alias เเล้ว
 func buildOnClause(cond entity.Condition, fromAlias string, toAlias string) (string, error) {
-	fmt.Println("Building ON clause with condition:", cond)
 	if cond.ColumnFrom == "" || cond.ColumnTo == "" || cond.Operator == "" {
 		return "", fmt.Errorf("condition object must have 'column_from', 'op', and 'column_to'")
 	}
@@ -508,7 +509,7 @@ func validateEnum(enum []string, value interface{}) error {
 
 	for _, enumVal := range enum {
 		if valStr == enumVal {
-			return nil // เจอค่าที่ถูกต้อง
+			return nil
 		}
 	}
 
@@ -706,17 +707,27 @@ func buildRuntimeSQLBuilder(
 			for _, f := range group {
 				tableAlias, ok := am.Get(f.TableName)
 				if !ok {
-					continue
+					return builder, errs.NewBadRequestError(fmt.Sprintf("filter table '%s' is not joined in the query", f.TableName))
 				}
 				fieldWithAlias := fmt.Sprintf("%s.%s", tableAlias, f.Field)
+
+				// Validate value null
+				if f.Value == nil && (strings.ToUpper(f.Operator) != "IS NULL" && strings.ToUpper(f.Operator) != "IS NOT NULL") {
+					return builder, errs.NewBadRequestError(fmt.Sprintf("filter value for '%s.%s' cannot be null unless using IS NULL or IS NOT NULL operator", f.TableName, f.Field))
+				}
 
 				// Validate Data Type
 				col, ok := schemaMap[f.TableName][f.Field]
 				if !ok {
-					return builder, fmt.Errorf("filter field '%s.%s' not found in schema", f.TableName, f.Field)
+					return builder, errs.NewBadRequestError(fmt.Sprintf("filter field '%s.%s' not found in schema", f.TableName, f.Field))
+				}
+				if col.Enum != nil {
+					if err := validateEnum(col.Enum, f.Value); err != nil {
+						return builder, errs.NewBadRequestError(fmt.Sprintf("invalid filter value for '%s.%s': %v", f.TableName, f.Field, err))
+					}
 				}
 				if err := validateDataType(col.DataType, f.Value); err != nil {
-					return builder, fmt.Errorf("invalid filter value for '%s.%s': %w", f.TableName, f.Field, err)
+					return builder, errs.NewBadRequestError(fmt.Sprintf("invalid filter value for '%s.%s': %v", f.TableName, f.Field, err))
 				}
 
 				// ตรวจสอบ Allow
@@ -727,8 +738,9 @@ func buildRuntimeSQLBuilder(
 					}
 				}
 				if !isAllowed {
-					return builder, fmt.Errorf("filter is not allowed: %s.%s %s", f.TableName, f.Field, f.Operator)
+					return builder, errs.NewBadRequestError(fmt.Sprintf("filter is not allowed: %s.%s %s", f.TableName, f.Field, f.Operator))
 				}
+
 				// สร้าง Expression
 				expr, err := buildSquirrelExpr(fieldWithAlias, f.Operator, f.Value)
 				if err != nil {
@@ -764,12 +776,12 @@ func buildRuntimeSQLBuilder(
 	if sortBy != "" {
 		sortColumn, ok := allowedSortAliases[sortBy]
 		if !ok {
-			return builder, fmt.Errorf("sort_by field '%s' is not an allowed projection alias for sorting", sortBy)
+			return builder, errs.NewBadRequestError(fmt.Sprintf("sort_by field '%s' is not an allowed projection alias for sorting", sortBy))
 		}
 
-		order := "ASC"
-		if strings.ToUpper(sortOrder) == "DESC" {
-			order = "DESC"
+		order := constants.SORT_ORDER_ASC
+		if strings.ToUpper(sortOrder) == constants.SORT_ORDER_DESC {
+			order = constants.SORT_ORDER_DESC
 		}
 
 		builder = builder.OrderBy(fmt.Sprintf("%s %s", sortColumn, order))
@@ -851,6 +863,11 @@ func buildCountSQLBuilder(
 				if !ok {
 					continue // (Count ข้าม)
 				}
+				if col.Enum != nil {
+					if err := validateEnum(col.Enum, f.Value); err != nil {
+						continue
+					}
+				}
 				if err := validateDataType(col.DataType, f.Value); err != nil {
 					continue // (Count ข้าม)
 				}
@@ -920,7 +937,7 @@ func (p *psqlDataRepository) ExecuteQuery(
 	}
 	viewConfigs, ok := policies.Views[activeViewName]
 	if !ok || len(viewConfigs) == 0 {
-		return nil, fmt.Errorf("view '%s' not found or is empty in policies", activeViewName)
+		return nil, errs.NewNotFoundError(fmt.Sprintf("view '%s' not found or is empty in policies", activeViewName))
 	}
 	viewMap := createViewMap(viewConfigs)
 

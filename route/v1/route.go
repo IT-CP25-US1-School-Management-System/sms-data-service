@@ -23,7 +23,7 @@ func (r *Route) RegisterDataRoute(handler data.DataHandler) {
 	introspectGroup.GET("/columns", handler.FetchColumnsList)
 	introspectGroup.POST("/sources", handler.InsertSource)
 	introspectGroup.PUT("/sources/:id", handler.UpdateSource)
-	introspectGroup.DELETE("sources/:id", handler.DeleteSourceByID, r.middl.ValidateParamId("id"))
+	introspectGroup.DELETE("/sources/:id", handler.DeleteSourceByID, r.middl.ValidateParamId("id"))
 	introspectGroup.PATCH("/sources/:id/activate", handler.ActivateSourceByID, r.middl.ValidateParamId("id"))
 	introspectGroup.PATCH("/sources/:id/deactivate", handler.DeactivateSourceByID, r.middl.ValidateParamId("id"))
 

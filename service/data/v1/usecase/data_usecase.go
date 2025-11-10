@@ -277,6 +277,13 @@ func (d *dataUsecase) FetchDatasetVersionsList(ctx context.Context, datasetID st
 	if err := d.validateDatasetID(datasetID); err != nil {
 		return nil, err
 	}
+	exist, err := d.datasetRepo.ExistDatasetByID(ctx, datasetID)
+	if err != nil {
+		return nil, err
+	}
+	if !exist {
+		return nil, errs.NewNotFoundError(constants.ERR_DATASET_NOT_FOUND)
+	}
 	return d.datasetRepo.FetchDatasetVersionsList(ctx, datasetID, filter, paginator)
 }
 

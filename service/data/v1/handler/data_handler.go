@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -516,7 +515,6 @@ func (d *dataHandler) ServingDatasetVersionData(c echo.Context) error {
 	ctx := c.Request().Context()
 	datasetID := c.Param("id")
 	version := c.Param("version")
-
 	if datasetID == "" {
 		return errs.NewBadRequestError("dataset parameter is required")
 	}
@@ -524,49 +522,39 @@ func (d *dataHandler) ServingDatasetVersionData(c echo.Context) error {
 		return errs.NewBadRequestError("version parameter is required")
 	}
 
+	var servingFilter filter.ServingDataFilter
+	if err := c.Bind(&servingFilter); err != nil {
+		return errs.ErrBadRequest(err)
+	}
+	if err := c.Validate(&servingFilter); err != nil {
+		return errs.ErrBadRequest(err)
+	}
+
 	paginator := helperModel.NewPaginator()
-	page := c.QueryParam("page")
-	perPage := c.QueryParam("per_page")
-
-	if page != "" && perPage != "" {
-		p, err := strconv.Atoi(page)
-		if err != nil || p < 1 {
-			return errs.ErrBadRequest(fmt.Errorf("invalid page"))
-		}
-		pp, err := strconv.Atoi(perPage)
-		if err != nil || pp < 1 || pp > 100 {
-			return errs.ErrBadRequest(fmt.Errorf("invalid per_page"))
-		}
-		paginator.Page = p
-		paginator.PerPage = pp
+	if servingFilter.Page > 0 && servingFilter.PerPage > 0 {
+		paginator.Page = servingFilter.Page
+		paginator.PerPage = servingFilter.PerPage
 	}
 
-	viewName := c.QueryParam("view")
-	logicalOperator := c.QueryParam("where_logical_operator")
-	if logicalOperator == "" {
-		logicalOperator = "AND"
-	}
-	logicalOperator = strings.ToUpper(logicalOperator)
-	if logicalOperator != "AND" && logicalOperator != "OR" {
-		return errs.ErrBadRequest(fmt.Errorf("invalid logical_operator: must be 'AND' or 'OR'"))
+	// Convert logical operator to uppercase for consistency
+	logicalOperator := servingFilter.WhereLogicalOp
+	if logicalOperator != "" {
+		logicalOperator = strings.ToUpper(logicalOperator)
 	}
 
-	var filterGroups [][]entity.FilterInput
-	filtersQueryParam := c.QueryParam("where")
-
-	if filtersQueryParam != "" && filtersQueryParam != "[]" {
-		if err := json.Unmarshal([]byte(filtersQueryParam), &filterGroups); err != nil {
-			return errs.ErrBadRequest(fmt.Errorf("invalid 'filters' JSON structure: %w", err))
-		}
-	} else {
-		// ถ้าไม่ส่งมา, ให้สร้างเป็น slice ว่าง (ไม่มี filter)
-		filterGroups = make([][]entity.FilterInput, 0)
+	// Parse the where filters from the raw string
+	filterGroups, err := servingFilter.ParseWhere()
+	if err != nil {
+		return errs.ErrBadRequest(err)
 	}
 
-	sortBy := c.QueryParam("sort_by")
-	sortOrder := c.QueryParam("sort_order")
+	// Convert sort order to uppercase for consistency
+	sortOrder := servingFilter.SortOrder
+	if sortOrder != "" {
+		sortOrder = strings.ToUpper(sortOrder)
+	}
 
-	data, err := d.dataUs.ServingDatasetVersionData(ctx, datasetID, version, &paginator, viewName, filterGroups, logicalOperator, sortBy, sortOrder)
+	data, err := d.dataUs.ServingDatasetVersionData(ctx, datasetID, version, &paginator, servingFilter.View, filterGroups, logicalOperator, servingFilter.SortBy, sortOrder)
 	if err != nil {
 		return err
 	}
