@@ -1,0 +1,46 @@
+type: object
+properties:
+  id:
+    type: string
+    format: uuid
+    nullable: true
+    description: Column ID
+  sources_id:
+    type: string
+    format: uuid
+    nullable: true
+    description: Source ID
+  schema:
+    type: string
+    description: Schema name
+  table_name:
+    type: string
+    description: Table name
+  column_name:
+    type: string
+    description: Column name
+  data_type:
+    type: string
+    description: Data type
+  is_nullable:
+    type: boolean
+    description: Whether the column is nullable
+  column_default:
+    type: string
+    nullable: true
+    description: Default value
+  ordinal_position:
+    type: integer
+    nullable: true
+    description: Column position in table
+  created_at:
+    type: string
+    format: date-time
+    nullable: true
+    description: Creation timestamp
+required:
+  - schema
+  - table_name
+  - column_name
+  - data_type
+  - is_nullable

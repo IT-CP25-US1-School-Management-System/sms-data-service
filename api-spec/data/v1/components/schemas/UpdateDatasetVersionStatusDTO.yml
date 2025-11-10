@@ -1,0 +1,8 @@
+type: object
+properties:
+  status:
+    type: string
+    enum: [active, preview, deprecated]
+    description: New status for the dataset version
+required:
+  - status

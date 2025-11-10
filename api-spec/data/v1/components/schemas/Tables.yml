@@ -1,0 +1,26 @@
+type: object
+properties:
+  id:
+    type: string
+    format: uuid
+    nullable: true
+    description: Table ID
+  sources_id:
+    type: string
+    format: uuid
+    nullable: true
+    description: Source ID
+  schema:
+    type: string
+    description: Schema name
+  table_name:
+    type: string
+    description: Table name
+  created_at:
+    type: string
+    format: date-time
+    nullable: true
+    description: Creation timestamp
+required:
+  - schema
+  - table_name

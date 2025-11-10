@@ -1,0 +1,145 @@
+# /introspect/sources/{id}
+put:
+  tags: [Introspection]
+  summary: Update a data source
+  parameters:
+    - name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Source ID
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: "../../components/schemas/UpdateSourcesDTO.yml"
+  responses:
+    "200":
+      description: Source updated successfully
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+                example: "success"
+              id:
+                type: string
+                format: uuid
+                description: Updated source ID
+    "400":
+      description: Bad Request - validation error
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yml"
+    "404":
+      description: Source not found
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yml"
+    "500":
+      description: Internal Server Error
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yml"
+
+delete:
+  tags: [Introspection]
+  summary: Delete a data source
+  parameters:
+    - name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Source ID
+  responses:
+    "200":
+      description: Source deleted successfully
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+                example: "success"
+    "400":
+      description: Bad Request - invalid ID
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yml"
+    "404":
+      description: Source not found
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yml"
+    "500":
+      description: Internal Server Error
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yml"
+
+patch:
+  tags: [Introspection]
+  summary: Activate or deactivate a data source
+  parameters:
+    - name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Source ID
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            is_active:
+              type: boolean
+              description: Set to true to activate, false to deactivate
+          required:
+            - is_active
+  responses:
+    "200":
+      description: Source status updated successfully
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+                example: "success"
+    "400":
+      description: Bad Request - invalid ID or request body
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yml"
+    "404":
+      description: Source not found
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yml"
+    "500":
+      description: Internal Server Error
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yml"

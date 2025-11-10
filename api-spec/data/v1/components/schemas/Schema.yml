@@ -1,0 +1,39 @@
+type: object
+properties:
+  columns:
+    type: array
+    items:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Column name
+        table_name:
+          type: string
+          description: Table name
+        alias:
+          type: string
+          description: Column alias (optional)
+        type:
+          type: string
+          description: Data type
+        is_nullable:
+          type: boolean
+          description: Whether the column is nullable
+        default:
+          type: string
+          nullable: true
+          description: Default value (optional)
+        enum:
+          type: array
+          items:
+            type: string
+          description: Enum values (optional)
+      required:
+        - name
+        - table_name
+        - type
+    minItems: 1
+    description: Column definitions
+required:
+  - columns

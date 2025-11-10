@@ -1,0 +1,75 @@
+type: object
+properties:
+  runtime:
+    type: object
+    properties:
+      default_view:
+        type: string
+        description: Default view name
+      key_field:
+        type: string
+        description: Primary key field
+      query:
+        $ref: "QueryPlan.yml"
+    required:
+      - default_view
+      - key_field
+      - query
+  views:
+    type: object
+    additionalProperties:
+      type: array
+      items:
+        type: object
+        properties:
+          table_name:
+            type: string
+            description: Table name
+          columns:
+            type: array
+            items:
+              type: string
+            minItems: 1
+            description: Column names
+        required:
+          - table_name
+          - columns
+    description: View definitions
+  filters:
+    type: array
+    items:
+      type: string
+    description: Available filters (optional)
+  write:
+    type: object
+    properties:
+      key_field:
+        type: string
+        description: Key field for write operations
+      allow_edit:
+        type: array
+        items:
+          type: string
+        minItems: 1
+        description: Editable fields
+      query:
+        $ref: "QueryPlan.yml"
+    required:
+      - key_field
+      - allow_edit
+      - query
+    description: Write policy (optional)
+  delete:
+    type: object
+    properties:
+      key_field:
+        type: string
+        description: Key field for delete operations
+      query:
+        $ref: "QueryPlan.yml"
+    required:
+      - key_field
+      - query
+    description: Delete policy (optional)
+required:
+  - views

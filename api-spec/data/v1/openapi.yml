@@ -30,6 +30,8 @@ paths:
   # -------------------- Introspection (physical metadata) --------------------
   /introspect/sources:
     $ref: paths/introspect/sources.yml
+  /introspect/sources/{id}:
+    $ref: paths/introspect/sources_{id}.yml
   /introspect/schemas:
     $ref: paths/introspect/schemas.yml
   /introspect/tables:
@@ -43,21 +45,17 @@ paths:
   /datasets/{id}:
     $ref: paths/datasets/datasets_{id}.yml
 
-  # -------------------- Contracts (with runtime query plans only) --------------------
-  /contracts/{dataset}:
-    $ref: paths/contracts/contracts_{dataset}.yml
-  /contracts/{dataset}/{versions}:
-    $ref: paths/contracts/contracts_{dataset}_{versions}.yml
-  /contracts/validate:
-    $ref: paths/contracts/contracts_validate.yml
+  # -------------------- Contracts (Dataset Versions Management) --------------------
+  /datasets/{id}/versions:
+    $ref: paths/contracts/datasets_{id}_versions.yml
+  /datasets/{id}/versions/{version}:
+    $ref: paths/contracts/datasets_{id}_versions_{version}.yml
 
   # -------------------- Serving (dynamic + CRUD/Query/Export) --------------------
-  /data/{dataset}:
-    $ref: paths/serving/data_{dataset}.yml
-  /data/{dataset}/key/{key}:
-    $ref: paths/serving/data_{dataset}_key_{key}.yml
-  /data/{dataset}/query:
-    $ref: paths/serving/data_{dataset}_query.yml
+  /datasets/{id}/versions/{version}/data:
+    $ref: paths/serving/datasets_{id}_versions_{version}_data.yml
+  /datasets/{id}/versions/{version}/data/key/{key}:
+    $ref: paths/serving/datasets_{id}_versions_{version}_data_key_{key}.yml
 
   # -------------------- Reporting (export, import, reporting) --------------------
   /reporting/export/job:

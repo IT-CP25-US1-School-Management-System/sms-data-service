@@ -1,0 +1,131 @@
+# /datasets/{id}/versions/{version}
+get:
+  tags: [Contracts]
+  summary: Get dataset version by ID (contract details)
+  parameters:
+    - name: id
+      in: path
+      required: true
+      schema:
+        type: string
+      description: Dataset ID
+    - name: version
+      in: path
+      required: true
+      schema:
+        type: string
+      description: Version name/number
+  responses:
+    "200":
+      description: Dataset version details
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              data:
+                $ref: "../../components/schemas/DatasetVersion.yml"
+    "400":
+      description: Bad Request
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yml"
+    "404":
+      description: Dataset or version not found
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yml"
+
+put:
+  tags: [Contracts]
+  summary: Update dataset version (contract)
+  parameters:
+    - name: id
+      in: path
+      required: true
+      schema:
+        type: string
+      description: Dataset ID
+    - name: version
+      in: path
+      required: true
+      schema:
+        type: string
+      description: Version name/number
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: "../../components/schemas/UpdateDatasetVersionDTO.yml"
+  responses:
+    "200":
+      description: Dataset version updated successfully
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+                example: "success"
+    "400":
+      description: Bad Request - validation error
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yml"
+    "404":
+      description: Dataset or version not found
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yml"
+
+patch:
+  tags: [Contracts]
+  summary: Update dataset version status
+  parameters:
+    - name: id
+      in: path
+      required: true
+      schema:
+        type: string
+      description: Dataset ID
+    - name: version
+      in: path
+      required: true
+      schema:
+        type: string
+      description: Version name/number
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: "../../components/schemas/UpdateDatasetVersionStatusDTO.yml"
+  responses:
+    "200":
+      description: Dataset version status updated successfully
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+                example: "success"
+    "400":
+      description: Bad Request - validation error
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yml"
+    "404":
+      description: Dataset or version not found
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yml"
