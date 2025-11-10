@@ -35,8 +35,21 @@ type DataUsecase interface {
 	UpdateDatasetVersionStatus(ctx context.Context, datasetID, version, status string) error
 
 	// Serving methods
-	ServingDatasetVersionData(ctx context.Context, datasetID, version string, paginator *helperModel.Paginator, viewName string, requestedColumns []string) ([]map[string]interface{}, error)
-	ServingDatasetVersionDataByKey(ctx context.Context, datasetID, version, key string, paginator *helperModel.Paginator, viewName string, requestedColumns []string) ([]map[string]interface{}, error)
+	ServingDatasetVersionData(
+		ctx context.Context,
+		datasetID string,
+		version string,
+		paginator *helperModel.Paginator,
+		viewName string,
+		filterGroups [][]entity.FilterInput,
+		logicalOperator string,
+		sortBy string,
+		sortOrder string,
+	) ([]map[string]interface{}, error)
+	ServingDatasetVersionDataByKey(
+		ctx context.Context,
+		datasetID, version, key, viewName string,
+	) (map[string]interface{}, error)
 
 	// Data Modification methods (requires write policies)
 	CreateDatasetVersionData(ctx context.Context, datasetID, version string, data map[string]interface{}) (map[string]interface{}, error)

@@ -23,7 +23,7 @@ func (r *Route) RegisterDataRoute(handler data.DataHandler) {
 	introspectGroup.GET("/columns", handler.FetchColumnsList)
 	introspectGroup.POST("/sources", handler.InsertSource)
 	introspectGroup.PUT("/sources/:id", handler.UpdateSource)
-	introspectGroup.DELETE("sources/:id", handler.DeleteSourceByID, r.middl.ValidateParamId("id"))
+	introspectGroup.DELETE("/sources/:id", handler.DeleteSourceByID, r.middl.ValidateParamId("id"))
 	introspectGroup.PATCH("/sources/:id/activate", handler.ActivateSourceByID, r.middl.ValidateParamId("id"))
 	introspectGroup.PATCH("/sources/:id/deactivate", handler.DeactivateSourceByID, r.middl.ValidateParamId("id"))
 
@@ -43,12 +43,12 @@ func (r *Route) RegisterDataRoute(handler data.DataHandler) {
 	datasetVersionsGroup.PATCH("/:version", handler.UpdateDatasetVersionStatus) // patch update status active,preview,deprecated + DTO validate รับ status
 
 	// Serving Routes
-	servingGroup := r.e.Group("/v1/data")
-	servingGroup.GET("/:dataset/versions/:version", handler.ServingDatasetVersionData)
-	servingGroup.GET("/:dataset/versions/:version/key/:key", handler.ServingDatasetVersionDataByKey)
+	servingGroup := r.e.Group("/v1/datasets/:id/versions/:version")
+	servingGroup.GET("/data", handler.ServingDatasetVersionData)
+	servingGroup.GET("/data/key/:key", handler.ServingDatasetVersionDataByKey)
 
 	// Data Modification Routes
-	servingGroup.POST("/:dataset/versions/:version", handler.CreateDatasetVersionData)
-	servingGroup.PUT("/:dataset/versions/:version/key/:key", handler.UpdateDatasetVersionDataByKey)
-	servingGroup.DELETE("/:dataset/versions/:version/key/:key", handler.DeleteDatasetVersionDataByKey)
+	servingGroup.POST("/data", handler.CreateDatasetVersionData)
+	servingGroup.PUT("/data/key/:key", handler.UpdateDatasetVersionDataByKey)
+	servingGroup.DELETE("/data/key/:key", handler.DeleteDatasetVersionDataByKey)
 }

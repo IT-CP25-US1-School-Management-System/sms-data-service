@@ -2,8 +2,6 @@ package usecase
 
 import (
 	"context"
-	"fmt"
-	"strings"
 
 	helperModel "github.com/GodeFvt/go-backend/helper/models"
 	"github.com/IT-CP25-US1-School-Management-System/sms-data-service/constants"
@@ -97,7 +95,12 @@ func (d *dataUsecase) InsertSource(ctx context.Context, source *entity.Sources) 
 		d.datasetRepo.DeleteSourceByID(ctx, source.ID)
 		return err
 	}
-	err = d.datasetRepo.BatchInsertInformationDatabase(ctx, infoSchema, infoTables, infoColumns)
+	infoTableRelations, err := d.dataRepo.FetchInformationTableRelationsBySourceID(ctx, source.DBType, source.ID)
+	if err != nil {
+		d.datasetRepo.DeleteSourceByID(ctx, source.ID)
+		return err
+	}
+	err = d.datasetRepo.BatchInsertInformationDatabase(ctx, infoSchema, infoTables, infoColumns, infoTableRelations)
 	if err != nil {
 		d.datasetRepo.DeleteSourceByID(ctx, source.ID)
 		return err
@@ -185,7 +188,6 @@ func (d *dataUsecase) validateVersionFormat(version string) error {
 		return errs.NewBadRequestError(constants.ERR_DATASET_VERSION_IS_REQUIRED)
 	}
 
-	// Regex pattern for semantic version: v + digit + . + digit + . + digit
 	if !constants.DATASET_VERSION_PATTERN.MatchString(version) {
 		return errs.NewBadRequestError(constants.ERR_DATASET_VERSION_INVALID_FORMAT)
 	}
@@ -275,6 +277,13 @@ func (d *dataUsecase) FetchDatasetVersionsList(ctx context.Context, datasetID st
 	if err := d.validateDatasetID(datasetID); err != nil {
 		return nil, err
 	}
+	exist, err := d.datasetRepo.ExistDatasetByID(ctx, datasetID)
+	if err != nil {
+		return nil, err
+	}
+	if !exist {
+		return nil, errs.NewNotFoundError(constants.ERR_DATASET_NOT_FOUND)
+	}
 	return d.datasetRepo.FetchDatasetVersionsList(ctx, datasetID, filter, paginator)
 }
 
@@ -317,6 +326,14 @@ func (d *dataUsecase) InsertDatasetVersion(ctx context.Context, datasetVersion *
 	if !exists {
 		return errs.NewNotFoundError(constants.ERR_DATASET_NOT_FOUND)
 	}
+	exists, err = d.datasetRepo.ExistDatasetVersionByID(ctx, datasetID, datasetVersion.Version)
+	if err != nil {
+		return err
+	}
+	if exists {
+		return errs.NewConflictError(constants.ERR_DATASET_VERSION_ALREADY_EXISTS)
+	}
+
 	datasetVersion.DatasetID = datasetID
 	now := helperModel.NewTimestampFromNow()
 	datasetVersion.CreatedAt = &now
@@ -362,163 +379,27 @@ func (d *dataUsecase) UpdateDatasetVersionStatus(ctx context.Context, datasetID 
 	if !exists {
 		return errs.NewNotFoundError("dataset version not found")
 	}
+
 	return d.datasetRepo.UpdateDatasetVersionStatus(ctx, datasetID, version, status)
 }
 
-
-// filterRuntimePolicyByViewAndColumns filters runtime policy based on view and requested columns
-func (d *dataUsecase) filterRuntimePolicyByViewAndColumns(runtime entity.RuntimePolicy, viewName string, requestedColumns []string, views map[string][]string) (*entity.RuntimePolicy, error) {
-	// Make a copy of the runtime policy
-	filteredRuntime := runtime
-
-	// Debug: Log input parameters
-	fmt.Printf("DEBUG: viewName='%s', requestedColumns=%v\n", viewName, requestedColumns)
-	fmt.Printf("DEBUG: Available views: %v\n", views)
-
-	// If view is specified, validate and get allowed columns
-	var allowedColumns []string
-	if viewName != "" {
-		if viewColumns, exists := views[viewName]; exists {
-			allowedColumns = viewColumns
-			fmt.Printf("DEBUG: Found view '%s' with columns: %v\n", viewName, allowedColumns)
-		} else {
-			return nil, errs.NewBadRequestError(fmt.Sprintf("view '%s' not found", viewName))
-		}
-	}
-
-	// If specific columns are requested, validate against view (if specified) or all available columns
-	if len(requestedColumns) > 0 {
-		var validColumns []string
-
-		if len(allowedColumns) > 0 {
-			// Validate against view columns
-			allowedSet := make(map[string]bool)
-			for _, col := range allowedColumns {
-				allowedSet[col] = true
-			}
-
-			for _, col := range requestedColumns {
-				if allowedSet[col] {
-					validColumns = append(validColumns, col)
-				} else {
-					return nil, errs.NewBadRequestError(fmt.Sprintf("column '%s' is not allowed in view '%s'", col, viewName))
-				}
-			}
-		} else {
-			// If no view specified, validate against all available projections
-			availableColumns := make(map[string]bool)
-			for _, proj := range runtime.Query.Projections {
-				if proj.Alias != "" {
-					availableColumns[proj.Alias] = true
-				} else if proj.Column != "" {
-					availableColumns[proj.Column] = true
-				}
-			}
-
-			for _, col := range requestedColumns {
-				if availableColumns[col] {
-					validColumns = append(validColumns, col)
-				} else {
-					return nil, errs.NewBadRequestError(fmt.Sprintf("column '%s' is not available", col))
-				}
-			}
-		}
-
-		// Filter projections based on valid columns
-		filteredProjections := []entity.Projection{}
-		for _, proj := range runtime.Query.Projections {
-			include := false
-
-			// Get the projection's output name (alias or column name)
-			var projOutputName string
-			if proj.Alias != "" {
-				projOutputName = proj.Alias
-			} else if proj.Column != "" {
-				// Extract column name without table prefix
-				parts := strings.Split(proj.Column, ".")
-				if len(parts) > 1 {
-					projOutputName = parts[len(parts)-1] // Take the last part (column name)
-				} else {
-					projOutputName = proj.Column
-				}
-			} else if proj.Expr != nil && proj.Expr.Field != "" {
-				// For expressions, use the expression as is or extract meaningful name
-				projOutputName = proj.Expr.Field
-			}
-
-			// Check if this projection should be included
-			for _, col := range validColumns {
-				if projOutputName == col {
-					include = true
-					break
-				}
-			}
-
-			if include {
-				filteredProjections = append(filteredProjections, proj)
-			}
-		}
-
-		filteredRuntime.Query.Projections = filteredProjections
-	} else if len(allowedColumns) > 0 {
-		// If view is specified but no specific columns, filter by view columns
-		fmt.Printf("DEBUG: Filtering projections by view columns: %v\n", allowedColumns)
-
-		filteredProjections := []entity.Projection{}
-		for _, proj := range runtime.Query.Projections {
-			include := false
-
-			// Get the projection's output name (alias or column name)
-			var projOutputName string
-			if proj.Alias != "" {
-				projOutputName = proj.Alias
-			} else if proj.Column != "" {
-				// Extract column name without table prefix
-				parts := strings.Split(proj.Column, ".")
-				if len(parts) > 1 {
-					projOutputName = parts[len(parts)-1] // Take the last part (column name)
-				} else {
-					projOutputName = proj.Column
-				}
-			} else if proj.Expr != nil && proj.Expr.Field != "" {
-				// For expressions, use the expression as is or extract meaningful name
-				projOutputName = proj.Expr.Field
-			}
-
-			fmt.Printf("DEBUG: Checking projection - Column: '%s', Alias: '%s', OutputName: '%s'\n", proj.Column, proj.Alias, projOutputName)
-
-			// Check if this projection should be included in the view
-			for _, col := range allowedColumns {
-				if projOutputName == col {
-					include = true
-					fmt.Printf("DEBUG: Including projection '%s' (matches view column '%s')\n", projOutputName, col)
-					break
-				}
-			}
-
-			if !include {
-				fmt.Printf("DEBUG: Excluding projection '%s'\n", projOutputName)
-			}
-
-			if include {
-				filteredProjections = append(filteredProjections, proj)
-			}
-		}
-
-		fmt.Printf("DEBUG: Original projections count: %d, Filtered count: %d\n", len(runtime.Query.Projections), len(filteredProjections))
-		filteredRuntime.Query.Projections = filteredProjections
-	}
-
-	return &filteredRuntime, nil
-}
-
-// ServingDatasetVersionData implements data.DataUsecase.
-func (d *dataUsecase) ServingDatasetVersionData(ctx context.Context, datasetID string, version string, paginator *helperModel.Paginator, viewName string, requestedColumns []string) ([]map[string]interface{}, error) {
+func (d *dataUsecase) ServingDatasetVersionData(
+	ctx context.Context,
+	datasetID string,
+	version string,
+	paginator *helperModel.Paginator,
+	viewName string,
+	filterGroups [][]entity.FilterInput,
+	logicalOperator string,
+	sortBy string,
+	sortOrder string,
+) ([]map[string]interface{}, error) {
 	if err := d.validateDatasetID(datasetID); err != nil {
 		return nil, err
 	}
-
-	// 1. Get dataset version to get policies
+	if err := d.validateVersionFormat(version); err != nil {
+		return nil, err
+	}
 	datasetVersion, err := d.datasetRepo.FetchDatasetVersionByID(ctx, datasetID, version)
 	if err != nil {
 		return nil, err
@@ -529,20 +410,19 @@ func (d *dataUsecase) ServingDatasetVersionData(ctx context.Context, datasetID s
 	if datasetVersion.Policies.Runtime == nil {
 		return nil, errs.NewConflictError("runtime policy is not configured for this dataset version")
 	}
-	// 2. Validate view and columns
-	filteredRuntime, err := d.filterRuntimePolicyByViewAndColumns(*datasetVersion.Policies.Runtime, viewName, requestedColumns, datasetVersion.Policies.Views)
-	if err != nil {
-		return nil, err
-	}
 
-	// 3. Build SQL from filtered runtime policy
-	query, args, err := d.dataRepo.BuildRuntimeSQL(ctx, datasetVersion.SourceID, filteredRuntime)
-	if err != nil {
-		return nil, err
-	}
-
-	// 4. Execute query
-	results, err := d.dataRepo.ExecuteQuery(ctx, datasetVersion.SourceID, query, args, paginator)
+	results, err := d.dataRepo.ExecuteQuery(
+		ctx,
+		datasetVersion.SourceID,
+		&datasetVersion.Schema,
+		&datasetVersion.Policies,
+		filterGroups,
+		logicalOperator,
+		paginator,
+		viewName,
+		sortBy,
+		sortOrder,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -551,12 +431,15 @@ func (d *dataUsecase) ServingDatasetVersionData(ctx context.Context, datasetID s
 }
 
 // ServingDatasetVersionDataByKey implements data.DataUsecase.
-func (d *dataUsecase) ServingDatasetVersionDataByKey(ctx context.Context, datasetID string, version string, key string, paginator *helperModel.Paginator, viewName string, requestedColumns []string) ([]map[string]interface{}, error) {
+func (d *dataUsecase) ServingDatasetVersionDataByKey(ctx context.Context, datasetID, version, key, viewName string) (map[string]interface{}, error) {
 	if err := d.validateDatasetID(datasetID); err != nil {
 		return nil, err
 	}
+	if err := d.validateVersionFormat(version); err != nil {
+		return nil, err
+	}
 
-	// 1. Get dataset version to get policies
+	// Get dataset version to get policies
 	datasetVersion, err := d.datasetRepo.FetchDatasetVersionByID(ctx, datasetID, version)
 	if err != nil {
 		return nil, err
@@ -565,35 +448,12 @@ func (d *dataUsecase) ServingDatasetVersionDataByKey(ctx context.Context, datase
 		return nil, errs.NewNotFoundError("dataset version not found")
 	}
 
-	// 2. Use runtime policy and prepare for key-based filtering
+	// Use runtime policy and prepare for key-based filtering
 	if datasetVersion.Policies.Runtime == nil {
 		return nil, errs.NewConflictError("runtime policy is not configured for this dataset version")
 	}
-	// 3. Filter policy by view and columns
-	filteredPolicy, err := d.filterRuntimePolicyByViewAndColumns(*datasetVersion.Policies.Runtime, viewName, requestedColumns, datasetVersion.Policies.Views)
-	if err != nil {
-		return nil, err
-	}
 
-	// 4. Build SQL from filtered policy
-	query, args, err := d.dataRepo.BuildRuntimeSQL(ctx, datasetVersion.SourceID, filteredPolicy)
-	if err != nil {
-		return nil, err
-	}
-
-	// 5. Check if KeyField is configured in the runtime policy
-	if filteredPolicy.KeyField == "" {
-		return nil, errs.NewConflictError("KeyField is not configured in runtime policy for key-based access")
-	}
-
-	keyField := filteredPolicy.KeyField
-
-	// 6. Execute query with key-based WHERE condition
-	whereConditions := map[string]interface{}{
-		keyField: key,
-	}
-
-	results, err := d.dataRepo.ExecuteQueryByKey(ctx, datasetVersion.SourceID, query, args, whereConditions)
+	results, err := d.dataRepo.ExecuteQueryByKey(ctx, datasetVersion.SourceID, &datasetVersion.Schema, &datasetVersion.Policies, key, datasetVersion.Policies.Runtime.DefaultView)
 	if err != nil {
 		return nil, err
 	}
@@ -606,8 +466,11 @@ func (d *dataUsecase) CreateDatasetVersionData(ctx context.Context, datasetID st
 	if err := d.validateDatasetID(datasetID); err != nil {
 		return nil, err
 	}
+	if err := d.validateVersionFormat(version); err != nil {
+		return nil, err
+	}
 
-	// 1. Get dataset version to get policies
+	// Get dataset version to get policies
 	datasetVersion, err := d.datasetRepo.FetchDatasetVersionByID(ctx, datasetID, version)
 	if err != nil {
 		return nil, err
@@ -616,24 +479,17 @@ func (d *dataUsecase) CreateDatasetVersionData(ctx context.Context, datasetID st
 		return nil, errs.NewNotFoundError("dataset version not found")
 	}
 
-	// 2. Check if WritePolicy exists
+	// Check if WritePolicy exists
 	if datasetVersion.Policies.Write == nil {
 		return nil, errs.NewConflictError("WritePolicy is not configured for data creation")
 	}
 
-	// 3. Validate data is not null or empty
+	// Validate data is not null or empty
 	if len(data) == 0 {
-		return nil, errs.NewConflictError("data cannot be null or empty")
+		return nil, errs.NewBadRequestError("data cannot be null or empty")
 	}
 
-	// 4. Build SQL from write policy
-	query, args, err := d.dataRepo.BuildCreateSQL(ctx, datasetVersion.SourceID, datasetVersion.Policies.Write, data)
-	if err != nil {
-		return nil, err
-	}
-
-	// 5. Execute insert
-	result, err := d.dataRepo.ExecuteInsert(ctx, datasetVersion.SourceID, query, args)
+	result, err := d.dataRepo.ExecuteCreate(ctx, datasetVersion.SourceID, datasetVersion.Schema, datasetVersion.Policies.Write, data)
 	if err != nil {
 		return nil, err
 	}
@@ -646,8 +502,9 @@ func (d *dataUsecase) UpdateDatasetVersionDataByKey(ctx context.Context, dataset
 	if err := d.validateDatasetID(datasetID); err != nil {
 		return nil, err
 	}
-
-	// 1. Get dataset version to get policies
+	if err := d.validateVersionFormat(version); err != nil {
+		return nil, err
+	}
 	datasetVersion, err := d.datasetRepo.FetchDatasetVersionByID(ctx, datasetID, version)
 	if err != nil {
 		return nil, err
@@ -656,53 +513,27 @@ func (d *dataUsecase) UpdateDatasetVersionDataByKey(ctx context.Context, dataset
 		return nil, errs.NewNotFoundError("dataset version not found")
 	}
 
-	// 2. Check if WritePolicy exists
 	if datasetVersion.Policies.Write == nil {
 		return nil, errs.NewConflictError("WritePolicy is not configured for data update")
 	}
 
-	// 3. Check if KeyField is configured in the runtime policy
-	if datasetVersion.Policies.Runtime.KeyField == "" {
-		return nil, errs.NewConflictError("KeyField is not configured in runtime policy for key-based update")
+	if datasetVersion.Policies.Write.KeyField == "" {
+		return nil, errs.NewConflictError("KeyField is not configured in write policy for key-based update")
 	}
 
-	// 4. Validate data is not null or empty
 	if len(data) == 0 {
-		return nil, errs.NewConflictError("data cannot be null or empty")
+		return nil, errs.NewBadRequestError("data cannot be null or empty")
 	}
 
-	// 5. Build WHERE condition using KeyField
-	whereConditions := map[string]interface{}{
-		datasetVersion.Policies.Runtime.KeyField: key,
-	}
-
-	// 6. Build SQL from write policy
-	query, args, err := d.dataRepo.BuildUpdateSQL(ctx, datasetVersion.SourceID, datasetVersion.Policies.Write, data, whereConditions)
+	result, err := d.dataRepo.ExecuteUpdate(ctx, datasetVersion.SourceID, datasetVersion.Schema, datasetVersion.Policies.Write, key, data)
 	if err != nil {
 		return nil, err
 	}
-
-	// 7. Execute update
-	rowsAffected, err := d.dataRepo.ExecuteUpdate(ctx, datasetVersion.SourceID, query, args)
-	if err != nil {
-		return nil, err
+	if result == nil {
+		return nil, errs.NewNotFoundError("data with the specified key not found")
 	}
 
-	if rowsAffected == 0 {
-		return nil, errs.NewNotFoundError("no record found with the provided key")
-	}
-
-	// 8. Return the updated record by key
-	updatedData, err := d.ServingDatasetVersionDataByKey(ctx, datasetID, version, key, &helperModel.Paginator{Page: 1, PerPage: 1}, "", nil)
-	if err != nil {
-		return nil, err
-	}
-
-	if len(updatedData) == 0 {
-		return nil, errs.NewNotFoundError("updated record not found")
-	}
-
-	return updatedData[0], nil
+	return result, nil
 }
 
 // DeleteDatasetVersionDataByKey implements data.DataUsecase.
@@ -710,8 +541,9 @@ func (d *dataUsecase) DeleteDatasetVersionDataByKey(ctx context.Context, dataset
 	if err := d.validateDatasetID(datasetID); err != nil {
 		return err
 	}
-
-	// 1. Get dataset version to get policies
+	if err := d.validateVersionFormat(version); err != nil {
+		return err
+	}
 	datasetVersion, err := d.datasetRepo.FetchDatasetVersionByID(ctx, datasetID, version)
 	if err != nil {
 		return err
@@ -719,38 +551,24 @@ func (d *dataUsecase) DeleteDatasetVersionDataByKey(ctx context.Context, dataset
 	if datasetVersion == nil {
 		return errs.NewNotFoundError("dataset version not found")
 	}
-
-	// 2. Check if DeletePolicy exists
 	if datasetVersion.Policies.Delete == nil {
 		return errs.NewConflictError("DeletePolicy is not configured for data deletion")
 	}
 
-	// 3. Check if KeyField is configured in the runtime policy
-	if datasetVersion.Policies.Runtime.KeyField == "" {
-		return errs.NewConflictError("KeyField is not configured in runtime policy for key-based deletion")
-	}
-
-	// 5. Build WHERE condition using KeyField
-	whereConditions := map[string]interface{}{
-		datasetVersion.Policies.Runtime.KeyField: key,
-	}
-
-	// 6. Build SQL from delete policy
-	query, args, err := d.dataRepo.BuildDeleteSQL(ctx, datasetVersion.SourceID, datasetVersion.Policies.Delete, whereConditions)
+	sqlResult, err := d.dataRepo.ExecuteDelete(ctx, datasetVersion.SourceID, datasetVersion.Policies.Delete, key)
 	if err != nil {
 		return err
 	}
-
-	// 7. Execute delete
-	rowsAffected, err := d.dataRepo.ExecuteDelete(ctx, datasetVersion.SourceID, query, args)
+	if sqlResult == nil {
+		return errs.NewNotFoundError("data with the specified key not found")
+	}
+	rowsAffected, err := sqlResult.RowsAffected()
 	if err != nil {
 		return err
 	}
-
 	if rowsAffected == 0 {
-		return errs.NewNotFoundError("no record found with the provided key")
+		return errs.NewNotFoundError("data with the specified key not found")
 	}
-
 	return nil
 }
 
