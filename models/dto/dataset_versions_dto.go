@@ -97,8 +97,16 @@ type JoinRefDTO struct {
 }
 
 type ProjectionDTO struct {
-	Column string `json:"column" validate:"required"`
-	Alias  string `json:"alias" validate:"required"`
+	TableName string   `json:"table_name" validate:"omitempty"`
+	Column    string   `json:"column" validate:"required"`
+	Alias     string   `json:"alias" validate:"required"`
+	Expr      *ExprDTO `json:"expr" validate:"omitempty"` // (e.g., { "operator": "COUNT", ... })
+}
+
+type ExprDTO struct {
+	Operator  string `json:"operator"`   // e.g., "COUNT", "SUM", "AVG"
+	Field     string `json:"field"`      // e.g., "id" or "*"
+	TableName string `json:"table_name"` // e.g., "person_data"
 }
 
 type ConditionDTO struct {

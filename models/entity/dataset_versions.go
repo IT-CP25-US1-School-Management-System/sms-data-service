@@ -86,8 +86,17 @@ type JoinRef struct {
 }
 
 type Projection struct {
-	Column string `json:"column"`
-	Alias  string `json:"alias"`
+	TableName string `json:"table_name,omitempty"`
+	Column    string `json:"column"`
+	Alias     string `json:"alias"`
+	Expr      *Expr  `json:"expr,omitempty"` // (e.g., { "operator": "COUNT", ... })
+}
+
+// สำหรับ Aggregate
+type Expr struct {
+	Operator  string `json:"operator"`   // e.g., "COUNT", "SUM", "AVG"
+	Field     string `json:"field"`      // e.g., "id" or "*"
+	TableName string `json:"table_name"` // e.g., "person_data"
 }
 
 type Condition struct {

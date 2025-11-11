@@ -338,12 +338,11 @@ func newAliasManager(fromTable string) *aliasManager {
 
 // generate สร้าง alias (t0, t1, t2...) และเก็บไว้
 func (am *aliasManager) generate(tableName string) string {
-	if alias, ok := am.aliasMap[tableName]; ok {
-		return alias
-	}
 	alias := fmt.Sprintf("t%d", am.counter)
 	am.counter++
-	am.aliasMap[tableName] = alias
+	if _, ok := am.aliasMap[tableName]; !ok {
+		am.aliasMap[tableName] = alias
+	}
 	return alias
 }
 
@@ -592,6 +591,209 @@ func createViewMap(viewConfigs []entity.View) map[string]map[string]bool {
 	return viewMap
 }
 
+// func buildRuntimeSQLBuilder(
+// 	ctx context.Context,
+// 	schemaMap map[string]map[string]entity.Column,
+// 	queryPlan *entity.QueryPlan,
+// 	filterGroups [][]entity.FilterInput,
+// 	logicalOperator string,
+// 	pagination *models.Paginator,
+// 	sortBy string,
+// 	sortOrder string,
+// 	viewMap map[string]map[string]bool,
+// ) (squirrel.SelectBuilder, error) {
+
+// 	// --- 0. Alias Management ---
+// 	if queryPlan.From == nil || queryPlan.From.Table == "" {
+// 		return squirrel.SelectBuilder{}, fmt.Errorf("QueryPlan.From.Table is required")
+// 	}
+// 	am := newAliasManager(queryPlan.From.Table)
+// 	builder := psqlBuilder.Select().From(fmt.Sprintf("%s AS %s", am.fromTable, am.fromAlias))
+
+// 	fromViewCols, ok := viewMap[am.fromTable]
+// 	if !ok || len(fromViewCols) == 0 {
+// 		return builder, fmt.Errorf("view is missing configuration for base table '%s'", am.fromTable)
+// 	}
+
+// 	// --- 1. Projections (Base Table) ---
+// 	var groupByColumns []string
+// 	allowedSortAliases := make(map[string]string) // [NEW] Map สำหรับ Sorting
+// 	if len(queryPlan.Projections) == 0 {
+// 		return builder, fmt.Errorf("QueryPlan.Projections (for base table) must not be empty")
+// 	}
+// 	for _, p := range queryPlan.Projections {
+// 		baseCol := fmt.Sprintf("%s.%s", am.fromAlias, p.Column)
+// 		alias := p.Alias
+// 		if alias == "" {
+// 			alias = p.Column
+// 		}
+
+// 		// เก็บ Alias ที่อนุญาตให้ Sort
+// 		allowedSortAliases[alias] = baseCol
+// 		// ตรวจสอบว่า column นี้ อยู่ใน view หรือไม่
+// 		if !fromViewCols[p.Column] {
+// 			continue
+// 		}
+// 		if p.Alias != "" {
+// 			builder = builder.Column(fmt.Sprintf("%s AS %s", baseCol, p.Alias))
+// 		} else {
+// 			builder = builder.Column(baseCol)
+// 		}
+// 		groupByColumns = append(groupByColumns, baseCol)
+// 	}
+
+// 	// --- 2. Joins (JSON Nesting) ---
+// 	for _, j := range queryPlan.Joins {
+// 		joinViewCols, shouldJoin := viewMap[j.TableTo]
+// 		if !shouldJoin || len(joinViewCols) == 0 {
+// 			continue
+// 		}
+// 		fromAlias, _ := am.Get(j.TableFrom)
+// 		toAlias := am.generate(j.TableTo)
+// 		var joinProjections []string
+// 		for _, p := range j.Projections {
+// 			if !joinViewCols[p.Column] {
+// 				continue
+// 			}
+// 			jsonKey := fmt.Sprintf("'%s'", p.Alias)
+// 			jsonValue := fmt.Sprintf("%s.%s", toAlias, p.Column)
+// 			joinProjections = append(joinProjections, jsonKey, jsonValue)
+// 		}
+// 		if len(joinProjections) == 0 {
+// 			continue
+// 		}
+// 		joinProjectionString := strings.Join(joinProjections, ", ")
+// 		onClause, err := buildOnClause(j.Condition, fromAlias, toAlias)
+// 		if err != nil {
+// 			return builder, fmt.Errorf("failed to build ON clause for join '%s': %w", j.Alias, err)
+// 		}
+// 		if j.Relation == "one_to_one" || j.Relation == "many_to_one" {
+// 			joinTableSQL := fmt.Sprintf("%s AS %s", j.TableTo, toAlias)
+// 			builder = builder.LeftJoin(fmt.Sprintf("%s ON %s", joinTableSQL, onClause))
+// 			jsonBuild := fmt.Sprintf("COALESCE(JSON_BUILD_OBJECT(%s), NULL) AS %s", joinProjectionString, j.Alias)
+// 			builder = builder.Column(jsonBuild)
+// 			for _, p := range j.Projections {
+// 				if joinViewCols[p.Column] && p.Column != "" {
+// 					groupByColumns = append(groupByColumns, fmt.Sprintf("%s.%s", toAlias, p.Column))
+// 				}
+// 			}
+// 		} else if j.Relation == "one_to_many" {
+// 			subQuery := fmt.Sprintf(
+// 				`(SELECT COALESCE(JSON_AGG(JSON_BUILD_OBJECT(%s)), '[]') FROM %s AS %s WHERE %s) AS %s`,
+// 				joinProjectionString, j.TableTo, toAlias, onClause, j.Alias,
+// 			)
+// 			builder = builder.Column(subQuery)
+// 		}
+// 	}
+
+// 	// --- 3. Where ---
+// 	allowedWhereMap, err := buildAllowedWhereMap(queryPlan.WhereAllow, am)
+// 	if err != nil {
+// 		return builder, err
+// 	}
+// 	var masterWhereClause squirrel.Sqlizer
+// 	if strings.ToUpper(logicalOperator) == "OR" {
+// 		masterWhereClause = squirrel.Or{}
+// 	} else {
+// 		masterWhereClause = squirrel.And{}
+// 	}
+// 	if filterGroups != nil {
+// 		for _, group := range filterGroups {
+// 			if len(group) == 0 {
+// 				continue
+// 			}
+// 			orClause := squirrel.Or{}
+// 			for _, f := range group {
+// 				tableAlias, ok := am.Get(f.TableName)
+// 				if !ok {
+// 					return builder, errs.NewBadRequestError(fmt.Sprintf("filter table '%s' is not joined in the query", f.TableName))
+// 				}
+// 				fieldWithAlias := fmt.Sprintf("%s.%s", tableAlias, f.Field)
+
+// 				// Validate value null
+// 				if f.Value == nil && (strings.ToUpper(f.Operator) != "IS NULL" && strings.ToUpper(f.Operator) != "IS NOT NULL") {
+// 					return builder, errs.NewBadRequestError(fmt.Sprintf("filter value for '%s.%s' cannot be null unless using IS NULL or IS NOT NULL operator", f.TableName, f.Field))
+// 				}
+
+// 				// Validate Data Type
+// 				col, ok := schemaMap[f.TableName][f.Field]
+// 				if !ok {
+// 					return builder, errs.NewBadRequestError(fmt.Sprintf("filter field '%s.%s' not found in schema", f.TableName, f.Field))
+// 				}
+// 				if col.Enum != nil {
+// 					if err := validateEnum(col.Enum, f.Value); err != nil {
+// 						return builder, errs.NewBadRequestError(fmt.Sprintf("invalid filter value for '%s.%s': %v", f.TableName, f.Field, err))
+// 					}
+// 				}
+// 				if err := validateDataType(col.DataType, f.Value); err != nil {
+// 					return builder, errs.NewBadRequestError(fmt.Sprintf("invalid filter value for '%s.%s': %v", f.TableName, f.Field, err))
+// 				}
+
+// 				// ตรวจสอบ Allow
+// 				isAllowed := false
+// 				if ops, ok := allowedWhereMap[fieldWithAlias]; ok {
+// 					if _, ok := ops[f.Operator]; ok {
+// 						isAllowed = true
+// 					}
+// 				}
+// 				if !isAllowed {
+// 					return builder, errs.NewBadRequestError(fmt.Sprintf("filter is not allowed: %s.%s %s", f.TableName, f.Field, f.Operator))
+// 				}
+
+// 				// สร้าง Expression
+// 				expr, err := buildSquirrelExpr(fieldWithAlias, f.Operator, f.Value)
+// 				if err != nil {
+// 					return builder, fmt.Errorf("invalid filter: %w", err)
+// 				}
+// 				orClause = append(orClause, expr)
+// 			}
+// 			if strings.ToUpper(logicalOperator) == "OR" {
+// 				masterWhereClause = append(masterWhereClause.(squirrel.Or), orClause)
+// 			} else {
+// 				masterWhereClause = append(masterWhereClause.(squirrel.And), orClause)
+// 			}
+// 		}
+// 	}
+// 	addWhere := false
+// 	if op, ok := masterWhereClause.(squirrel.Or); ok && len(op) > 0 {
+// 		addWhere = true
+// 	} else if op, ok := masterWhereClause.(squirrel.And); ok && len(op) > 0 {
+// 		addWhere = true
+// 	}
+// 	if addWhere {
+// 		builder = builder.Where(masterWhereClause)
+// 	}
+
+// 	// --- 4. Group By ---
+// 	if len(groupByColumns) > 0 {
+// 		builder = builder.GroupBy(groupByColumns...)
+// 	}
+
+// 	// --- 5. Sorting & Pagination---
+
+// 	// 5a. Sorting
+// 	if sortBy != "" {
+// 		sortColumn, ok := allowedSortAliases[sortBy]
+// 		if !ok {
+// 			return builder, errs.NewBadRequestError(fmt.Sprintf("sort_by field '%s' is not an allowed projection alias for sorting", sortBy))
+// 		}
+
+// 		order := constants.SORT_ORDER_ASC
+// 		if strings.ToUpper(sortOrder) == constants.SORT_ORDER_DESC {
+// 			order = constants.SORT_ORDER_DESC
+// 		}
+
+// 		builder = builder.OrderBy(fmt.Sprintf("%s %s", sortColumn, order))
+// 	}
+
+// 	// 5b. Pagination
+// 	if pagination != nil {
+// 		builder = builder.Limit(uint64(pagination.GetLimit()))
+// 		builder = builder.Offset(uint64(pagination.GetOffset()))
+// 	}
+// 	return builder, nil
+// }
+
 func buildRuntimeSQLBuilder(
 	ctx context.Context,
 	schemaMap map[string]map[string]entity.Column,
@@ -604,90 +806,174 @@ func buildRuntimeSQLBuilder(
 	viewMap map[string]map[string]bool,
 ) (squirrel.SelectBuilder, error) {
 
-	// --- 0. Alias Management ---
+	// --- 0. Alias Management & Mode Detection ---
 	if queryPlan.From == nil || queryPlan.From.Table == "" {
 		return squirrel.SelectBuilder{}, fmt.Errorf("QueryPlan.From.Table is required")
 	}
 	am := newAliasManager(queryPlan.From.Table)
 	builder := psqlBuilder.Select().From(fmt.Sprintf("%s AS %s", am.fromTable, am.fromAlias))
 
+	// [NEW] ตรวจสอบโหมด
+	isAggregateQuery := len(queryPlan.GroupBy) > 0
+
+	// (ดึง View ของตาราง From)
 	fromViewCols, ok := viewMap[am.fromTable]
 	if !ok || len(fromViewCols) == 0 {
 		return builder, fmt.Errorf("view is missing configuration for base table '%s'", am.fromTable)
 	}
 
-	// --- 1. Projections (Base Table) ---
+	// --- 1. Joins (ต้องทำก่อน Projections) ---
+	// (ในโหมด Aggregate, เราต้อง Join 1:1 ก่อน เพื่อให้ Projections และ GroupBy หา t1.name เจอ)
+	// (ในโหมด Nesting, เราก็ต้อง Join 1:1 ก่อน เพื่อให้ GroupBy (สำหรับ 1:1) ทำงาน)
+
+	// `groupByColumns` จะถูกใช้ในโหมด Nesting เท่านั้น
 	var groupByColumns []string
-	allowedSortAliases := make(map[string]string) // [NEW] Map สำหรับ Sorting
-	if len(queryPlan.Projections) == 0 {
-		return builder, fmt.Errorf("QueryPlan.Projections (for base table) must not be empty")
-	}
-	for _, p := range queryPlan.Projections {
-		baseCol := fmt.Sprintf("%s.%s", am.fromAlias, p.Column)
-		alias := p.Alias
-		if alias == "" {
-			alias = p.Column
-		}
+	// `joinedTables` จะเก็บ alias ของตาราง 1:1 ที่ Join แล้ว
+	joinedTables := make(map[string]string) // map[real_table_name] -> alias
 
-		// เก็บ Alias ที่อนุญาตให้ Sort
-		allowedSortAliases[alias] = baseCol
-		// ตรวจสอบว่า column นี้ อยู่ใน view หรือไม่
-		if !fromViewCols[p.Column] {
-			continue
-		}
-		if p.Alias != "" {
-			builder = builder.Column(fmt.Sprintf("%s AS %s", baseCol, p.Alias))
-		} else {
-			builder = builder.Column(baseCol)
-		}
-		groupByColumns = append(groupByColumns, baseCol)
-	}
-
-	// --- 2. Joins (JSON Nesting) ---
 	for _, j := range queryPlan.Joins {
+		// (ข้าม Join ที่ View ไม่ได้เลือก)
 		joinViewCols, shouldJoin := viewMap[j.TableTo]
 		if !shouldJoin || len(joinViewCols) == 0 {
 			continue
 		}
+
 		fromAlias, _ := am.Get(j.TableFrom)
 		toAlias := am.generate(j.TableTo)
-		var joinProjections []string
-		for _, p := range j.Projections {
-			if !joinViewCols[p.Column] {
-				continue
-			}
-			jsonKey := fmt.Sprintf("'%s'", p.Alias)
-			jsonValue := fmt.Sprintf("%s.%s", toAlias, p.Column)
-			joinProjections = append(joinProjections, jsonKey, jsonValue)
-		}
-		if len(joinProjections) == 0 {
-			continue
-		}
-		joinProjectionString := strings.Join(joinProjections, ", ")
 		onClause, err := buildOnClause(j.Condition, fromAlias, toAlias)
 		if err != nil {
 			return builder, fmt.Errorf("failed to build ON clause for join '%s': %w", j.Alias, err)
 		}
+
 		if j.Relation == "one_to_one" || j.Relation == "many_to_one" {
+			// (Join 1:1 ทำงานได้ทั้ง 2 โหมด)
 			joinTableSQL := fmt.Sprintf("%s AS %s", j.TableTo, toAlias)
 			builder = builder.LeftJoin(fmt.Sprintf("%s ON %s", joinTableSQL, onClause))
-			jsonBuild := fmt.Sprintf("COALESCE(JSON_BUILD_OBJECT(%s), NULL) AS %s", joinProjectionString, j.Alias)
-			builder = builder.Column(jsonBuild)
-			for _, p := range j.Projections {
-				if joinViewCols[p.Column] && p.Column != "" {
-					groupByColumns = append(groupByColumns, fmt.Sprintf("%s.%s", toAlias, p.Column))
+			joinedTables[j.TableTo] = toAlias
+
+			if !isAggregateQuery {
+				// (ถ้าเป็น Nesting Mode, สร้าง JSON_BUILD_OBJECT)
+				var joinProjections []string
+				for _, p := range j.Projections {
+					if !joinViewCols[p.Column] {
+						continue
+					}
+					jsonKey := fmt.Sprintf("'%s'", p.Alias)
+					jsonValue := fmt.Sprintf("%s.%s", toAlias, p.Column)
+					joinProjections = append(joinProjections, jsonKey, jsonValue)
+				}
+				if len(joinProjections) == 0 {
+					continue
+				}
+
+				jsonBuild := fmt.Sprintf("COALESCE(JSON_BUILD_OBJECT(%s), NULL) AS %s", strings.Join(joinProjections, ", "), j.Alias)
+				builder = builder.Column(jsonBuild)
+
+				// (เพิ่มเข้า GroupBy สำหรับ Nesting Mode)
+				for _, p := range j.Projections {
+					if joinViewCols[p.Column] && p.Column != "" {
+						groupByColumns = append(groupByColumns, fmt.Sprintf("%s.%s", toAlias, p.Column))
+					}
 				}
 			}
 		} else if j.Relation == "one_to_many" {
-			subQuery := fmt.Sprintf(
-				`(SELECT COALESCE(JSON_AGG(JSON_BUILD_OBJECT(%s)), '[]') FROM %s AS %s WHERE %s) AS %s`,
-				joinProjectionString, j.TableTo, toAlias, onClause, j.Alias,
-			)
-			builder = builder.Column(subQuery)
+			// (Join 1:N ทำงาน *เฉพาะ* Nesting Mode)
+			if !isAggregateQuery {
+				var joinProjections []string
+				for _, p := range j.Projections {
+					if !joinViewCols[p.Column] {
+						continue
+					}
+					jsonKey := fmt.Sprintf("'%s'", p.Alias)
+					jsonValue := fmt.Sprintf("%s.%s", toAlias, p.Column)
+					joinProjections = append(joinProjections, jsonKey, jsonValue)
+				}
+				if len(joinProjections) == 0 {
+					continue
+				}
+
+				subQuery := fmt.Sprintf(
+					`(SELECT COALESCE(JSON_AGG(JSON_BUILD_OBJECT(%s)), '[]') FROM %s AS %s WHERE %s) AS %s`,
+					strings.Join(joinProjections, ", "), j.TableTo, toAlias, onClause, j.Alias,
+				)
+				builder = builder.Column(subQuery)
+			}
+			// (ถ้าเป็น Aggregate Mode, เราจะ *ข้าม* 1:N Join ทั้งหมด)
 		}
 	}
 
+	// --- 2. Projections (Base Table & Aggregates) ---
+	allowedSortAliases := make(map[string]string)
+	if len(queryPlan.Projections) == 0 {
+		return builder, fmt.Errorf("QueryPlan.Projections (for base table) must not be empty")
+	}
+
+	for _, p := range queryPlan.Projections {
+		var colSQL string
+		var sortCol string
+
+		if p.Expr != nil {
+			// --- Aggregate Projection (e.g., COUNT(*)) ---
+			if !isAggregateQuery {
+				// (ข้าม Expr ถ้าไม่ได้อยู่ในโหมด Aggregate)
+				continue
+			}
+
+			// หา Alias ของตาราง
+			tableAlias, ok := am.Get(p.Expr.TableName)
+			if !ok {
+				return builder, fmt.Errorf("expr projection table '%s' not found in alias map", p.Expr.TableName)
+			}
+
+			field := p.Expr.Field
+			if field != "*" {
+				field = fmt.Sprintf("%s.%s", tableAlias, field) // "t0.id"
+			}
+
+			colSQL = fmt.Sprintf("%s(%s) AS %s", p.Expr.Operator, field, p.Alias) // "COUNT(t0.id) AS total"
+			sortCol = p.Alias                                                     // (Aggregates สามารถ sort ด้วย Alias ได้)
+
+		} else {
+			// --- Simple Column Projection (e.g., person_data.gender_id) ---
+
+			// (หา Alias ของตาราง)
+			tableName := p.TableName
+			if tableName == "" {
+				tableName = am.fromTable // (ถ้าไม่ระบุ, ให้เป็นตาราง From)
+			}
+			tableAlias, ok := am.Get(tableName)
+			if !ok {
+				continue // ข้าม (อาจจะ Join ไม่ได้เลือก)
+			}
+
+			// (เช็ค ViewMap)
+			viewCols, ok := viewMap[tableName]
+			if !ok || !viewCols[p.Column] {
+				continue
+			}
+
+			colSQL = fmt.Sprintf("%s.%s", tableAlias, p.Column)
+			sortCol = colSQL // (Sort ด้วยชื่อคอลัมน์จริง)
+			if p.Alias != "" {
+				colSQL = fmt.Sprintf("%s AS %s", colSQL, p.Alias)
+				sortCol = p.Alias // (ถ้ามี Alias, Sort ด้วย Alias)
+			}
+
+			if isAggregateQuery {
+				// (ถ้าเป็น Agg Mode, ไม่ต้องเพิ่มเข้า groupByColumns
+				// เพราะ GroupBy จะถูกกำหนดโดย queryPlan.GroupBy)
+			} else {
+				// (ถ้าเป็น Nesting Mode, เพิ่มเข้า groupByColumns)
+				groupByColumns = append(groupByColumns, fmt.Sprintf("%s.%s", tableAlias, p.Column))
+			}
+		}
+
+		builder = builder.Column(colSQL)
+		allowedSortAliases[p.Alias] = sortCol
+	}
+
 	// --- 3. Where ---
+	// (ต้องสร้าง allowedWhereMap *หลังจาก* Join เพื่อให้ am.Get() ทำงาน)
 	allowedWhereMap, err := buildAllowedWhereMap(queryPlan.WhereAllow, am)
 	if err != nil {
 		return builder, err
@@ -707,14 +993,9 @@ func buildRuntimeSQLBuilder(
 			for _, f := range group {
 				tableAlias, ok := am.Get(f.TableName)
 				if !ok {
-					return builder, errs.NewBadRequestError(fmt.Sprintf("filter table '%s' is not joined in the query", f.TableName))
+					continue // ข้าม filter นี้, ตารางนี้ไม่ได้ถูก Join ใน View
 				}
 				fieldWithAlias := fmt.Sprintf("%s.%s", tableAlias, f.Field)
-
-				// Validate value null
-				if f.Value == nil && (strings.ToUpper(f.Operator) != "IS NULL" && strings.ToUpper(f.Operator) != "IS NOT NULL") {
-					return builder, errs.NewBadRequestError(fmt.Sprintf("filter value for '%s.%s' cannot be null unless using IS NULL or IS NOT NULL operator", f.TableName, f.Field))
-				}
 
 				// Validate Data Type
 				col, ok := schemaMap[f.TableName][f.Field]
@@ -744,7 +1025,7 @@ func buildRuntimeSQLBuilder(
 				// สร้าง Expression
 				expr, err := buildSquirrelExpr(fieldWithAlias, f.Operator, f.Value)
 				if err != nil {
-					return builder, fmt.Errorf("invalid filter: %w", err)
+					return builder, errs.NewBadRequestError(err.Error())
 				}
 				orClause = append(orClause, expr)
 			}
@@ -766,28 +1047,40 @@ func buildRuntimeSQLBuilder(
 	}
 
 	// --- 4. Group By ---
-	if len(groupByColumns) > 0 {
-		builder = builder.GroupBy(groupByColumns...)
+	if isAggregateQuery {
+		// (AGGREGATE MODE)
+		var finalGroupBy []string
+		for _, gb := range queryPlan.GroupBy {
+			tableAlias, ok := am.Get(gb.TableName)
+			if !ok {
+				continue // ข้าม GroupBy ที่อ้างอิงตารางที่ไม่ได้ Join
+			}
+			finalGroupBy = append(finalGroupBy, fmt.Sprintf("%s.%s", tableAlias, gb.Field))
+		}
+
+		if len(finalGroupBy) > 0 {
+			builder = builder.GroupBy(finalGroupBy...)
+		} else {
+			return builder, fmt.Errorf("aggregate query requires at least one valid GroupBy field")
+		}
+	} else {
+		if len(groupByColumns) > 0 {
+			builder = builder.GroupBy(groupByColumns...)
+		}
 	}
 
 	// --- 5. Sorting & Pagination---
-
-	// 5a. Sorting
 	if sortBy != "" {
 		sortColumn, ok := allowedSortAliases[sortBy]
 		if !ok {
 			return builder, errs.NewBadRequestError(fmt.Sprintf("sort_by field '%s' is not an allowed projection alias for sorting", sortBy))
 		}
-
 		order := constants.SORT_ORDER_ASC
 		if strings.ToUpper(sortOrder) == constants.SORT_ORDER_DESC {
 			order = constants.SORT_ORDER_DESC
 		}
-
 		builder = builder.OrderBy(fmt.Sprintf("%s %s", sortColumn, order))
 	}
-
-	// 5b. Pagination
 	if pagination != nil {
 		builder = builder.Limit(uint64(pagination.GetLimit()))
 		builder = builder.Offset(uint64(pagination.GetOffset()))
