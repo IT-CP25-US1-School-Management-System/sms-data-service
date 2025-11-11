@@ -2,7 +2,26 @@ type: object
 properties:
   role:
     type: string
-  columns_allow:
+    description: User role
+  scope:
+    type: string
+    description: Access scope
+  can_view:
+    type: boolean
+    description: View permission
+  can_edit:
+    type: boolean
+    description: Edit permission
+  can_delete:
+    type: boolean
+    description: Delete permission
+  allow_view:
     type: array
     items:
       type: string
+    minItems: 1
+    description: Allowed views/columns
+required:
+  - role
+  - scope
+  - allow_view

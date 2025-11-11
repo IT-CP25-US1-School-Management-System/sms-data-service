@@ -1,4 +1,4 @@
-# /introspect/tables:
+# /introspect/tables
 get:
   tags: [Introspection]
   summary: List tables in a schema
@@ -7,13 +7,31 @@ get:
       in: query
       schema:
         type: string
+        format: uuid
+      description: Filter by source ID
     - name: schema
       in: query
       schema:
         type: string
+      description: Filter by schema name
+    - name: page
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+      description: Page number for pagination
+    - name: per_page
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 10
+      description: Number of items per page
   responses:
     "200":
-      description: Tables
+      description: List of tables with pagination
       content:
         application/json:
           schema:
@@ -22,19 +40,7 @@ get:
               data:
                 type: array
                 items:
-                  type: object
-                  properties:
-                    id:
-                      type: integer
-                    sources_id:
-                      type: string
-                    schema:
-                      type: string
-                    table_name:
-                      type: string
-                    created_at:
-                      type: string
-                      format: date-time
+                  $ref: "../../components/schemas/Tables.yml"
               page:
                 type: integer
               per_page:
@@ -43,3 +49,15 @@ get:
                 type: integer
               total_rows:
                 type: integer
+    "400":
+      description: Bad Request
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yml"
+    "500":
+      description: Internal Server Error
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yml"

@@ -75,6 +75,10 @@ func NewBadRequestError(message string) *AppError {
 	return NewAppError(message, http.StatusBadRequest, int(codes.InvalidArgument), nil)
 }
 
+func NewConflictError(message string) *AppError {
+	return NewAppError(message, http.StatusConflict, int(codes.AlreadyExists), nil)
+}
+
 func NewInternalServerError(message string) *AppError {
 	return NewAppError(message, http.StatusInternalServerError, int(codes.Internal), nil)
 }

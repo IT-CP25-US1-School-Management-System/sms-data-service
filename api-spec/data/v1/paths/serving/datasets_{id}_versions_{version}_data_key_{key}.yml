@@ -1,0 +1,190 @@
+# /datasets/{id}/versions/{version}/data/key/{key}
+get:
+  tags: [Serving]
+  summary: Get a row by key from dataset version (policy-aware)
+  parameters:
+    - name: id
+      in: path
+      required: true
+      schema:
+        type: string
+      description: Dataset ID
+    - name: version
+      in: path
+      required: true
+      schema:
+        type: string
+      description: Dataset version
+    - name: key
+      in: path
+      required: true
+      schema:
+        type: string
+      description: Row key
+    - name: view
+      in: query
+      schema:
+        type: string
+      description: View name to use for data access
+  responses:
+    "200":
+      description: Row data
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              data:
+                type: object
+                additionalProperties: true
+    "400":
+      description: Bad Request
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yml"
+    "401":
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yml"
+    "403":
+      description: Forbidden
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yml"
+    "404":
+      description: Row, dataset, or version not found
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yml"
+
+put:
+  tags: [Serving]
+  summary: Update a row by key (replace all fields)
+  parameters:
+    - name: id
+      in: path
+      required: true
+      schema:
+        type: string
+      description: Dataset ID
+    - name: version
+      in: path
+      required: true
+      schema:
+        type: string
+      description: Dataset version
+    - name: key
+      in: path
+      required: true
+      schema:
+        type: string
+      description: Row key
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          additionalProperties: true
+          description: Complete row data for replacement
+  responses:
+    "200":
+      description: Row updated successfully
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+                example: "success"
+              data:
+                type: object
+                additionalProperties: true
+    "400":
+      description: Bad Request
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yml"
+    "401":
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yml"
+    "403":
+      description: Forbidden
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yml"
+    "404":
+      description: Row, dataset, or version not found
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yml"
+
+delete:
+  tags: [Serving]
+  summary: Delete a row by key (soft delete)
+  parameters:
+    - name: id
+      in: path
+      required: true
+      schema:
+        type: string
+      description: Dataset ID
+    - name: version
+      in: path
+      required: true
+      schema:
+        type: string
+      description: Dataset version
+    - name: key
+      in: path
+      required: true
+      schema:
+        type: string
+      description: Row key
+  responses:
+    "200":
+      description: Row deleted successfully
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+                example: "success"
+    "400":
+      description: Bad Request
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yml"
+    "401":
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yml"
+    "403":
+      description: Forbidden
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yml"
+    "404":
+      description: Row, dataset, or version not found
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yml"

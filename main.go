@@ -26,6 +26,7 @@ import (
 	_redis_repo "github.com/IT-CP25-US1-School-Management-System/sms-data-service/service/data/v1/repository"
 	_data_usecase "github.com/IT-CP25-US1-School-Management-System/sms-data-service/service/data/v1/usecase"
 	_db_connection_manager_repo "github.com/IT-CP25-US1-School-Management-System/sms-data-service/service/database/v1/repository"
+	_db_connection_manager_usercase "github.com/IT-CP25-US1-School-Management-System/sms-data-service/service/database/v1/usecase"
 	"github.com/getsentry/sentry-go"
 	sentryecho "github.com/getsentry/sentry-go/echo"
 	"github.com/go-playground/validator/v10"
@@ -175,11 +176,15 @@ func main() {
 
 	/* repository */
 	psqlDatasetRepo := _psqldataset_repo.NewPsqlDatasetRepository(psqlDatasetClient)
-	dbConnectionManager := _db_connection_manager_repo.NewDBConnectionManagerRepository(psqlDatasetRepo, CRYPTO_SECRET)
-	defer dbConnectionManager.CloseAll()
 	redisRepo := _redis_repo.NewRedisRepository(redisClient)
 
-	psqlDataRepo := _psqldata_repo.NewPsqlDataRepository(dbConnectionManager)
+	/* database connection manager */
+	dbConnectionManager := _db_connection_manager_repo.NewDBConnectionManagerRepository(psqlDatasetRepo, CRYPTO_SECRET)
+	dbConnectionManagerUsecase := _db_connection_manager_usercase.NewDBConnectionManagerUsecase(dbConnectionManager)
+	defer dbConnectionManagerUsecase.CloseAll()
+
+	psqlDataRepo := _psqldata_repo.NewPsqlDataRepository(dbConnectionManagerUsecase)
+
 	/* usecase */
 	dataUsecase := _data_usecase.NewDataUsecase(psqlDataRepo, psqlDatasetRepo, redisRepo, CRYPTO_SECRET)
 

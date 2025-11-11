@@ -1,8 +1,14 @@
-# /introspect/sources
+# /datasets/{id}/versions
 get:
-  tags: [Introspection]
-  summary: List registered physical sources
+  tags: [Contracts]
+  summary: Get list of dataset versions (contracts)
   parameters:
+    - name: id
+      in: path
+      required: true
+      schema:
+        type: string
+      description: Dataset ID
     - name: page
       in: query
       schema:
@@ -18,9 +24,26 @@ get:
         maximum: 100
         default: 10
       description: Number of items per page
+    - name: source_id
+      in: query
+      schema:
+        type: string
+        format: uuid
+      description: Filter by source ID
+    - name: search_word
+      in: query
+      schema:
+        type: string
+      description: Search term
+    - name: status
+      in: query
+      schema:
+        type: string
+        enum: [active, preview, deprecated]
+      description: Filter by status
   responses:
     "200":
-      description: List of sources with pagination
+      description: List of dataset versions with pagination
       content:
         application/json:
           schema:
@@ -29,7 +52,7 @@ get:
               data:
                 type: array
                 items:
-                  $ref: "../../components/schemas/SourcesResponseDTO.yml"
+                  $ref: "../../components/schemas/DatasetVersion.yml"
               page:
                 type: integer
               per_page:
@@ -44,25 +67,32 @@ get:
         application/json:
           schema:
             $ref: "../../components/schemas/ErrorResponse.yml"
-    "500":
-      description: Internal Server Error
+    "404":
+      description: Dataset not found
       content:
         application/json:
           schema:
             $ref: "../../components/schemas/ErrorResponse.yml"
 
 post:
-  tags: [Introspection]
-  summary: Create a new data source
+  tags: [Contracts]
+  summary: Create a new dataset version (contract)
+  parameters:
+    - name: id
+      in: path
+      required: true
+      schema:
+        type: string
+      description: Dataset ID
   requestBody:
     required: true
     content:
       application/json:
         schema:
-          $ref: "../../components/schemas/SourcesDTO.yml"
+          $ref: "../../components/schemas/InsertDatasetVersionDTO.yml"
   responses:
     "200":
-      description: Source created successfully
+      description: Dataset version created successfully
       content:
         application/json:
           schema:
@@ -71,24 +101,20 @@ post:
               message:
                 type: string
                 example: "success"
-              id:
-                type: string
-                format: uuid
-                description: Created source ID
     "400":
       description: Bad Request - validation error
       content:
         application/json:
           schema:
             $ref: "../../components/schemas/ErrorResponse.yml"
-    "409":
-      description: Conflict - source already exists
+    "404":
+      description: Dataset not found
       content:
         application/json:
           schema:
             $ref: "../../components/schemas/ErrorResponse.yml"
-    "500":
-      description: Internal Server Error
+    "409":
+      description: Version already exists
       content:
         application/json:
           schema:

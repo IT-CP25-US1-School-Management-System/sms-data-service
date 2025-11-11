@@ -1,15 +1,11 @@
 type: object
 properties:
-  dataset_id:
-    type: string
-    description: Parent dataset ID
   version:
     type: string
     description: Version name/number
   source_id:
     type: string
     format: uuid
-    nullable: true
     description: Source ID (UUID)
   status:
     type: string
@@ -21,22 +17,13 @@ properties:
     type: array
     items:
       $ref: "AccessPolicy.yml"
+    minItems: 1
     description: Access policies for this version
   policies:
     $ref: "Policies.yml"
-  created_at:
-    type: string
-    format: date-time
-    nullable: true
-    description: Creation timestamp
-  updated_at:
-    type: string
-    format: date-time
-    nullable: true
-    description: Last update timestamp
 required:
-  - dataset_id
   - version
+  - source_id
   - status
   - schema
   - access_policies

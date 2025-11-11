@@ -21,6 +21,11 @@ type dataUsecase struct {
 	cryptoSecret string
 }
 
+// FetchSourceByID implements data.DataUsecase.
+func (d *dataUsecase) FetchSourceByID(ctx context.Context, sourceID *uuid.UUID) (*entity.Sources, error) {
+	return d.datasetRepo.FetchSourceByID(ctx, sourceID)
+}
+
 // DeleteSourceByID implements data.DataUsecase.
 func (d *dataUsecase) DeleteSourceByID(ctx context.Context, sourceID *uuid.UUID) error {
 	exist, err := d.datasetRepo.ExistSourceByID(ctx, sourceID)
@@ -95,7 +100,12 @@ func (d *dataUsecase) InsertSource(ctx context.Context, source *entity.Sources) 
 		d.datasetRepo.DeleteSourceByID(ctx, source.ID)
 		return err
 	}
-	err = d.datasetRepo.BatchInsertInformationDatabase(ctx, infoSchema, infoTables, infoColumns)
+	infoTableRelations, err := d.dataRepo.FetchInformationTableRelationsBySourceID(ctx, source.DBType, source.ID)
+	if err != nil {
+		d.datasetRepo.DeleteSourceByID(ctx, source.ID)
+		return err
+	}
+	err = d.datasetRepo.BatchInsertInformationDatabase(ctx, infoSchema, infoTables, infoColumns, infoTableRelations)
 	if err != nil {
 		d.datasetRepo.DeleteSourceByID(ctx, source.ID)
 		return err
@@ -178,6 +188,18 @@ func (d *dataUsecase) validateDatasetID(id string) error {
 	return nil
 }
 
+func (d *dataUsecase) validateVersionFormat(version string) error {
+	if version == "" {
+		return errs.NewBadRequestError(constants.ERR_DATASET_VERSION_IS_REQUIRED)
+	}
+
+	if !constants.DATASET_VERSION_PATTERN.MatchString(version) {
+		return errs.NewBadRequestError(constants.ERR_DATASET_VERSION_INVALID_FORMAT)
+	}
+
+	return nil
+}
+
 // DeleteDatasetByID implements data.DataUsecase.
 func (d *dataUsecase) DeleteDatasetByID(ctx context.Context, datasetID string) error {
 	if err := d.validateDatasetID(datasetID); err != nil {
@@ -242,6 +264,317 @@ func (d *dataUsecase) FetchSchemasList(ctx context.Context, filter *filter.Schem
 // FetchSourceList implements data.DataUsecase.
 func (d *dataUsecase) FetchSourceList(ctx context.Context, paginator *helperModel.Paginator) ([]*entity.Sources, error) {
 	return d.datasetRepo.FetchSourceList(ctx, paginator)
+}
+
+// FetchDatasetVersionByID implements data.DataUsecase.
+func (d *dataUsecase) FetchDatasetVersionByID(ctx context.Context, datasetID string, version string) (*entity.DatasetVersion, error) {
+	if err := d.validateDatasetID(datasetID); err != nil {
+		return nil, err
+	}
+	if err := d.validateVersionFormat(version); err != nil {
+		return nil, err
+	}
+	return d.datasetRepo.FetchDatasetVersionByID(ctx, datasetID, version)
+}
+
+// FetchDatasetVersionsList implements data.DataUsecase.
+func (d *dataUsecase) FetchDatasetVersionsList(ctx context.Context, datasetID string, filter *filter.DatasetVersionsFilter, paginator *helperModel.Paginator) ([]*entity.DatasetVersion, error) {
+	if err := d.validateDatasetID(datasetID); err != nil {
+		return nil, err
+	}
+	exist, err := d.datasetRepo.ExistDatasetByID(ctx, datasetID)
+	if err != nil {
+		return nil, err
+	}
+	if !exist {
+		return nil, errs.NewNotFoundError(constants.ERR_DATASET_NOT_FOUND)
+	}
+	return d.datasetRepo.FetchDatasetVersionsList(ctx, datasetID, filter, paginator)
+}
+
+// UpsertDatasetVersion implements data.DataUsecase.
+func (d *dataUsecase) UpsertDatasetVersion(ctx context.Context, datasetVersion *entity.DatasetVersion) error {
+	if datasetVersion == nil {
+		return errs.NewBadRequestError(constants.ERR_INVALID_REQUEST_BODY)
+	}
+
+	if err := d.validateDatasetID(datasetVersion.DatasetID); err != nil {
+		return err
+	}
+
+	// Validate that the parent dataset exists
+	exists, err := d.datasetRepo.ExistDatasetByID(ctx, datasetVersion.DatasetID)
+	if err != nil {
+		return err
+	}
+	if !exists {
+		return errs.NewNotFoundError(constants.ERR_DATASET_NOT_FOUND)
+	}
+	now := helperModel.NewTimestampFromNow()
+	datasetVersion.CreatedAt = &now
+	datasetVersion.UpdatedAt = &now
+
+	return d.datasetRepo.UpsertDatasetVersion(ctx, datasetVersion)
+}
+
+func (d *dataUsecase) InsertDatasetVersion(ctx context.Context, datasetVersion *entity.DatasetVersion, datasetID string) error {
+	if err := d.validateDatasetID(datasetID); err != nil {
+		return err
+	}
+	if err := d.validateVersionFormat(datasetVersion.Version); err != nil {
+		return err
+	}
+	exists, err := d.datasetRepo.ExistDatasetByID(ctx, datasetID)
+	if err != nil {
+		return err
+	}
+	if !exists {
+		return errs.NewNotFoundError(constants.ERR_DATASET_NOT_FOUND)
+	}
+	exists, err = d.datasetRepo.ExistDatasetVersionByID(ctx, datasetID, datasetVersion.Version)
+	if err != nil {
+		return err
+	}
+	if exists {
+		return errs.NewConflictError(constants.ERR_DATASET_VERSION_ALREADY_EXISTS)
+	}
+
+	datasetVersion.DatasetID = datasetID
+	now := helperModel.NewTimestampFromNow()
+	datasetVersion.CreatedAt = &now
+	datasetVersion.UpdatedAt = &now
+	return d.datasetRepo.UpsertDatasetVersion(ctx, datasetVersion)
+}
+
+func (d *dataUsecase) UpdateDatasetVersion(ctx context.Context, datasetVersion *entity.DatasetVersion, datasetID, version string) error {
+	if err := d.validateDatasetID(datasetID); err != nil {
+		return err
+	}
+	if err := d.validateVersionFormat(version); err != nil {
+		return err
+	}
+
+	exists, err := d.datasetRepo.ExistDatasetVersionByID(ctx, datasetID, version)
+	if err != nil {
+		return err
+	}
+	if !exists {
+		return errs.NewNotFoundError(constants.ERR_DATASET_VERSION_NOT_FOUND)
+	}
+	datasetVersion.DatasetID = datasetID
+	datasetVersion.Version = version
+	now := helperModel.NewTimestampFromNow()
+	datasetVersion.CreatedAt = &now
+	datasetVersion.UpdatedAt = &now
+	return d.datasetRepo.UpsertDatasetVersion(ctx, datasetVersion)
+}
+
+// UpdateDatasetVersionStatus implements data.DataUsecase.
+func (d *dataUsecase) UpdateDatasetVersionStatus(ctx context.Context, datasetID string, version string, status string) error {
+	if err := d.validateDatasetID(datasetID); err != nil {
+		return err
+	}
+	if err := d.validateVersionFormat(version); err != nil {
+		return err
+	}
+	exists, err := d.datasetRepo.ExistDatasetVersionByID(ctx, datasetID, version)
+	if err != nil {
+		return err
+	}
+	if !exists {
+		return errs.NewNotFoundError("dataset version not found")
+	}
+
+	return d.datasetRepo.UpdateDatasetVersionStatus(ctx, datasetID, version, status)
+}
+
+func (d *dataUsecase) ServingDatasetVersionData(
+	ctx context.Context,
+	datasetID string,
+	version string,
+	paginator *helperModel.Paginator,
+	viewName string,
+	filterGroups [][]entity.FilterInput,
+	logicalOperator string,
+	sortBy string,
+	sortOrder string,
+) ([]map[string]interface{}, error) {
+	if err := d.validateDatasetID(datasetID); err != nil {
+		return nil, err
+	}
+	if err := d.validateVersionFormat(version); err != nil {
+		return nil, err
+	}
+	datasetVersion, err := d.datasetRepo.FetchDatasetVersionByID(ctx, datasetID, version)
+	if err != nil {
+		return nil, err
+	}
+	if datasetVersion == nil {
+		return nil, errs.NewNotFoundError("dataset version not found")
+	}
+	if datasetVersion.Policies.Runtime == nil {
+		return nil, errs.NewConflictError("runtime policy is not configured for this dataset version")
+	}
+
+	results, err := d.dataRepo.ExecuteQuery(
+		ctx,
+		datasetVersion.SourceID,
+		&datasetVersion.Schema,
+		&datasetVersion.Policies,
+		filterGroups,
+		logicalOperator,
+		paginator,
+		viewName,
+		sortBy,
+		sortOrder,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return results, nil
+}
+
+// ServingDatasetVersionDataByKey implements data.DataUsecase.
+func (d *dataUsecase) ServingDatasetVersionDataByKey(ctx context.Context, datasetID, version, key, viewName string) (map[string]interface{}, error) {
+	if err := d.validateDatasetID(datasetID); err != nil {
+		return nil, err
+	}
+	if err := d.validateVersionFormat(version); err != nil {
+		return nil, err
+	}
+
+	// Get dataset version to get policies
+	datasetVersion, err := d.datasetRepo.FetchDatasetVersionByID(ctx, datasetID, version)
+	if err != nil {
+		return nil, err
+	}
+	if datasetVersion == nil {
+		return nil, errs.NewNotFoundError("dataset version not found")
+	}
+
+	// Use runtime policy and prepare for key-based filtering
+	if datasetVersion.Policies.Runtime == nil {
+		return nil, errs.NewConflictError("runtime policy is not configured for this dataset version")
+	}
+
+	results, err := d.dataRepo.ExecuteQueryByKey(ctx, datasetVersion.SourceID, &datasetVersion.Schema, &datasetVersion.Policies, key, viewName)
+	if err != nil {
+		return nil, err
+	}
+
+	return results, nil
+}
+
+// CreateDatasetVersionData implements data.DataUsecase.
+func (d *dataUsecase) CreateDatasetVersionData(ctx context.Context, datasetID string, version string, data map[string]interface{}) (map[string]interface{}, error) {
+	if err := d.validateDatasetID(datasetID); err != nil {
+		return nil, err
+	}
+	if err := d.validateVersionFormat(version); err != nil {
+		return nil, err
+	}
+
+	// Get dataset version to get policies
+	datasetVersion, err := d.datasetRepo.FetchDatasetVersionByID(ctx, datasetID, version)
+	if err != nil {
+		return nil, err
+	}
+	if datasetVersion == nil {
+		return nil, errs.NewNotFoundError("dataset version not found")
+	}
+
+	// Check if WritePolicy exists
+	if datasetVersion.Policies.Write == nil {
+		return nil, errs.NewConflictError("WritePolicy is not configured for data creation")
+	}
+
+	// Validate data is not null or empty
+	if len(data) == 0 {
+		return nil, errs.NewBadRequestError("data cannot be null or empty")
+	}
+
+	result, err := d.dataRepo.ExecuteCreate(ctx, datasetVersion.SourceID, datasetVersion.Schema, datasetVersion.Policies.Write, data)
+	if err != nil {
+		return nil, err
+	}
+
+	return result, nil
+}
+
+// UpdateDatasetVersionDataByKey implements data.DataUsecase.
+func (d *dataUsecase) UpdateDatasetVersionDataByKey(ctx context.Context, datasetID string, version string, key string, data map[string]interface{}) (map[string]interface{}, error) {
+	if err := d.validateDatasetID(datasetID); err != nil {
+		return nil, err
+	}
+	if err := d.validateVersionFormat(version); err != nil {
+		return nil, err
+	}
+	datasetVersion, err := d.datasetRepo.FetchDatasetVersionByID(ctx, datasetID, version)
+	if err != nil {
+		return nil, err
+	}
+	if datasetVersion == nil {
+		return nil, errs.NewNotFoundError("dataset version not found")
+	}
+
+	if datasetVersion.Policies.Write == nil {
+		return nil, errs.NewConflictError("WritePolicy is not configured for data update")
+	}
+
+	if datasetVersion.Policies.Write.KeyField == "" {
+		return nil, errs.NewConflictError("KeyField is not configured in write policy for key-based update")
+	}
+
+	if len(data) == 0 {
+		return nil, errs.NewBadRequestError("data cannot be null or empty")
+	}
+
+	result, err := d.dataRepo.ExecuteUpdate(ctx, datasetVersion.SourceID, datasetVersion.Schema, datasetVersion.Policies.Write, key, data)
+	if err != nil {
+		return nil, err
+	}
+	if result == nil {
+		return nil, errs.NewNotFoundError("data with the specified key not found")
+	}
+
+	return result, nil
+}
+
+// DeleteDatasetVersionDataByKey implements data.DataUsecase.
+func (d *dataUsecase) DeleteDatasetVersionDataByKey(ctx context.Context, datasetID string, version string, key string) error {
+	if err := d.validateDatasetID(datasetID); err != nil {
+		return err
+	}
+	if err := d.validateVersionFormat(version); err != nil {
+		return err
+	}
+	datasetVersion, err := d.datasetRepo.FetchDatasetVersionByID(ctx, datasetID, version)
+	if err != nil {
+		return err
+	}
+	if datasetVersion == nil {
+		return errs.NewNotFoundError("dataset version not found")
+	}
+	if datasetVersion.Policies.Delete == nil {
+		return errs.NewConflictError("DeletePolicy is not configured for data deletion")
+	}
+
+	sqlResult, err := d.dataRepo.ExecuteDelete(ctx, datasetVersion.SourceID, datasetVersion.Policies.Delete, key)
+	if err != nil {
+		return err
+	}
+	if sqlResult == nil {
+		return errs.NewNotFoundError("data with the specified key not found")
+	}
+	rowsAffected, err := sqlResult.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rowsAffected == 0 {
+		return errs.NewNotFoundError("data with the specified key not found")
+	}
+	return nil
 }
 
 func NewDataUsecase(dataRepo data.PsqlDataRepository, datasetRepo data.PsqlDatasetRepository, redisRepo data.RedisRepository, cryptoSecret string) data.DataUsecase {

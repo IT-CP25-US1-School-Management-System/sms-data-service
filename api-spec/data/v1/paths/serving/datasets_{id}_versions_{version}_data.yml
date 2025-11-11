@@ -1,0 +1,175 @@
+# /datasets/{id}/versions/{version}/data
+get:
+  tags: [Serving]
+  summary: List rows from a dataset version (policy-aware, dynamic)
+  parameters:
+    - name: id
+      in: path
+      required: true
+      schema:
+        type: string
+      description: Dataset ID
+    - name: version
+      in: path
+      required: true
+      schema:
+        type: string
+      description: Dataset version
+    - name: page
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+      description: Page number for pagination
+    - name: per_page
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 10
+      description: Number of items per page
+    - name: view
+      in: query
+      schema:
+        type: string
+      description: View name to use for data access
+    - name: where
+      in: query
+      schema:
+        type: string
+      description: JSON string for filter conditions (array of filter groups)
+    - name: where_logical_operator
+      in: query
+      schema:
+        type: string
+        enum: [AND, OR, and, or]
+        default: AND
+      description: Logical operator between filter groups
+    - name: sort_by
+      in: query
+      schema:
+        type: string
+      description: Column name to sort by
+    - name: sort_order
+      in: query
+      schema:
+        type: string
+        enum: [ASC, DESC, asc, desc]
+        default: ASC
+      description: Sort order
+  responses:
+    "200":
+      description: Dataset rows with pagination
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              data:
+                type: array
+                items:
+                  type: object
+                  additionalProperties: true
+              page:
+                type: integer
+              per_page:
+                type: integer
+              total_pages:
+                type: integer
+              total_rows:
+                type: integer
+    "400":
+      description: Bad Request
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yml"
+    "401":
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yml"
+    "403":
+      description: Forbidden
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yml"
+    "404":
+      description: Dataset or version not found
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yml"
+
+post:
+  tags: [Serving]
+  summary: Create a new row in dataset version
+  parameters:
+    - name: id
+      in: path
+      required: true
+      schema:
+        type: string
+      description: Dataset ID
+    - name: version
+      in: path
+      required: true
+      schema:
+        type: string
+      description: Dataset version
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          additionalProperties: true
+          description: Row data to be created
+  responses:
+    "201":
+      description: Row created successfully
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+                example: "success"
+              data:
+                type: object
+                additionalProperties: true
+    "400":
+      description: Bad Request
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yml"
+    "401":
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yml"
+    "403":
+      description: Forbidden
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yml"
+    "404":
+      description: Dataset or version not found
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yml"
+    "409":
+      description: Conflict - duplicate key or constraint violation
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yml"

@@ -1,0 +1,55 @@
+type: object
+properties:
+  name:
+    type: string
+    description: Source name
+  description:
+    type: string
+    nullable: true
+    description: Source description (optional)
+  type:
+    type: string
+    enum: [jdbc]
+    description: Source type
+  is_active:
+    type: boolean
+    description: Whether the source is active
+  sensitivity:
+    type: string
+    enum: [public, internal, confidential, restricted]
+    description: Data sensitivity level
+  db_type:
+    type: string
+    enum: [postgres, mysql]
+    description: Database type
+  host:
+    type: string
+    description: Database host
+  port:
+    type: integer
+    minimum: 1
+    description: Database port
+  username:
+    type: string
+    description: Database username
+  password:
+    type: string
+    description: Database password
+  database_name:
+    type: string
+    description: Database name
+  params:
+    type: string
+    nullable: true
+    description: Additional connection parameters (optional)
+required:
+  - name
+  - type
+  - is_active
+  - sensitivity
+  - db_type
+  - host
+  - port
+  - username
+  - password
+  - database_name

@@ -18,12 +18,13 @@ func NewRoute(e *echo.Echo, middl middleware.GoMiddlewareInf) *Route {
 func (r *Route) RegisterDataRoute(handler data.DataHandler) {
 	introspectGroup := r.e.Group("/v1/introspect")
 	introspectGroup.GET("/sources", handler.FetchSourceList)
+	introspectGroup.GET("/sources/:id", handler.FetchSourceByID)
 	introspectGroup.GET("/schemas", handler.FetchSchemasList)
 	introspectGroup.GET("/tables", handler.FetchTablesList)
 	introspectGroup.GET("/columns", handler.FetchColumnsList)
 	introspectGroup.POST("/sources", handler.InsertSource)
 	introspectGroup.PUT("/sources/:id", handler.UpdateSource)
-	introspectGroup.DELETE("sources/:id", handler.DeleteSourceByID, r.middl.ValidateParamId("id"))
+	introspectGroup.DELETE("/sources/:id", handler.DeleteSourceByID, r.middl.ValidateParamId("id"))
 	introspectGroup.PATCH("/sources/:id/activate", handler.ActivateSourceByID, r.middl.ValidateParamId("id"))
 	introspectGroup.PATCH("/sources/:id/deactivate", handler.DeactivateSourceByID, r.middl.ValidateParamId("id"))
 
@@ -33,4 +34,22 @@ func (r *Route) RegisterDataRoute(handler data.DataHandler) {
 	datasetsGroup.GET("/:id", handler.FetchDatasetByID)
 	datasetsGroup.POST("", handler.UpsertDataset)
 	datasetsGroup.DELETE("/:id", handler.DeleteDatasetByID)
+
+	// Dataset Versions Route
+	datasetVersionsGroup := r.e.Group("/v1/datasets/:id/versions")
+	datasetVersionsGroup.GET("", handler.FetchDatasetVersionsList) // filter validate // finish
+	datasetVersionsGroup.GET("/:version", handler.FetchDatasetVersionByID)
+	datasetVersionsGroup.POST("", handler.InsertDatasetVersion)                 //insert + DTO validate //REPO function ไม่ต้องแก้
+	datasetVersionsGroup.PUT("/:version", handler.UpdateDatasetVersion)         //update + DTO validate
+	datasetVersionsGroup.PATCH("/:version", handler.UpdateDatasetVersionStatus) // patch update status active,preview,deprecated + DTO validate รับ status
+
+	// Serving Routes
+	servingGroup := r.e.Group("/v1/datasets/:id/versions/:version")
+	servingGroup.GET("/data", handler.ServingDatasetVersionData)
+	servingGroup.GET("/data/key/:key", handler.ServingDatasetVersionDataByKey)
+
+	// Data Modification Routes
+	servingGroup.POST("/data", handler.CreateDatasetVersionData)
+	servingGroup.PUT("/data/key/:key", handler.UpdateDatasetVersionDataByKey)
+	servingGroup.DELETE("/data/key/:key", handler.DeleteDatasetVersionDataByKey)
 }
