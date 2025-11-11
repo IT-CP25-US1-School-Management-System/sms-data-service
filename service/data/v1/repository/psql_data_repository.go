@@ -1149,12 +1149,12 @@ func (p *psqlDataRepository) ExecuteCreate(
 	// 1. Validate และ Prepare ข้อมูลก่อน
 	validatedData, err := p.validateAndPrepareData(schema, writePolicy, data)
 	if err != nil {
-		return nil, fmt.Errorf("create validation failed: %w", err)
+		return nil, errs.NewBadRequestError(fmt.Sprintf("create validation failed: %w", err))
 	}
 
 	// (ถ้า validatedData ไม่มี field เลย ก็ไม่ควร Insert)
 	if len(validatedData) == 0 {
-		return nil, fmt.Errorf("no valid fields provided for creation")
+		return nil, errs.NewBadRequestError("no valid fields provided for creation")
 	}
 
 	// 2. ดึง Connection
@@ -1235,17 +1235,17 @@ func (p *psqlDataRepository) ExecuteUpdate(
 	// 1. Validate และ Prepare ข้อมูลก่อน
 	validatedData, err := p.validateAndPrepareData(schema, writePolicy, data)
 	if err != nil {
-		return nil, fmt.Errorf("update validation failed: %w", err)
+		return nil, errs.NewBadRequestError(fmt.Sprintf("update validation failed: %w", err))
 	}
 
 	// (ถ้า validatedData ไม่มี field เลย ก็ไม่อัปเดต)
 	if len(validatedData) == 0 {
-		return nil, fmt.Errorf("no valid fields provided for update")
+		return nil, errs.NewBadRequestError("no valid fields provided for update")
 	}
 
 	// 2. ตรวจสอบ KeyField
 	if writePolicy.KeyField == "" {
-		return nil, fmt.Errorf("WritePolicy.KeyField is not defined")
+		return nil, errs.NewBadRequestError("WritePolicy.KeyField is not defined")
 	}
 
 	// 3. ดึง Connection
@@ -1290,7 +1290,7 @@ func (p *psqlDataRepository) ExecuteUpdate(
 		if err == sql.ErrNoRows {
 			return nil, nil
 		}
-		return nil, fmt.Errorf("failed to execute update with returning: %w", err)
+		return nil, errs.NewNotFoundError(fmt.Sprintf("failed to execute update with returning: %w", err))
 	}
 
 	return row, nil
