@@ -264,6 +264,14 @@ func (d *dataHandler) FetchColumnsList(c echo.Context) error {
 	if err := c.Validate(&filter); err != nil {
 		return errs.ErrBadRequest(err)
 	}
+	pageStr := c.QueryParam("page")
+	perPageStr := c.QueryParam("per_page")
+	if pageStr == "0" {
+		return errs.NewBadRequestError("page parameter must be greater than 0")
+	}
+	if perPageStr == "0" {
+		return errs.NewBadRequestError("per_page parameter must be greater than 0")
+	}
 	paginator := helperModel.NewPaginator()
 	if filter.Page > 0 && filter.PerPage > 0 {
 		paginator.Page = filter.Page
@@ -296,6 +304,14 @@ func (d *dataHandler) FetchTablesList(c echo.Context) error {
 	}
 	if err := c.Validate(&filter); err != nil {
 		return errs.ErrBadRequest(err)
+	}
+	pageStr := c.QueryParam("page")
+	perPageStr := c.QueryParam("per_page")
+	if pageStr == "0" {
+		return errs.NewBadRequestError("page parameter must be greater than 0")
+	}
+	if perPageStr == "0" {
+		return errs.NewBadRequestError("per_page parameter must be greater than 0")
 	}
 	paginator := helperModel.NewPaginator()
 	if filter.Page > 0 && filter.PerPage > 0 {
@@ -332,7 +348,14 @@ func (d *dataHandler) FetchDatasetList(c echo.Context) error {
 	if err := c.Validate(&filter); err != nil {
 		return errs.ErrBadRequest(err)
 	}
-
+	pageStr := c.QueryParam("page")
+	perPageStr := c.QueryParam("per_page")
+	if pageStr == "0" {
+		return errs.NewBadRequestError("page parameter must be greater than 0")
+	}
+	if perPageStr == "0" {
+		return errs.NewBadRequestError("per_page parameter must be greater than 0")
+	}
 	if filter.Page > 0 && filter.PerPage > 0 {
 		paginator.Page = filter.Page
 		paginator.PerPage = filter.PerPage
@@ -364,6 +387,14 @@ func (d *dataHandler) FetchSchemasList(c echo.Context) error {
 	}
 	if err := c.Validate(&filter); err != nil {
 		return errs.ErrBadRequest(err)
+	}
+	pageStr := c.QueryParam("page")
+	perPageStr := c.QueryParam("per_page")
+	if pageStr == "0" {
+		return errs.NewBadRequestError("page parameter must be greater than 0")
+	}
+	if perPageStr == "0" {
+		return errs.NewBadRequestError("per_page parameter must be greater than 0")
 	}
 	paginator := helperModel.NewPaginator()
 	if filter.Page > 0 && filter.PerPage > 0 {
@@ -463,6 +494,14 @@ func (d *dataHandler) FetchDatasetVersionsList(c echo.Context) error {
 	if err := c.Validate(&filter); err != nil {
 		return errs.ErrBadRequest(err)
 	}
+	pageStr := c.QueryParam("page")
+	perPageStr := c.QueryParam("per_page")
+	if pageStr == "0" {
+		return errs.NewBadRequestError("page parameter must be greater than 0")
+	}
+	if perPageStr == "0" {
+		return errs.NewBadRequestError("per_page parameter must be greater than 0")
+	}
 	paginator := helperModel.NewPaginator()
 	if filter.Page > 0 && filter.PerPage > 0 {
 		paginator.Page = filter.Page
@@ -529,7 +568,14 @@ func (d *dataHandler) ServingDatasetVersionData(c echo.Context) error {
 	if err := c.Validate(&servingFilter); err != nil {
 		return errs.ErrBadRequest(err)
 	}
-
+	pageStr := c.QueryParam("page")
+	perPageStr := c.QueryParam("per_page")
+	if pageStr == "0" {
+		return errs.NewBadRequestError("page parameter must be greater than 0")
+	}
+	if perPageStr == "0" {
+		return errs.NewBadRequestError("per_page parameter must be greater than 0")
+	}
 	paginator := helperModel.NewPaginator()
 	if servingFilter.Page > 0 && servingFilter.PerPage > 0 {
 		paginator.Page = servingFilter.Page

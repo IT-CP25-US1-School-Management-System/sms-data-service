@@ -591,7 +591,7 @@ func (p *psqlDatasetRepository) FetchDatasetList(ctx context.Context, filter *fi
 			valArgs = append(valArgs, sw, sw)
 		}
 		if len(filter.Tags) > 0 {
-			conds = append(conds, "COALESCE(tags, '{}'::text[]) @> ?::text[]")
+			conds = append(conds, "COALESCE(tags, '{}') @> ?")
 			valArgs = append(valArgs, pq.Array(filter.Tags))
 		}
 		if filter.HasPii != nil {
