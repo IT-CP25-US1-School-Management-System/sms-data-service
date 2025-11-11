@@ -21,6 +21,32 @@ type dataHandler struct {
 	dataUs data.DataUsecase
 }
 
+// FetchSourceByID implements data.DataHandler.
+func (d *dataHandler) FetchSourceByID(c echo.Context) error {
+	ctx := c.Request().Context()
+	sourceIDParam := c.Param("id")
+	sourceIDUUID, err := uuid.FromString(sourceIDParam)
+	if err != nil {
+		return errs.NewBadRequestError(constants.ERR_INVALID_SOURCE_ID)
+	}
+	source, err := d.dataUs.FetchSourceByID(ctx, &sourceIDUUID)
+	if err != nil {
+		return err
+	}
+	if source == nil {
+		return errs.NewNotFoundError(constants.ERR_SOURCE_NOT_FOUND)
+	}
+	sourceDTO, err := helperModel.ConvertStruct[entity.Sources, dto.SourcesResponseDTO](*source)
+	if err != nil {
+		return err
+	}
+
+	res := map[string]interface{}{
+		"data": sourceDTO,
+	}
+	return c.JSON(http.StatusOK, res)
+}
+
 // InsertDatasetVersion implements data.DataHandler.
 func (d *dataHandler) InsertDatasetVersion(c echo.Context) error {
 	ctx := c.Request().Context()

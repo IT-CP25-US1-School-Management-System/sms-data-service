@@ -93,3 +93,17 @@ func SourcesEntityToSourcesResponseDTO(entity []*entity.Sources) []*SourcesRespo
 	}
 	return response
 }
+
+type SourceByIDResponse struct {
+	Name         string  `json:"name" validate:"required"`
+	Description  *string `json:"description" validate:"omitempty"`
+	Type         string  `json:"type" validate:"required,oneof=jdbc"`
+	IsActive     bool    `json:"is_active" validate:"required"`
+	Sensitivity  string  `json:"sensitivity" validate:"required,oneof=public internal confidential restricted"`
+	DBType       string  `json:"db_type" validate:"required,oneof=postgres mysql"`
+	Host         string  `json:"host" validate:"required"`
+	Port         int     `json:"port"  validate:"required,min=1"`
+	Username     string  `json:"username" validate:"required"`
+	DatabaseName string  `json:"database_name" validate:"required"`
+	Params       *string `json:"params" validate:"omitempty"`
+}

@@ -21,6 +21,11 @@ type dataUsecase struct {
 	cryptoSecret string
 }
 
+// FetchSourceByID implements data.DataUsecase.
+func (d *dataUsecase) FetchSourceByID(ctx context.Context, sourceID *uuid.UUID) (*entity.Sources, error) {
+	return d.datasetRepo.FetchSourceByID(ctx, sourceID)
+}
+
 // DeleteSourceByID implements data.DataUsecase.
 func (d *dataUsecase) DeleteSourceByID(ctx context.Context, sourceID *uuid.UUID) error {
 	exist, err := d.datasetRepo.ExistSourceByID(ctx, sourceID)

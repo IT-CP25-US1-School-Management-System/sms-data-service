@@ -18,6 +18,7 @@ func NewRoute(e *echo.Echo, middl middleware.GoMiddlewareInf) *Route {
 func (r *Route) RegisterDataRoute(handler data.DataHandler) {
 	introspectGroup := r.e.Group("/v1/introspect")
 	introspectGroup.GET("/sources", handler.FetchSourceList)
+	introspectGroup.GET("/sources/:id", handler.FetchSourceByID)
 	introspectGroup.GET("/schemas", handler.FetchSchemasList)
 	introspectGroup.GET("/tables", handler.FetchTablesList)
 	introspectGroup.GET("/columns", handler.FetchColumnsList)
