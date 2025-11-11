@@ -357,7 +357,7 @@ func (d *dataUsecase) UpdateDatasetVersion(ctx context.Context, datasetVersion *
 		return errs.NewNotFoundError(constants.ERR_DATASET_VERSION_NOT_FOUND)
 	}
 	datasetVersion.DatasetID = datasetID
-	// datasetVersion.Version = version
+	datasetVersion.Version = version
 	now := helperModel.NewTimestampFromNow()
 	datasetVersion.CreatedAt = &now
 	datasetVersion.UpdatedAt = &now
