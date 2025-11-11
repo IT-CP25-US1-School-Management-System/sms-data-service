@@ -32,9 +32,10 @@ ENV TZ=Asia/Bangkok
 COPY --from=0 /go/src/github.com/IT-CP25-US1-School-Management-System/sms-data-service/build/app .
 COPY --from=0 /go/src/github.com/IT-CP25-US1-School-Management-System/sms-data-service/assets assets
 COPY --from=0 /go/src/github.com/IT-CP25-US1-School-Management-System/sms-data-service/migrations migrations
+COPY --from=0 /go/src/github.com/IT-CP25-US1-School-Management-System/sms-data-service/api-spec api-spec
 
-EXPOSE 3000
-EXPOSE 3100
+EXPOSE 3200
+EXPOSE 4200
 
 RUN adduser --system --uid 1001 golang
 USER golang
