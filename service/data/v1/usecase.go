@@ -56,4 +56,11 @@ type DataUsecase interface {
 	CreateDatasetVersionData(ctx context.Context, datasetID, version string, data map[string]interface{}) (map[string]interface{}, error)
 	UpdateDatasetVersionDataByKey(ctx context.Context, datasetID, version, key string, data map[string]interface{}) (map[string]interface{}, error)
 	DeleteDatasetVersionDataByKey(ctx context.Context, datasetID, version, key string) error
+
+	// Table Data CRUD (direct source access)
+	FetchTableData(ctx context.Context, sourceID *uuid.UUID, schemaName, tableName string, filterGroups [][]entity.FilterInput, logicalOperator string, paginator *helperModel.Paginator, sortBy, sortOrder string) ([]map[string]interface{}, error)
+	FetchTableDataByKey(ctx context.Context, sourceID *uuid.UUID, schemaName, tableName, keyField string, keyValue interface{}) (map[string]interface{}, error)
+	CreateTableData(ctx context.Context, sourceID *uuid.UUID, schemaName, tableName string, data map[string]interface{}) (map[string]interface{}, error)
+	UpdateTableData(ctx context.Context, sourceID *uuid.UUID, schemaName, tableName, keyField string, keyValue interface{}, data map[string]interface{}) (map[string]interface{}, error)
+	DeleteTableData(ctx context.Context, sourceID *uuid.UUID, schemaName, tableName, keyField string, keyValue interface{}) error
 }

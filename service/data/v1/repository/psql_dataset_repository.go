@@ -168,6 +168,51 @@ func (p *psqlDatasetRepository) ExistSourceByID(ctx context.Context, sourceID *u
 	return exists, nil
 }
 
+func (p *psqlDatasetRepository) ExistSchemaByName(ctx context.Context, sourceID *uuid.UUID, schemaName string) (bool, error) {
+	query := `
+		SELECT EXISTS (
+			SELECT 1
+			FROM physical_schemas
+			WHERE source_id = $1 AND schema = $2
+		)
+	`
+	var exists bool
+	if err := p.client.GetClient().QueryRowxContext(ctx, query, sourceID, schemaName).Scan(&exists); err != nil {
+		return false, err
+	}
+	return exists, nil
+}
+
+func (p *psqlDatasetRepository) ExistTableByName(ctx context.Context, sourceID *uuid.UUID, schemaName, tableName string) (bool, error) {
+	query := `
+		SELECT EXISTS (
+			SELECT 1
+			FROM physical_tables
+			WHERE source_id = $1 AND schema = $2 AND table_name = $3
+		)
+	`
+	var exists bool
+	if err := p.client.GetClient().QueryRowxContext(ctx, query, sourceID, schemaName, tableName).Scan(&exists); err != nil {
+		return false, err
+	}
+	return exists, nil
+}
+
+func (p *psqlDatasetRepository) ExistColumnByName(ctx context.Context, sourceID *uuid.UUID, schemaName, tableName, columnName string) (bool, error) {
+	query := `
+		SELECT EXISTS (
+			SELECT 1
+			FROM physical_columns
+			WHERE source_id = $1 AND schema = $2 AND table_name = $3 AND column_name = $4
+		)
+	`
+	var exists bool
+	if err := p.client.GetClient().QueryRowxContext(ctx, query, sourceID, schemaName, tableName, columnName).Scan(&exists); err != nil {
+		return false, err
+	}
+	return exists, nil
+}
+
 // ActivateSourceByID implements data.PsqlDatasetRepository.
 func (p *psqlDatasetRepository) ActivateSourceByID(ctx context.Context, sourceID *uuid.UUID) error {
 	query := `

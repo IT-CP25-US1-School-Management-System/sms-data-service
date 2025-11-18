@@ -577,6 +577,203 @@ func (d *dataUsecase) DeleteDatasetVersionDataByKey(ctx context.Context, dataset
 	return nil
 }
 
+func (d *dataUsecase) validateExistSource(ctx context.Context, sourceID *uuid.UUID, schemaName, tableName string) error {
+	exists, err := d.datasetRepo.ExistSourceByID(ctx, sourceID)
+	if err != nil {
+		return err
+	}
+	if !exists {
+		return errs.NewNotFoundError(constants.ERR_SOURCE_NOT_FOUND)
+	}
+	exists, err = d.datasetRepo.ExistSchemaByName(ctx, sourceID, schemaName)
+	if err != nil {
+		return err
+	}
+	if !exists {
+		return errs.NewNotFoundError(constants.ERR_SCHEMA_NOT_FOUND)
+	}
+	exists, err = d.datasetRepo.ExistTableByName(ctx, sourceID, schemaName, tableName)
+	if err != nil {
+		return err
+	}
+	if !exists {
+		return errs.NewNotFoundError(constants.ERR_TABLE_NOT_FOUND)
+	}
+
+	return nil
+}
+
+// FetchTableData implements data.DataUsecase.
+func (d *dataUsecase) FetchTableData(
+	ctx context.Context,
+	sourceID *uuid.UUID,
+	schemaName, tableName string,
+	filterGroups [][]entity.FilterInput,
+	logicalOperator string,
+	paginator *helperModel.Paginator,
+	sortBy, sortOrder string,
+) ([]map[string]interface{}, error) {
+	// Validate exists
+	err := d.validateExistSource(ctx, sourceID, schemaName, tableName)
+	if err != nil {
+		return nil, err
+	}
+
+	return d.dataRepo.FetchTableData(ctx, sourceID, schemaName, tableName, filterGroups, logicalOperator, paginator, sortBy, sortOrder)
+}
+
+// FetchTableDataByKey implements data.DataUsecase.
+func (d *dataUsecase) FetchTableDataByKey(
+	ctx context.Context,
+	sourceID *uuid.UUID,
+	schemaName, tableName, keyField string,
+	keyValue interface{},
+) (map[string]interface{}, error) {
+	// Validate source exists
+	err := d.validateExistSource(ctx, sourceID, schemaName, tableName)
+	if err != nil {
+		return nil, err
+	}
+	exists, err := d.datasetRepo.ExistColumnByName(ctx, sourceID, schemaName, tableName, keyField)
+	if err != nil {
+		return nil, err
+	}
+	if !exists {
+		return nil, errs.NewNotFoundError(constants.ERR_COLUMN_NOT_FOUND)
+	}
+
+	return d.dataRepo.FetchTableDataByKey(ctx, sourceID, schemaName, tableName, keyField, keyValue)
+}
+
+// CreateTableData implements data.DataUsecase.
+func (d *dataUsecase) CreateTableData(
+	ctx context.Context,
+	sourceID *uuid.UUID,
+	schemaName, tableName string,
+	data map[string]interface{},
+) (map[string]interface{}, error) {
+	// Validate source exists
+	// Validate source exists
+	err := d.validateExistSource(ctx, sourceID, schemaName, tableName)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(data) == 0 {
+		return nil, errs.NewBadRequestError("data cannot be null or empty")
+	}
+
+	// Fetch columns information for validation
+	columnsFilter := &filter.ColumnsFilter{
+		SourceID: sourceID,
+		Schema:   schemaName,
+		Table:    tableName,
+	}
+	paginator := helperModel.NewPaginator()
+	paginator.PerPage = 1000 // Get all columns
+
+	columns, err := d.datasetRepo.FetchColumnsList(ctx, columnsFilter, &paginator)
+	if err != nil {
+		return nil, err
+	}
+	if len(columns) == 0 {
+		return nil, errs.NewBadRequestError("table not found or has no columns")
+	}
+
+	return d.dataRepo.CreateTableData(ctx, sourceID, schemaName, tableName, columns, data)
+}
+
+// UpdateTableData implements data.DataUsecase.
+func (d *dataUsecase) UpdateTableData(
+	ctx context.Context,
+	sourceID *uuid.UUID,
+	schemaName, tableName, keyField string,
+	keyValue interface{},
+	data map[string]interface{},
+) (map[string]interface{}, error) {
+	// Validate source exists
+	// Validate source exists
+	err := d.validateExistSource(ctx, sourceID, schemaName, tableName)
+	if err != nil {
+		return nil, err
+	}
+	exists, err := d.datasetRepo.ExistColumnByName(ctx, sourceID, schemaName, tableName, keyField)
+	if err != nil {
+		return nil, err
+	}
+	if !exists {
+		return nil, errs.NewNotFoundError(constants.ERR_COLUMN_NOT_FOUND)
+	}
+
+	if len(data) == 0 {
+		return nil, errs.NewBadRequestError("data cannot be null or empty")
+	}
+
+	// Fetch columns information for validation
+	columnsFilter := &filter.ColumnsFilter{
+		SourceID: sourceID,
+		Schema:   schemaName,
+		Table:    tableName,
+	}
+	paginator := helperModel.NewPaginator()
+	paginator.PerPage = 1000 // Get all columns
+
+	columns, err := d.datasetRepo.FetchColumnsList(ctx, columnsFilter, &paginator)
+	if err != nil {
+		return nil, err
+	}
+	if len(columns) == 0 {
+		return nil, errs.NewBadRequestError("table not found or has no columns")
+	}
+
+	result, err := d.dataRepo.UpdateTableData(ctx, sourceID, schemaName, tableName, keyField, keyValue, columns, data)
+	if err != nil {
+		return nil, err
+	}
+	if result == nil {
+		return nil, errs.NewNotFoundError("data with the specified key not found")
+	}
+
+	return result, nil
+}
+
+// DeleteTableData implements data.DataUsecase.
+func (d *dataUsecase) DeleteTableData(
+	ctx context.Context,
+	sourceID *uuid.UUID,
+	schemaName, tableName, keyField string,
+	keyValue interface{},
+) error {
+	// Validate source exists
+	err := d.validateExistSource(ctx, sourceID, schemaName, tableName)
+	if err != nil {
+		return err
+	}
+	exists, err := d.datasetRepo.ExistColumnByName(ctx, sourceID, schemaName, tableName, keyField)
+	if err != nil {
+		return err
+	}
+	if !exists {
+		return errs.NewNotFoundError(constants.ERR_COLUMN_NOT_FOUND)
+	}
+
+	sqlResult, err := d.dataRepo.DeleteTableData(ctx, sourceID, schemaName, tableName, keyField, keyValue)
+	if err != nil {
+		return err
+	}
+	if sqlResult == nil {
+		return errs.NewNotFoundError("data with the specified key not found")
+	}
+	rowsAffected, err := sqlResult.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rowsAffected == 0 {
+		return errs.NewNotFoundError("data with the specified key not found")
+	}
+	return nil
+}
+
 func NewDataUsecase(dataRepo data.PsqlDataRepository, datasetRepo data.PsqlDatasetRepository, redisRepo data.RedisRepository, cryptoSecret string) data.DataUsecase {
 	return &dataUsecase{
 		dataRepo:     dataRepo,

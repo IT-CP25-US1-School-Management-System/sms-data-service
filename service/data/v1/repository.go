@@ -42,6 +42,13 @@ type PsqlDataRepository interface {
 	ExecuteCreate(ctx context.Context, sourceID *uuid.UUID, schema entity.Schema, writePolicy *entity.WritePolicy, data map[string]interface{}) (map[string]interface{}, error)
 	ExecuteUpdate(ctx context.Context, sourceID *uuid.UUID, schema entity.Schema, writePolicy *entity.WritePolicy, key interface{}, data map[string]interface{}) (map[string]interface{}, error)
 	ExecuteDelete(ctx context.Context, sourceID *uuid.UUID, deletePolicy *entity.DeletePolicy, key interface{}) (sql.Result, error)
+
+	// Table Data CRUD (direct table access)
+	FetchTableData(ctx context.Context, sourceID *uuid.UUID, schemaName, tableName string, filterGroups [][]entity.FilterInput, logicalOperator string, paginator *models.Paginator, sortBy, sortOrder string) ([]map[string]interface{}, error)
+	FetchTableDataByKey(ctx context.Context, sourceID *uuid.UUID, schemaName, tableName, keyField string, keyValue interface{}) (map[string]interface{}, error)
+	CreateTableData(ctx context.Context, sourceID *uuid.UUID, schemaName, tableName string, columns []*entity.Columns, data map[string]interface{}) (map[string]interface{}, error)
+	UpdateTableData(ctx context.Context, sourceID *uuid.UUID, schemaName, tableName, keyField string, keyValue interface{}, columns []*entity.Columns, data map[string]interface{}) (map[string]interface{}, error)
+	DeleteTableData(ctx context.Context, sourceID *uuid.UUID, schemaName, tableName, keyField string, keyValue interface{}) (sql.Result, error)
 }
 
 type PsqlDatasetRepository interface {
@@ -56,6 +63,9 @@ type PsqlDatasetRepository interface {
 	ExistSourceByID(ctx context.Context, sourceID *uuid.UUID) (bool, error)
 	DeleteSourceByID(ctx context.Context, sourceID *uuid.UUID) error
 	BatchInsertInformationDatabase(ctx context.Context, schemas []*entity.Schemas, tables []*entity.Tables, columns []*entity.Columns, tableRelations []*entity.TableRelations) error
+	ExistSchemaByName(ctx context.Context, sourceID *uuid.UUID, schemaName string) (bool, error)
+	ExistTableByName(ctx context.Context, sourceID *uuid.UUID, schemaName, tableName string) (bool, error)
+	ExistColumnByName(ctx context.Context, sourceID *uuid.UUID, schemaName, tableName, columnName string) (bool, error)
 
 	// Dataset
 	FetchDatasetList(ctx context.Context, filter *filter.DatasetsFilter, paginator *models.Paginator) ([]*entity.Datasets, error)
