@@ -9,6 +9,9 @@ const (
 	ERR_DATASET_VERSION_ALREADY_EXISTS = "dataset version already exists"
 	ERR_INVALID_REQUEST_BODY           = "invalid request body"
 	ERR_SOURCE_NOT_FOUND               = "source not found"
+	ERR_SCHEMA_NOT_FOUND               = "schema not found"
+	ERR_TABLE_NOT_FOUND                = "table not found"
+	ERR_COLUMN_NOT_FOUND               = "column not found"
 	ERR_INVALID_SOURCE_ID              = "invalid source id"
 	ERR_DATASET_VERSION_NOT_FOUND      = "dataset version not found"
 )

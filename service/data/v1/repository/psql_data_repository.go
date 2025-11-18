@@ -9,7 +9,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/GodeFvt/go-backend/helper/models"
 	helperModel "github.com/GodeFvt/go-backend/helper/models"
 	"github.com/IT-CP25-US1-School-Management-System/sms-data-service/constants"
 	"github.com/IT-CP25-US1-School-Management-System/sms-data-service/errs"
@@ -591,216 +590,13 @@ func createViewMap(viewConfigs []entity.View) map[string]map[string]bool {
 	return viewMap
 }
 
-// func buildRuntimeSQLBuilder(
-// 	ctx context.Context,
-// 	schemaMap map[string]map[string]entity.Column,
-// 	queryPlan *entity.QueryPlan,
-// 	filterGroups [][]entity.FilterInput,
-// 	logicalOperator string,
-// 	pagination *models.Paginator,
-// 	sortBy string,
-// 	sortOrder string,
-// 	viewMap map[string]map[string]bool,
-// ) (squirrel.SelectBuilder, error) {
-
-// 	// --- 0. Alias Management ---
-// 	if queryPlan.From == nil || queryPlan.From.Table == "" {
-// 		return squirrel.SelectBuilder{}, fmt.Errorf("QueryPlan.From.Table is required")
-// 	}
-// 	am := newAliasManager(queryPlan.From.Table)
-// 	builder := psqlBuilder.Select().From(fmt.Sprintf("%s AS %s", am.fromTable, am.fromAlias))
-
-// 	fromViewCols, ok := viewMap[am.fromTable]
-// 	if !ok || len(fromViewCols) == 0 {
-// 		return builder, fmt.Errorf("view is missing configuration for base table '%s'", am.fromTable)
-// 	}
-
-// 	// --- 1. Projections (Base Table) ---
-// 	var groupByColumns []string
-// 	allowedSortAliases := make(map[string]string) // [NEW] Map สำหรับ Sorting
-// 	if len(queryPlan.Projections) == 0 {
-// 		return builder, fmt.Errorf("QueryPlan.Projections (for base table) must not be empty")
-// 	}
-// 	for _, p := range queryPlan.Projections {
-// 		baseCol := fmt.Sprintf("%s.%s", am.fromAlias, p.Column)
-// 		alias := p.Alias
-// 		if alias == "" {
-// 			alias = p.Column
-// 		}
-
-// 		// เก็บ Alias ที่อนุญาตให้ Sort
-// 		allowedSortAliases[alias] = baseCol
-// 		// ตรวจสอบว่า column นี้ อยู่ใน view หรือไม่
-// 		if !fromViewCols[p.Column] {
-// 			continue
-// 		}
-// 		if p.Alias != "" {
-// 			builder = builder.Column(fmt.Sprintf("%s AS %s", baseCol, p.Alias))
-// 		} else {
-// 			builder = builder.Column(baseCol)
-// 		}
-// 		groupByColumns = append(groupByColumns, baseCol)
-// 	}
-
-// 	// --- 2. Joins (JSON Nesting) ---
-// 	for _, j := range queryPlan.Joins {
-// 		joinViewCols, shouldJoin := viewMap[j.TableTo]
-// 		if !shouldJoin || len(joinViewCols) == 0 {
-// 			continue
-// 		}
-// 		fromAlias, _ := am.Get(j.TableFrom)
-// 		toAlias := am.generate(j.TableTo)
-// 		var joinProjections []string
-// 		for _, p := range j.Projections {
-// 			if !joinViewCols[p.Column] {
-// 				continue
-// 			}
-// 			jsonKey := fmt.Sprintf("'%s'", p.Alias)
-// 			jsonValue := fmt.Sprintf("%s.%s", toAlias, p.Column)
-// 			joinProjections = append(joinProjections, jsonKey, jsonValue)
-// 		}
-// 		if len(joinProjections) == 0 {
-// 			continue
-// 		}
-// 		joinProjectionString := strings.Join(joinProjections, ", ")
-// 		onClause, err := buildOnClause(j.Condition, fromAlias, toAlias)
-// 		if err != nil {
-// 			return builder, fmt.Errorf("failed to build ON clause for join '%s': %w", j.Alias, err)
-// 		}
-// 		if j.Relation == "one_to_one" || j.Relation == "many_to_one" {
-// 			joinTableSQL := fmt.Sprintf("%s AS %s", j.TableTo, toAlias)
-// 			builder = builder.LeftJoin(fmt.Sprintf("%s ON %s", joinTableSQL, onClause))
-// 			jsonBuild := fmt.Sprintf("COALESCE(JSON_BUILD_OBJECT(%s), NULL) AS %s", joinProjectionString, j.Alias)
-// 			builder = builder.Column(jsonBuild)
-// 			for _, p := range j.Projections {
-// 				if joinViewCols[p.Column] && p.Column != "" {
-// 					groupByColumns = append(groupByColumns, fmt.Sprintf("%s.%s", toAlias, p.Column))
-// 				}
-// 			}
-// 		} else if j.Relation == "one_to_many" {
-// 			subQuery := fmt.Sprintf(
-// 				`(SELECT COALESCE(JSON_AGG(JSON_BUILD_OBJECT(%s)), '[]') FROM %s AS %s WHERE %s) AS %s`,
-// 				joinProjectionString, j.TableTo, toAlias, onClause, j.Alias,
-// 			)
-// 			builder = builder.Column(subQuery)
-// 		}
-// 	}
-
-// 	// --- 3. Where ---
-// 	allowedWhereMap, err := buildAllowedWhereMap(queryPlan.WhereAllow, am)
-// 	if err != nil {
-// 		return builder, err
-// 	}
-// 	var masterWhereClause squirrel.Sqlizer
-// 	if strings.ToUpper(logicalOperator) == "OR" {
-// 		masterWhereClause = squirrel.Or{}
-// 	} else {
-// 		masterWhereClause = squirrel.And{}
-// 	}
-// 	if filterGroups != nil {
-// 		for _, group := range filterGroups {
-// 			if len(group) == 0 {
-// 				continue
-// 			}
-// 			orClause := squirrel.Or{}
-// 			for _, f := range group {
-// 				tableAlias, ok := am.Get(f.TableName)
-// 				if !ok {
-// 					return builder, errs.NewBadRequestError(fmt.Sprintf("filter table '%s' is not joined in the query", f.TableName))
-// 				}
-// 				fieldWithAlias := fmt.Sprintf("%s.%s", tableAlias, f.Field)
-
-// 				// Validate value null
-// 				if f.Value == nil && (strings.ToUpper(f.Operator) != "IS NULL" && strings.ToUpper(f.Operator) != "IS NOT NULL") {
-// 					return builder, errs.NewBadRequestError(fmt.Sprintf("filter value for '%s.%s' cannot be null unless using IS NULL or IS NOT NULL operator", f.TableName, f.Field))
-// 				}
-
-// 				// Validate Data Type
-// 				col, ok := schemaMap[f.TableName][f.Field]
-// 				if !ok {
-// 					return builder, errs.NewBadRequestError(fmt.Sprintf("filter field '%s.%s' not found in schema", f.TableName, f.Field))
-// 				}
-// 				if col.Enum != nil {
-// 					if err := validateEnum(col.Enum, f.Value); err != nil {
-// 						return builder, errs.NewBadRequestError(fmt.Sprintf("invalid filter value for '%s.%s': %v", f.TableName, f.Field, err))
-// 					}
-// 				}
-// 				if err := validateDataType(col.DataType, f.Value); err != nil {
-// 					return builder, errs.NewBadRequestError(fmt.Sprintf("invalid filter value for '%s.%s': %v", f.TableName, f.Field, err))
-// 				}
-
-// 				// ตรวจสอบ Allow
-// 				isAllowed := false
-// 				if ops, ok := allowedWhereMap[fieldWithAlias]; ok {
-// 					if _, ok := ops[f.Operator]; ok {
-// 						isAllowed = true
-// 					}
-// 				}
-// 				if !isAllowed {
-// 					return builder, errs.NewBadRequestError(fmt.Sprintf("filter is not allowed: %s.%s %s", f.TableName, f.Field, f.Operator))
-// 				}
-
-// 				// สร้าง Expression
-// 				expr, err := buildSquirrelExpr(fieldWithAlias, f.Operator, f.Value)
-// 				if err != nil {
-// 					return builder, fmt.Errorf("invalid filter: %w", err)
-// 				}
-// 				orClause = append(orClause, expr)
-// 			}
-// 			if strings.ToUpper(logicalOperator) == "OR" {
-// 				masterWhereClause = append(masterWhereClause.(squirrel.Or), orClause)
-// 			} else {
-// 				masterWhereClause = append(masterWhereClause.(squirrel.And), orClause)
-// 			}
-// 		}
-// 	}
-// 	addWhere := false
-// 	if op, ok := masterWhereClause.(squirrel.Or); ok && len(op) > 0 {
-// 		addWhere = true
-// 	} else if op, ok := masterWhereClause.(squirrel.And); ok && len(op) > 0 {
-// 		addWhere = true
-// 	}
-// 	if addWhere {
-// 		builder = builder.Where(masterWhereClause)
-// 	}
-
-// 	// --- 4. Group By ---
-// 	if len(groupByColumns) > 0 {
-// 		builder = builder.GroupBy(groupByColumns...)
-// 	}
-
-// 	// --- 5. Sorting & Pagination---
-
-// 	// 5a. Sorting
-// 	if sortBy != "" {
-// 		sortColumn, ok := allowedSortAliases[sortBy]
-// 		if !ok {
-// 			return builder, errs.NewBadRequestError(fmt.Sprintf("sort_by field '%s' is not an allowed projection alias for sorting", sortBy))
-// 		}
-
-// 		order := constants.SORT_ORDER_ASC
-// 		if strings.ToUpper(sortOrder) == constants.SORT_ORDER_DESC {
-// 			order = constants.SORT_ORDER_DESC
-// 		}
-
-// 		builder = builder.OrderBy(fmt.Sprintf("%s %s", sortColumn, order))
-// 	}
-
-// 	// 5b. Pagination
-// 	if pagination != nil {
-// 		builder = builder.Limit(uint64(pagination.GetLimit()))
-// 		builder = builder.Offset(uint64(pagination.GetOffset()))
-// 	}
-// 	return builder, nil
-// }
-
 func buildRuntimeSQLBuilder(
 	ctx context.Context,
 	schemaMap map[string]map[string]entity.Column,
 	queryPlan *entity.QueryPlan,
 	filterGroups [][]entity.FilterInput,
 	logicalOperator string,
-	pagination *models.Paginator,
+	pagination *helperModel.Paginator,
 	sortBy string,
 	sortOrder string,
 	viewMap map[string]map[string]bool,
@@ -1209,7 +1005,7 @@ func (p *psqlDataRepository) ExecuteQuery(
 	policies *entity.Policies,
 	filterGroups [][]entity.FilterInput,
 	logicalOperator string,
-	paginator *models.Paginator,
+	paginator *helperModel.Paginator,
 	viewName string,
 	sortBy string,
 	sortOrder string,
@@ -1442,7 +1238,7 @@ func (p *psqlDataRepository) ExecuteCreate(
 	// 1. Validate และ Prepare ข้อมูลก่อน
 	validatedData, err := p.validateAndPrepareData(schema, writePolicy, data)
 	if err != nil {
-		return nil, errs.NewBadRequestError(fmt.Sprintf("create validation failed: %w", err))
+		return nil, errs.NewBadRequestError(fmt.Sprintf("create validation failed: %v", err))
 	}
 
 	// (ถ้า validatedData ไม่มี field เลย ก็ไม่ควร Insert)
@@ -1528,7 +1324,7 @@ func (p *psqlDataRepository) ExecuteUpdate(
 	// 1. Validate และ Prepare ข้อมูลก่อน
 	validatedData, err := p.validateAndPrepareData(schema, writePolicy, data)
 	if err != nil {
-		return nil, errs.NewBadRequestError(fmt.Sprintf("update validation failed: %w", err))
+		return nil, errs.NewBadRequestError(fmt.Sprintf("update validation failed: %v", err))
 	}
 
 	// (ถ้า validatedData ไม่มี field เลย ก็ไม่อัปเดต)
@@ -1583,7 +1379,7 @@ func (p *psqlDataRepository) ExecuteUpdate(
 		if err == sql.ErrNoRows {
 			return nil, nil
 		}
-		return nil, errs.NewNotFoundError(fmt.Sprintf("failed to execute update with returning: %w", err))
+		return nil, errs.NewNotFoundError(fmt.Sprintf("failed to execute update with returning: %v", err))
 	}
 
 	return row, nil
@@ -1641,6 +1437,427 @@ func (p *psqlDataRepository) ExecuteDelete(
 
 	// Execute
 	sqlResult, err := client.GetClient().ExecContext(ctx, sql, args...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to execute delete: %w", err)
+	}
+
+	return sqlResult, nil
+}
+
+// validateTableDataFields validates data against table columns
+func (p *psqlDataRepository) validateTableDataFields(
+	columns []*entity.Columns,
+	data map[string]interface{},
+	isCreate bool,
+) error {
+	// Build column map for validation
+	columnMap := make(map[string]*entity.Columns)
+	for _, col := range columns {
+		columnMap[col.ColumnsName] = col
+	}
+
+	// Validate data against columns
+	for fieldName, fieldValue := range data {
+		col, exists := columnMap[fieldName]
+		if !exists {
+			return fmt.Errorf("column '%s' does not exist in table", fieldName)
+		}
+
+		// Check if value is nil
+		if fieldValue == nil {
+			if !col.IsNullable {
+				if isCreate && col.ColumnDefault == nil {
+					return fmt.Errorf("column '%s' cannot be null and has no default value", fieldName)
+				} else if !isCreate {
+					return fmt.Errorf("column '%s' cannot be null", fieldName)
+				}
+			}
+			continue
+		}
+
+		// Validate data type
+		if err := validateDataType(col.DataType, fieldValue); err != nil {
+			return fmt.Errorf("column '%s': %v", fieldName, err)
+		}
+	}
+
+	// For CREATE: Check required fields (not nullable and no default)
+	if isCreate {
+		for _, col := range columns {
+			if !col.IsNullable && col.ColumnDefault == nil {
+				if _, exists := data[col.ColumnsName]; !exists {
+					return fmt.Errorf("required column '%s' is missing", col.ColumnsName)
+				}
+			}
+		}
+	}
+
+	return nil
+}
+
+// FetchTableData implements data.PsqlDataRepository.
+func (p *psqlDataRepository) FetchTableData(
+	ctx context.Context,
+	sourceID *uuid.UUID,
+	schemaName, tableName string,
+	filterGroups [][]entity.FilterInput,
+	logicalOperator string,
+	paginator *helperModel.Paginator,
+	sortBy, sortOrder string,
+) ([]map[string]interface{}, error) {
+	client, err := p.dbConnectionManager.GetConnection(ctx, *sourceID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Build SELECT query
+	fullTableName := fmt.Sprintf("\"%s\".\"%s\"", schemaName, tableName)
+	builder := psqlBuilder.Select("*").From(fullTableName)
+
+	// Apply WHERE filters
+	var masterWhereClause squirrel.Sqlizer
+	if strings.ToUpper(logicalOperator) == "OR" {
+		masterWhereClause = squirrel.Or{}
+	} else {
+		masterWhereClause = squirrel.And{}
+	}
+
+	for _, group := range filterGroups {
+		if len(group) == 0 {
+			continue
+		}
+		orClause := squirrel.Or{}
+		for _, f := range group {
+			expr, err := buildSquirrelExpr(f.Field, f.Operator, f.Value)
+			if err != nil {
+				return nil, errs.NewBadRequestError(err.Error())
+			}
+			orClause = append(orClause, expr)
+		}
+		if strings.ToUpper(logicalOperator) == "OR" {
+			masterWhereClause = append(masterWhereClause.(squirrel.Or), orClause)
+		} else {
+			masterWhereClause = append(masterWhereClause.(squirrel.And), orClause)
+		}
+	}
+
+	addWhere := false
+	if op, ok := masterWhereClause.(squirrel.Or); ok && len(op) > 0 {
+		addWhere = true
+	} else if op, ok := masterWhereClause.(squirrel.And); ok && len(op) > 0 {
+		addWhere = true
+	}
+	if addWhere {
+		builder = builder.Where(masterWhereClause)
+	}
+
+	// Apply sorting
+	if sortBy != "" {
+		order := constants.SORT_ORDER_ASC
+		if strings.ToUpper(sortOrder) == constants.SORT_ORDER_DESC {
+			order = constants.SORT_ORDER_DESC
+		}
+		builder = builder.OrderBy(fmt.Sprintf("%s %s", sortBy, order))
+	}
+
+	// Count total rows
+	if len(filterGroups) > 0 {
+		// Build count query with same WHERE filters
+		countBuilder := psqlBuilder.Select("COUNT(*)").From(fullTableName)
+
+		// Apply same WHERE clause
+		if addWhere {
+			countBuilder = countBuilder.Where(masterWhereClause)
+		}
+
+		countSQL, countArgs, err := countBuilder.ToSql()
+		if err == nil {
+			var total int64
+			if err := client.GetClient().GetContext(ctx, &total, countSQL, countArgs...); err != nil {
+				return nil, err
+			}
+			if paginator != nil {
+				paginator.SetPaginatorByAllRows(int(total))
+			}
+		}
+	} else {
+		countBuilder := psqlBuilder.Select("COUNT(*)").From(fullTableName)
+		countSQL, countArgs, _ := countBuilder.ToSql()
+		var total int64
+		if err := client.GetClient().GetContext(ctx, &total, countSQL, countArgs...); err != nil {
+			return nil, err
+		}
+		if paginator != nil {
+			paginator.SetPaginatorByAllRows(int(total))
+		}
+	}
+
+	// Apply pagination
+	if paginator != nil {
+		builder = builder.Limit(uint64(paginator.GetLimit()))
+		builder = builder.Offset(uint64(paginator.GetOffset()))
+	}
+
+	// Execute query
+	querySQL, queryArgs, err := builder.ToSql()
+	if err != nil {
+		return nil, err
+	}
+
+	rows, err := client.GetClient().QueryxContext(ctx, querySQL, queryArgs...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	cols, err := rows.Columns()
+	if err != nil {
+		return nil, err
+	}
+
+	results := make([]map[string]interface{}, 0)
+	for rows.Next() {
+		scanArgs := make([]interface{}, len(cols))
+		for i := range scanArgs {
+			scanArgs[i] = new(sql.RawBytes)
+		}
+		if err := rows.Scan(scanArgs...); err != nil {
+			return nil, err
+		}
+		rowMap := make(map[string]interface{})
+		for i, colName := range cols {
+			rawBytes := *(scanArgs[i].(*sql.RawBytes))
+			if rawBytes == nil {
+				rowMap[colName] = nil
+				continue
+			}
+			if len(rawBytes) > 0 && (rawBytes[0] == '{' || rawBytes[0] == '[') {
+				var v interface{}
+				if err := json.Unmarshal(rawBytes, &v); err == nil {
+					rowMap[colName] = v
+				} else {
+					rowMap[colName] = string(rawBytes)
+				}
+			} else {
+				rowMap[colName] = string(rawBytes)
+			}
+		}
+		results = append(results, rowMap)
+	}
+
+	return results, nil
+}
+
+// FetchTableDataByKey implements data.PsqlDataRepository.
+func (p *psqlDataRepository) FetchTableDataByKey(
+	ctx context.Context,
+	sourceID *uuid.UUID,
+	schemaName, tableName, keyField string,
+	keyValue interface{},
+) (map[string]interface{}, error) {
+	client, err := p.dbConnectionManager.GetConnection(ctx, *sourceID)
+	if err != nil {
+		return nil, err
+	}
+
+	fullTableName := fmt.Sprintf("\"%s\".\"%s\"", schemaName, tableName)
+	builder := psqlBuilder.Select("*").
+		From(fullTableName).
+		Where(squirrel.Eq{keyField: keyValue}).
+		Limit(1)
+
+	querySQL, queryArgs, err := builder.ToSql()
+	if err != nil {
+		return nil, err
+	}
+
+	row := client.GetClient().QueryRowxContext(ctx, querySQL, queryArgs...)
+	if row.Err() != nil {
+		return nil, row.Err()
+	}
+
+	cols, err := row.Columns()
+	if err != nil {
+		return nil, err
+	}
+
+	scanArgs := make([]interface{}, len(cols))
+	for i := range scanArgs {
+		scanArgs[i] = new(any)
+	}
+
+	if err := row.Scan(scanArgs...); err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	resultMap := make(map[string]interface{})
+	for i, colName := range cols {
+		val := *(scanArgs[i].(*any))
+		if val == nil {
+			resultMap[colName] = nil
+			continue
+		}
+		if rawBytes, ok := val.([]byte); ok {
+			if len(rawBytes) > 0 && (rawBytes[0] == '{' || rawBytes[0] == '[') {
+				var v interface{}
+				if err := json.Unmarshal(rawBytes, &v); err == nil {
+					resultMap[colName] = v
+				} else {
+					resultMap[colName] = string(rawBytes)
+				}
+			} else {
+				resultMap[colName] = string(rawBytes)
+			}
+		} else {
+			resultMap[colName] = val
+		}
+	}
+
+	return resultMap, nil
+}
+
+// CreateTableData implements data.PsqlDataRepository.
+func (p *psqlDataRepository) CreateTableData(
+	ctx context.Context,
+	sourceID *uuid.UUID,
+	schemaName, tableName string,
+	tableColumns []*entity.Columns,
+	data map[string]interface{},
+) (map[string]interface{}, error) {
+	if len(data) == 0 {
+		return nil, errs.NewBadRequestError("data cannot be empty")
+	}
+
+	// Validate data against columns
+	if err := p.validateTableDataFields(tableColumns, data, true); err != nil {
+		return nil, errs.NewBadRequestError(fmt.Sprintf("validation failed: %v", err))
+	}
+
+	client, err := p.dbConnectionManager.GetConnection(ctx, *sourceID)
+	if err != nil {
+		return nil, err
+	}
+
+	fullTableName := fmt.Sprintf("\"%s\".\"%s\"", schemaName, tableName)
+	builder := psqlBuilder.Insert(fullTableName)
+
+	var columns []string
+	var values []interface{}
+	for key, val := range data {
+		fmt.Println("Inserting:", key, "=", val)
+		columns = append(columns, key)
+		values = append(values, val)
+	}
+
+	builder = builder.Columns(columns...).Values(values...)
+
+	querySQL, args, err := builder.ToSql()
+	if err != nil {
+		return nil, err
+	}
+
+	// Add RETURNING clause to get all columns
+	quotedCols := make([]string, len(columns))
+	for i, col := range columns {
+		quotedCols[i] = fmt.Sprintf("\"%s\"", col)
+	}
+	returningSQL := querySQL + " RETURNING " + strings.Join(quotedCols, ", ")
+	fmt.Println("Create SQL:", returningSQL)
+	row := make(map[string]interface{})
+	err = client.GetClient().QueryRowxContext(ctx, returningSQL, args...).MapScan(row)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("failed to execute create: %w", err)
+	}
+
+	return row, nil
+}
+
+// UpdateTableData implements data.PsqlDataRepository.
+func (p *psqlDataRepository) UpdateTableData(
+	ctx context.Context,
+	sourceID *uuid.UUID,
+	schemaName, tableName, keyField string,
+	keyValue interface{},
+	tableColumns []*entity.Columns,
+	data map[string]interface{},
+) (map[string]interface{}, error) {
+	if len(data) == 0 {
+		return nil, errs.NewBadRequestError("data cannot be empty")
+	}
+
+	// Validate data against columns
+	if err := p.validateTableDataFields(tableColumns, data, false); err != nil {
+		return nil, errs.NewBadRequestError(fmt.Sprintf("validation failed: %v", err))
+	}
+
+	client, err := p.dbConnectionManager.GetConnection(ctx, *sourceID)
+	if err != nil {
+		return nil, err
+	}
+
+	fullTableName := fmt.Sprintf("\"%s\".\"%s\"", schemaName, tableName)
+	builder := psqlBuilder.Update(fullTableName).
+		SetMap(data).
+		Where(squirrel.Eq{keyField: keyValue})
+
+	querySQL, args, err := builder.ToSql()
+	if err != nil {
+		return nil, err
+	}
+
+	// Create RETURNING clause with updated fields + key field
+	colsToReturn := make(map[string]bool)
+	colsToReturn[keyField] = true
+	for fieldName := range data {
+		colsToReturn[fieldName] = true
+	}
+
+	quotedCols := make([]string, 0, len(colsToReturn))
+	for col := range colsToReturn {
+		quotedCols = append(quotedCols, fmt.Sprintf("\"%s\"", col))
+	}
+	returningSQL := querySQL + " RETURNING " + strings.Join(quotedCols, ", ")
+
+	row := make(map[string]interface{})
+	err = client.GetClient().QueryRowxContext(ctx, returningSQL, args...).MapScan(row)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("failed to execute update: %w", err)
+	}
+
+	return row, nil
+}
+
+// DeleteTableData implements data.PsqlDataRepository.
+func (p *psqlDataRepository) DeleteTableData(
+	ctx context.Context,
+	sourceID *uuid.UUID,
+	schemaName, tableName, keyField string,
+	keyValue interface{},
+) (sql.Result, error) {
+	client, err := p.dbConnectionManager.GetConnection(ctx, *sourceID)
+	if err != nil {
+		return nil, err
+	}
+
+	fullTableName := fmt.Sprintf("\"%s\".\"%s\"", schemaName, tableName)
+	builder := psqlBuilder.Delete(fullTableName).
+		Where(squirrel.Eq{keyField: keyValue})
+
+	querySQL, args, err := builder.ToSql()
+	if err != nil {
+		return nil, err
+	}
+
+	sqlResult, err := client.GetClient().ExecContext(ctx, querySQL, args...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to execute delete: %w", err)
 	}

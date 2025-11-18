@@ -27,6 +27,13 @@ func (r *Route) RegisterDataRoute(handler data.DataHandler) {
 	introspectGroup.DELETE("/sources/:id", handler.DeleteSourceByID, r.middl.ValidateParamId("id"))
 	introspectGroup.PATCH("/sources/:id/activate", handler.ActivateSourceByID, r.middl.ValidateParamId("id"))
 	introspectGroup.PATCH("/sources/:id/deactivate", handler.DeactivateSourceByID, r.middl.ValidateParamId("id"))
+	// Table Data CRUD (direct source access)
+	tableDataGroup := introspectGroup.Group("/sources/:id/schemas/:schema/tables/:table", r.middl.ValidateParamId("id"))
+	tableDataGroup.GET("/data", handler.FetchTableData)
+	tableDataGroup.GET("/data/key/:key", handler.FetchTableDataByKey)
+	tableDataGroup.POST("/data", handler.CreateTableData)
+	tableDataGroup.PUT("/data/key/:key", handler.UpdateTableData)
+	tableDataGroup.DELETE("/data/key/:key", handler.DeleteTableData)
 
 	// Datasets Route
 	datasetsGroup := r.e.Group("/v1/datasets")
@@ -47,8 +54,6 @@ func (r *Route) RegisterDataRoute(handler data.DataHandler) {
 	servingGroup := r.e.Group("/v1/datasets/:id/versions/:version")
 	servingGroup.GET("/data", handler.ServingDatasetVersionData)
 	servingGroup.GET("/data/key/:key", handler.ServingDatasetVersionDataByKey)
-
-	// Data Modification Routes
 	servingGroup.POST("/data", handler.CreateDatasetVersionData)
 	servingGroup.PUT("/data/key/:key", handler.UpdateDatasetVersionDataByKey)
 	servingGroup.DELETE("/data/key/:key", handler.DeleteDatasetVersionDataByKey)

@@ -769,6 +769,247 @@ func (d *dataHandler) DeleteDatasetVersionDataByKey(c echo.Context) error {
 	return c.JSON(http.StatusOK, res)
 }
 
+// FetchTableData implements data.DataHandler.
+func (d *dataHandler) FetchTableData(c echo.Context) error {
+	ctx := c.Request().Context()
+	sourceIDParam := c.Param("source_id")
+	schemaName := c.Param("schema")
+	tableName := c.Param("table")
+
+	sourceIDUUID, err := uuid.FromString(sourceIDParam)
+	if err != nil {
+		return errs.NewBadRequestError(constants.ERR_INVALID_SOURCE_ID)
+	}
+
+	var servingFilter filter.ServingDataFilter
+	if err := c.Bind(&servingFilter); err != nil {
+		return errs.ErrBadRequest(err)
+	}
+	if err := c.Validate(&servingFilter); err != nil {
+		return errs.ErrBadRequest(err)
+	}
+	pageStr := c.QueryParam("page")
+	perPageStr := c.QueryParam("per_page")
+	if pageStr == "0" {
+		return errs.NewBadRequestError("page parameter must be greater than 0")
+	}
+	if perPageStr == "0" {
+		return errs.NewBadRequestError("per_page parameter must be greater than 0")
+	}
+	paginator := helperModel.NewPaginator()
+	if servingFilter.Page > 0 && servingFilter.PerPage > 0 {
+		paginator.Page = servingFilter.Page
+		paginator.PerPage = servingFilter.PerPage
+	}
+
+	// Convert logical operator to uppercase
+	logicalOperator := servingFilter.WhereLogicalOp
+	if logicalOperator != "" {
+		logicalOperator = strings.ToUpper(logicalOperator)
+	}
+
+	// Parse filters
+	filterGroups, err := servingFilter.ParseWhere()
+	if err != nil {
+		return errs.ErrBadRequest(err)
+	}
+
+	// Convert sort order to uppercase
+	sortOrder := servingFilter.SortOrder
+	if sortOrder != "" {
+		sortOrder = strings.ToUpper(sortOrder)
+	}
+
+	data, err := d.dataUs.FetchTableData(ctx, &sourceIDUUID, schemaName, tableName, filterGroups, logicalOperator, &paginator, servingFilter.SortBy, sortOrder)
+	if err != nil {
+		return err
+	}
+	if data == nil {
+		data = []map[string]interface{}{}
+	}
+
+	res := map[string]interface{}{
+		"data":        data,
+		"page":        paginator.Page,
+		"per_page":    paginator.PerPage,
+		"total_pages": paginator.TotalPages,
+		"total_rows":  paginator.TotalEntrySizes,
+	}
+	return c.JSON(http.StatusOK, res)
+}
+
+// FetchTableDataByKey implements data.DataHandler.
+func (d *dataHandler) FetchTableDataByKey(c echo.Context) error {
+	ctx := c.Request().Context()
+	sourceIDParam := c.Param("source_id")
+	schemaName := c.Param("schema")
+	tableName := c.Param("table")
+	key := c.Param("key")
+
+	sourceIDUUID, err := uuid.FromString(sourceIDParam)
+	if err != nil {
+		return errs.NewBadRequestError(constants.ERR_INVALID_SOURCE_ID)
+	}
+
+	if schemaName == "" {
+		return errs.NewBadRequestError("schema parameter is required")
+	}
+	if tableName == "" {
+		return errs.NewBadRequestError("table parameter is required")
+	}
+	if key == "" {
+		return errs.NewBadRequestError("key parameter is required")
+	}
+
+	keyField := c.QueryParam("key_field")
+	if keyField == "" {
+		keyField = "id" // default key field
+	}
+
+	data, err := d.dataUs.FetchTableDataByKey(ctx, &sourceIDUUID, schemaName, tableName, keyField, key)
+	if err != nil {
+		return err
+	}
+	if data == nil {
+		return errs.NewNotFoundError("data not found for the given key")
+	}
+
+	res := map[string]interface{}{
+		"data": data,
+	}
+	return c.JSON(http.StatusOK, res)
+}
+
+// CreateTableData implements data.DataHandler.
+func (d *dataHandler) CreateTableData(c echo.Context) error {
+	ctx := c.Request().Context()
+	sourceIDParam := c.Param("source_id")
+	schemaName := c.Param("schema")
+	tableName := c.Param("table")
+
+	sourceIDUUID, err := uuid.FromString(sourceIDParam)
+	if err != nil {
+		return errs.NewBadRequestError(constants.ERR_INVALID_SOURCE_ID)
+	}
+
+	if schemaName == "" {
+		return errs.NewBadRequestError("schema parameter is required")
+	}
+	if tableName == "" {
+		return errs.NewBadRequestError("table parameter is required")
+	}
+
+	var data map[string]interface{}
+	if err := c.Bind(&data); err != nil {
+		return errs.ErrBadRequest(err)
+	}
+
+	// Remove reserved fields that come from path parameters
+	delete(data, "schema")
+	delete(data, "table")
+	delete(data, "source_id")
+
+	result, err := d.dataUs.CreateTableData(ctx, &sourceIDUUID, schemaName, tableName, data)
+	if err != nil {
+		return err
+	}
+
+	res := map[string]interface{}{
+		"message": "success",
+		"data":    result,
+	}
+	return c.JSON(http.StatusCreated, res)
+}
+
+// UpdateTableData implements data.DataHandler.
+func (d *dataHandler) UpdateTableData(c echo.Context) error {
+	ctx := c.Request().Context()
+	sourceIDParam := c.Param("source_id")
+	schemaName := c.Param("schema")
+	tableName := c.Param("table")
+	key := c.Param("key")
+
+	sourceIDUUID, err := uuid.FromString(sourceIDParam)
+	if err != nil {
+		return errs.NewBadRequestError(constants.ERR_INVALID_SOURCE_ID)
+	}
+
+	if schemaName == "" {
+		return errs.NewBadRequestError("schema parameter is required")
+	}
+	if tableName == "" {
+		return errs.NewBadRequestError("table parameter is required")
+	}
+	if key == "" {
+		return errs.NewBadRequestError("key parameter is required")
+	}
+
+	keyField := c.QueryParam("key_field")
+	if keyField == "" {
+		keyField = "id" // default key field
+	}
+
+	var data map[string]interface{}
+	if err := c.Bind(&data); err != nil {
+		return errs.ErrBadRequest(err)
+	}
+
+	delete(data, "schema")
+	delete(data, "table")
+	delete(data, "source_id")
+	delete(data, "key")
+
+	result, err := d.dataUs.UpdateTableData(ctx, &sourceIDUUID, schemaName, tableName, keyField, key, data)
+	if err != nil {
+		return err
+	}
+
+	res := map[string]interface{}{
+		"message": "success",
+		"data":    result,
+	}
+	return c.JSON(http.StatusOK, res)
+}
+
+// DeleteTableData implements data.DataHandler.
+func (d *dataHandler) DeleteTableData(c echo.Context) error {
+	ctx := c.Request().Context()
+	sourceIDParam := c.Param("source_id")
+	schemaName := c.Param("schema")
+	tableName := c.Param("table")
+	key := c.Param("key")
+
+	sourceIDUUID, err := uuid.FromString(sourceIDParam)
+	if err != nil {
+		return errs.NewBadRequestError(constants.ERR_INVALID_SOURCE_ID)
+	}
+
+	if schemaName == "" {
+		return errs.NewBadRequestError("schema parameter is required")
+	}
+	if tableName == "" {
+		return errs.NewBadRequestError("table parameter is required")
+	}
+	if key == "" {
+		return errs.NewBadRequestError("key parameter is required")
+	}
+
+	keyField := c.QueryParam("key_field")
+	if keyField == "" {
+		keyField = "id" // default key field
+	}
+
+	err = d.dataUs.DeleteTableData(ctx, &sourceIDUUID, schemaName, tableName, keyField, key)
+	if err != nil {
+		return err
+	}
+
+	res := map[string]interface{}{
+		"message": "success",
+	}
+	return c.JSON(http.StatusOK, res)
+}
+
 func NewDataHandler(dataUs data.DataUsecase) data.DataHandler {
 	return &dataHandler{
 		dataUs: dataUs,

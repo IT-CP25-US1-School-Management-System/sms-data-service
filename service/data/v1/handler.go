@@ -36,4 +36,11 @@ type DataHandler interface {
 	CreateDatasetVersionData(c echo.Context) error
 	UpdateDatasetVersionDataByKey(c echo.Context) error
 	DeleteDatasetVersionDataByKey(c echo.Context) error
+
+	// Table Data CRUD (direct source access)
+	FetchTableData(c echo.Context) error
+	FetchTableDataByKey(c echo.Context) error
+	CreateTableData(c echo.Context) error
+	UpdateTableData(c echo.Context) error
+	DeleteTableData(c echo.Context) error
 }
