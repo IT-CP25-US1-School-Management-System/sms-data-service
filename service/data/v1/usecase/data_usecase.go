@@ -10,6 +10,7 @@ import (
 	"github.com/IT-CP25-US1-School-Management-System/sms-data-service/models/entity"
 	"github.com/IT-CP25-US1-School-Management-System/sms-data-service/models/filter"
 	"github.com/IT-CP25-US1-School-Management-System/sms-data-service/service/data/v1"
+	"github.com/IT-CP25-US1-School-Management-System/sms-data-service/service/document/v1"
 	"github.com/IT-CP25-US1-School-Management-System/sms-data-service/utils/crypto"
 	"github.com/gofrs/uuid"
 )
@@ -17,8 +18,19 @@ import (
 type dataUsecase struct {
 	dataRepo     data.PsqlDataRepository
 	datasetRepo  data.PsqlDatasetRepository
+	documentRepo document.GrpcDocumentRepository
 	redisRepo    data.RedisRepository
 	cryptoSecret string
+}
+
+func NewDataUsecase(dataRepo data.PsqlDataRepository, datasetRepo data.PsqlDatasetRepository, documentRepo document.GrpcDocumentRepository, redisRepo data.RedisRepository, cryptoSecret string) data.DataUsecase {
+	return &dataUsecase{
+		dataRepo:     dataRepo,
+		datasetRepo:  datasetRepo,
+		documentRepo: documentRepo,
+		redisRepo:    redisRepo,
+		cryptoSecret: cryptoSecret,
+	}
 }
 
 // FetchSourceByID implements data.DataUsecase.
@@ -772,13 +784,4 @@ func (d *dataUsecase) DeleteTableData(
 		return errs.NewNotFoundError("data with the specified key not found")
 	}
 	return nil
-}
-
-func NewDataUsecase(dataRepo data.PsqlDataRepository, datasetRepo data.PsqlDatasetRepository, redisRepo data.RedisRepository, cryptoSecret string) data.DataUsecase {
-	return &dataUsecase{
-		dataRepo:     dataRepo,
-		datasetRepo:  datasetRepo,
-		redisRepo:    redisRepo,
-		cryptoSecret: cryptoSecret,
-	}
 }

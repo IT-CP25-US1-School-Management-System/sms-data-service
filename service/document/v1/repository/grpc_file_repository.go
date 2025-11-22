@@ -57,6 +57,35 @@ func (g *grpcDocumentRepositoryInf) getConnection() (*grpc.ClientConn, error) {
 	return g.conn, nil
 }
 
+// Close closes the gRPC connection
+func (g *grpcDocumentRepositoryInf) Close() error {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+
+	if g.conn != nil {
+		err := g.conn.Close()
+		g.conn = nil
+		return err
+	}
+	return nil
+}
+
+// grpcCodeToHTTPStatus converts gRPC status code to HTTP status code
+func grpcCodeToHTTPStatus(grpcCode codes.Code) int {
+	switch grpcCode {
+	case codes.InvalidArgument:
+		return http.StatusBadRequest
+	case codes.NotFound:
+		return http.StatusNotFound
+	case codes.Unavailable:
+		return http.StatusServiceUnavailable
+	case codes.Unauthenticated:
+		return http.StatusUnauthorized
+	default:
+		return http.StatusInternalServerError
+	}
+}
+
 // GetFileByResourceID implements document.GrpcDocumentRepository.
 func (g *grpcDocumentRepositoryInf) GetFileByResourceID(ctx context.Context, req *proto_models.GetFileByResourceIDRequest) (int, *proto_models.FileResponse, error) {
 	conn, err := g.getConnection()
@@ -71,20 +100,7 @@ func (g *grpcDocumentRepositoryInf) GetFileByResourceID(ctx context.Context, req
 
 	response, err := client.GetFileByResourceID(ctx, req)
 	if err != nil {
-		grpcCode := status.Code(err)
-		httpStatus := http.StatusInternalServerError
-
-		switch grpcCode {
-		case codes.InvalidArgument:
-			httpStatus = http.StatusBadRequest
-		case codes.NotFound:
-			httpStatus = http.StatusNotFound
-		case codes.Unavailable:
-			httpStatus = http.StatusServiceUnavailable
-		case codes.Unauthenticated:
-			httpStatus = http.StatusNetworkAuthenticationRequired
-		}
-		return httpStatus, nil, err
+		return grpcCodeToHTTPStatus(status.Code(err)), nil, err
 	}
 
 	if response == nil {
@@ -116,22 +132,8 @@ func (g *grpcDocumentRepositoryInf) UploadFile(ctx context.Context, fileRequest 
 	}
 
 	response, err := stream.CloseAndRecv()
-
 	if err != nil {
-		grpcCode := status.Code(err)
-		httpStatus := http.StatusInternalServerError
-
-		switch grpcCode {
-		case codes.InvalidArgument:
-			httpStatus = http.StatusBadRequest
-		case codes.NotFound:
-			httpStatus = http.StatusNotFound
-		case codes.Unavailable:
-			httpStatus = http.StatusServiceUnavailable
-		case codes.Unauthenticated:
-			httpStatus = http.StatusNetworkAuthenticationRequired
-		}
-		return httpStatus, nil, err
+		return grpcCodeToHTTPStatus(status.Code(err)), nil, err
 	}
 
 	if response == nil {
