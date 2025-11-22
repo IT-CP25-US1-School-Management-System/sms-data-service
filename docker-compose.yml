@@ -8,8 +8,8 @@ services:
     networks:
       - sms-project
     ports:
-      - 3000:3000
-      - 3100:3100
+      - 3200:3200
+      - 4200:4200
     volumes:
       - .:/go/src/github.com/IT-CP25-US1-School-Management-System/sms-data-service
 
