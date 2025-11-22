@@ -772,7 +772,7 @@ func (d *dataHandler) DeleteDatasetVersionDataByKey(c echo.Context) error {
 // FetchTableData implements data.DataHandler.
 func (d *dataHandler) FetchTableData(c echo.Context) error {
 	ctx := c.Request().Context()
-	sourceIDParam := c.Param("source_id")
+	sourceIDParam := c.Param("id")
 	schemaName := c.Param("schema")
 	tableName := c.Param("table")
 
@@ -841,7 +841,7 @@ func (d *dataHandler) FetchTableData(c echo.Context) error {
 // FetchTableDataByKey implements data.DataHandler.
 func (d *dataHandler) FetchTableDataByKey(c echo.Context) error {
 	ctx := c.Request().Context()
-	sourceIDParam := c.Param("source_id")
+	sourceIDParam := c.Param("id")
 	schemaName := c.Param("schema")
 	tableName := c.Param("table")
 	key := c.Param("key")
@@ -883,7 +883,7 @@ func (d *dataHandler) FetchTableDataByKey(c echo.Context) error {
 // CreateTableData implements data.DataHandler.
 func (d *dataHandler) CreateTableData(c echo.Context) error {
 	ctx := c.Request().Context()
-	sourceIDParam := c.Param("source_id")
+	sourceIDParam := c.Param("id")
 	schemaName := c.Param("schema")
 	tableName := c.Param("table")
 
@@ -924,7 +924,7 @@ func (d *dataHandler) CreateTableData(c echo.Context) error {
 // UpdateTableData implements data.DataHandler.
 func (d *dataHandler) UpdateTableData(c echo.Context) error {
 	ctx := c.Request().Context()
-	sourceIDParam := c.Param("source_id")
+	sourceIDParam := c.Param("id")
 	schemaName := c.Param("schema")
 	tableName := c.Param("table")
 	key := c.Param("key")
@@ -974,7 +974,7 @@ func (d *dataHandler) UpdateTableData(c echo.Context) error {
 // DeleteTableData implements data.DataHandler.
 func (d *dataHandler) DeleteTableData(c echo.Context) error {
 	ctx := c.Request().Context()
-	sourceIDParam := c.Param("source_id")
+	sourceIDParam := c.Param("id")
 	schemaName := c.Param("schema")
 	tableName := c.Param("table")
 	key := c.Param("key")
