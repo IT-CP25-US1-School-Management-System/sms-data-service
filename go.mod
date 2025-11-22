@@ -8,6 +8,7 @@ require (
 	github.com/GodeFvt/go-backend/minio v0.0.0-20251004135016-6aed0f5a4382
 	github.com/GodeFvt/go-backend/psql v0.0.0-20251104163700-f195ca3cc038
 	github.com/GodeFvt/go-backend/redis v0.0.0-20251004135016-6aed0f5a4382
+	github.com/Masterminds/squirrel v1.5.4
 	github.com/MicahParks/keyfunc/v3 v3.6.2
 	github.com/getsentry/sentry-go v0.31.1
 	github.com/getsentry/sentry-go/echo v0.31.1
@@ -21,7 +22,8 @@ require (
 	github.com/spf13/cast v1.7.1
 	github.com/swaggo/echo-swagger v1.4.1
 	github.com/uber/jaeger-client-go v2.30.0+incompatible
-	google.golang.org/grpc v1.58.3
+	google.golang.org/grpc v1.77.0
+	google.golang.org/protobuf v1.36.10
 )
 
 require (
@@ -33,7 +35,6 @@ require (
 	github.com/ClickHouse/clickhouse-go/v2 v2.23.1 // indirect
 	github.com/HdrHistogram/hdrhistogram-go v1.1.2 // indirect
 	github.com/KyleBanks/depth v1.2.1 // indirect
-	github.com/Masterminds/squirrel v1.5.4 // indirect
 	github.com/MicahParks/jwkset v0.11.0 // indirect
 	github.com/PuerkitoBio/purell v1.1.1 // indirect
 	github.com/PuerkitoBio/urlesc v0.0.0-20170810143723-de5bf2ad4578 // indirect
@@ -61,7 +62,6 @@ require (
 	github.com/golang-jwt/jwt v3.2.2+incompatible // indirect
 	github.com/golang-sql/civil v0.0.0-20190719163853-cb61b32ac6fe // indirect
 	github.com/golang-sql/sqlexp v0.1.0 // indirect
-	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.0.0 // indirect
 	github.com/guregu/null v4.0.0+incompatible // indirect
@@ -100,18 +100,17 @@ require (
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/valyala/fasttemplate v1.2.2 // indirect
 	go.mongodb.org/mongo-driver v1.11.4 // indirect
-	go.opentelemetry.io/otel v1.24.0 // indirect
-	go.opentelemetry.io/otel/trace v1.24.0 // indirect
+	go.opentelemetry.io/otel v1.38.0 // indirect
+	go.opentelemetry.io/otel/trace v1.38.0 // indirect
 	go.uber.org/atomic v1.11.0 // indirect
-	golang.org/x/crypto v0.39.0 // indirect
-	golang.org/x/net v0.41.0 // indirect
-	golang.org/x/sync v0.15.0 // indirect
-	golang.org/x/sys v0.33.0 // indirect
-	golang.org/x/text v0.26.0 // indirect
+	golang.org/x/crypto v0.44.0 // indirect
+	golang.org/x/net v0.47.0 // indirect
+	golang.org/x/sync v0.18.0 // indirect
+	golang.org/x/sys v0.38.0 // indirect
+	golang.org/x/text v0.31.0 // indirect
 	golang.org/x/time v0.9.0 // indirect
-	golang.org/x/tools v0.33.0 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20230711160842-782d3b101e98 // indirect
-	google.golang.org/protobuf v1.33.0 // indirect
+	golang.org/x/tools v0.38.0 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20251111163417-95abcf5c77ba // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

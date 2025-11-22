@@ -27,6 +27,7 @@ import (
 	_data_usecase "github.com/IT-CP25-US1-School-Management-System/sms-data-service/service/data/v1/usecase"
 	_db_connection_manager_repo "github.com/IT-CP25-US1-School-Management-System/sms-data-service/service/database/v1/repository"
 	_db_connection_manager_usercase "github.com/IT-CP25-US1-School-Management-System/sms-data-service/service/database/v1/usecase"
+	_document_repo "github.com/IT-CP25-US1-School-Management-System/sms-data-service/service/document/v1/repository"
 	"github.com/getsentry/sentry-go"
 	sentryecho "github.com/getsentry/sentry-go/echo"
 	"github.com/go-playground/validator/v10"
@@ -42,9 +43,10 @@ var (
 )
 
 var (
-	APP_PORT     = helper.GetENV("APP_PORT", "3000")
+	APP_PORT     = helper.GetENV("APP_PORT", "3200")
 	APP_MODE     = helper.GetENV("APP_MODE", "production")
-	GRPC_PORT    = helper.GetENV("GRPC_PORT", "3100")
+	GRPC_PORT    = helper.GetENV("GRPC_PORT", "4200")
+	GRPC_TIMEOUT = cast.ToInt(helper.GetENV("GRPC_TIMEOUT", "120"))
 	ALLOW_ORIGIN = func() []string {
 		origins := helper.GetENV("ALLOW_ORIGIN", "*")
 		origins = strings.Trim(origins, `"`)
@@ -70,6 +72,8 @@ var (
 	REDIS_ADDRESS = helper.GetENV("REDIS_ADDRESS", "")
 
 	CRYPTO_SECRET = helper.GetENV("CRYPTO_SECRET", "")
+
+	DOCUMENT_SERVICE_GRPC_ADDRESS = helper.GetENV("DOCUMENT_SERVICE_GRPC_ADDRESS", "localhost:3200")
 )
 
 func connectPsqlDB(con string) *psql.Client {
@@ -184,9 +188,10 @@ func main() {
 	defer dbConnectionManagerUsecase.CloseAll()
 
 	psqlDataRepo := _psqldata_repo.NewPsqlDataRepository(dbConnectionManagerUsecase)
+	documentRepo := _document_repo.NewGRPCDocumentRepository(DOCUMENT_SERVICE_GRPC_ADDRESS, GRPC_TIMEOUT)
 
 	/* usecase */
-	dataUsecase := _data_usecase.NewDataUsecase(psqlDataRepo, psqlDatasetRepo, redisRepo, CRYPTO_SECRET)
+	dataUsecase := _data_usecase.NewDataUsecase(psqlDataRepo, psqlDatasetRepo, documentRepo, redisRepo, CRYPTO_SECRET)
 
 	/* handler */
 	dataHandler := _data_handler.NewDataHandler(dataUsecase)
