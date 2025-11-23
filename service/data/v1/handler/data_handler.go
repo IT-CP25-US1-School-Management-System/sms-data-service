@@ -2,10 +2,12 @@ package handler
 
 import (
 	"fmt"
+	"mime/multipart"
 	"net/http"
 	"strconv"
 	"strings"
 
+	"github.com/GodeFvt/go-backend/helper"
 	helperModel "github.com/GodeFvt/go-backend/helper/models"
 	"github.com/IT-CP25-US1-School-Management-System/sms-data-service/constants"
 	"github.com/IT-CP25-US1-School-Management-System/sms-data-service/errs"
@@ -19,6 +21,12 @@ import (
 
 type dataHandler struct {
 	dataUs data.DataUsecase
+}
+
+func NewDataHandler(dataUs data.DataUsecase) data.DataHandler {
+	return &dataHandler{
+		dataUs: dataUs,
+	}
 }
 
 // FetchSourceByID implements data.DataHandler.
@@ -1062,8 +1070,45 @@ func (d *dataHandler) ExportJob(c echo.Context) error {
 	return c.JSON(http.StatusOK, res)
 }
 
-func NewDataHandler(dataUs data.DataUsecase) data.DataHandler {
-	return &dataHandler{
-		dataUs: dataUs,
+func (d *dataHandler) UploadReportingTemplate(c echo.Context) error {
+	ctx := c.Request().Context()
+	if c.Get("file") == nil {
+		return errs.NewBadRequestError("file not found")
 	}
+	if c.Get("params") == nil {
+		return errs.NewBadRequestError("params not found")
+	}
+	file := c.Get("file").([]*multipart.FileHeader)[0]
+	paramsRaw := c.Get("params").(map[string]interface{})
+	paramsData, ok := paramsRaw["params"].(map[string]interface{})
+	if !ok {
+		return errs.NewBadRequestError("invalid params structure")
+	}
+	entityResult, err := helperModel.ConvertStruct[map[string]interface{}, entity.ReportingTemplate](paramsData)
+	if err != nil {
+		return errs.ErrBadRequest(err)
+	}
+
+	reader, err := file.Open()
+	if err != nil {
+		return err
+	}
+	buf, contentType, _, err := helper.GetMimeType(reader)
+	if err != nil {
+		return err
+	}
+	if contentType != "application/pdf" {
+		return errs.NewBadRequestError("invalid file type, only .pdf files are allowed")
+	}
+
+	err = d.dataUs.UploadReportingTemplate(ctx, &entityResult, buf.Bytes(), file.Filename)
+	if err != nil {
+		return err
+	}
+
+	res := map[string]interface{}{
+		"message": "success",
+	}
+	return c.JSON(http.StatusOK, res)
+
 }

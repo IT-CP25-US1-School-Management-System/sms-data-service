@@ -18,6 +18,7 @@ message FileResponse {
   int64 size = 5;
   string original_filename = 6;
   string storage_filename = 7;
+  string resource_id = 8;
 }
 
 message GetFileByResourceIDRequest {

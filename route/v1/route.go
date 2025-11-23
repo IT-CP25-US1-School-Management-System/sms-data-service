@@ -58,8 +58,10 @@ func (r *Route) RegisterDataRoute(handler data.DataHandler) {
 	servingGroup.PUT("/data/key/:key", handler.UpdateDatasetVersionDataByKey)
 	servingGroup.DELETE("/data/key/:key", handler.DeleteDatasetVersionDataByKey)
 
-	//Reporting Routes
+	// Reporting Template Route
 	reportingGroup := r.e.Group("/v1/reporting")
+	reportingTemplateGroup := reportingGroup.Group("/templates")
+	reportingTemplateGroup.POST("/upload", handler.UploadReportingTemplate, r.middl.InputForm)
 	reportingGroup.GET("/export/job/:job_id", handler.FetchExportJobByJobId, r.middl.ValidateParamId("job_id"))
 	reportingGroup.POST("/export/job", handler.ExportJob)
 }

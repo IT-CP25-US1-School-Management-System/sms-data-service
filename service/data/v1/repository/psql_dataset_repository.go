@@ -23,6 +23,188 @@ type psqlDatasetRepository struct {
 	client *psql.Client
 }
 
+// DeleteReportingTemplateByID implements data.PsqlDatasetRepository.
+func (p *psqlDatasetRepository) DeleteReportingTemplateByID(ctx context.Context, templateID *uuid.UUID) error {
+	query := `
+		DELETE FROM reporting_templates WHERE id = $1
+	`
+	_, err := p.client.GetClient().ExecContext(ctx, query, templateID)
+	return err
+}
+
+// ExistReportingTemplateByID implements data.PsqlDatasetRepository.
+func (p *psqlDatasetRepository) ExistReportingTemplateByID(ctx context.Context, templateID *uuid.UUID) (bool, error) {
+	query := `
+		SELECT EXISTS (
+			SELECT 1 FROM reporting_templates WHERE id = $1
+		)
+	`
+	var exists bool
+	err := p.client.GetClient().QueryRowxContext(ctx, query, templateID).Scan(&exists)
+	if err != nil {
+		return false, err
+	}
+	return exists, nil
+}
+
+// FetchReportingTemplateByID implements data.PsqlDatasetRepository.
+func (p *psqlDatasetRepository) FetchReportingTemplateByID(ctx context.Context, templateID *uuid.UUID) (*entity.ReportingTemplate, error) {
+	query := `
+		SELECT
+			id, name, dataset_id, columns, positions, resource_id, created_at, updated_at
+		FROM reporting_templates
+		WHERE id = $1
+	`
+	var template entity.ReportingTemplate
+	var columnsJSON, positionsJSON []byte
+	row := p.client.GetClient().QueryRowxContext(ctx, query, templateID)
+	err := row.Scan(
+		&template.ID,
+		&template.Name,
+		&template.DatasetID,
+		&columnsJSON,
+		&positionsJSON,
+		&template.ResourceID,
+		&template.CreatedAt,
+		&template.UpdatedAt,
+	)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	return &template, nil
+}
+
+// FetchReportingTemplatesList implements data.PsqlDatasetRepository.
+func (p *psqlDatasetRepository) FetchReportingTemplatesList(ctx context.Context, filter *filter.ReportingTemplatesFilter, paginator *helperModel.Paginator) ([]*entity.ReportingTemplate, error) {
+	var (
+		conds    []string
+		valArgs  []interface{}
+		where    string
+		limitSQL string
+	)
+
+	if filter != nil {
+		if filter.SearchWord != "" {
+			sw := fmt.Sprintf("%%%s%%", strings.ToLower(strings.ReplaceAll(filter.SearchWord, " ", "")))
+			conds = append(conds, "LOWER(REPLACE(name, ' ', '')) LIKE ?")
+			valArgs = append(valArgs, sw)
+		}
+	}
+
+	if len(conds) > 0 {
+		where = "WHERE " + strings.Join(conds, " AND ")
+	}
+
+	if paginator != nil {
+		limitSQL = `
+            LIMIT ?
+            OFFSET ?
+        `
+		valArgs = append(valArgs, paginator.GetLimit(), paginator.GetOffset())
+	}
+
+	query := fmt.Sprintf(`
+		SELECT
+			id, name, dataset_id, columns, positions, resource_id, created_at, updated_at
+		FROM reporting_templates
+		%s
+		%s
+	`, where, limitSQL)
+
+	query = sqlx.Rebind(sqlx.DOLLAR, query)
+	rows, err := p.client.GetClient().QueryxContext(ctx, query, valArgs...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var templates []*entity.ReportingTemplate
+	for rows.Next() {
+		var template entity.ReportingTemplate
+		var columnsJSON, positionsJSON []byte
+		if err := rows.Scan(
+			&template.ID,
+			&template.Name,
+			&template.DatasetID,
+			&columnsJSON,
+			&positionsJSON,
+			&template.ResourceID,
+			&template.CreatedAt,
+			&template.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+
+		if err := json.Unmarshal(columnsJSON, &template.Columns); err != nil {
+			return nil, err
+		}
+		if err := json.Unmarshal(positionsJSON, &template.Positions); err != nil {
+			return nil, err
+		}
+
+		templates = append(templates, &template)
+	}
+
+	return templates, nil
+}
+
+// UpsertReportingTemplate implements data.PsqlDatasetRepository.
+func (p *psqlDatasetRepository) UpsertReportingTemplate(ctx context.Context, template *entity.ReportingTemplate) error {
+	tx, err := p.client.GetClient().BeginTxx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	if err := p.upsertReportingTemplate(ctx, tx, template); err != nil {
+		return err
+	}
+
+	return tx.Commit()
+}
+
+func (p *psqlDatasetRepository) upsertReportingTemplate(ctx context.Context, tx *sqlx.Tx, template *entity.ReportingTemplate) error {
+	// Marshal JSON fields
+	columnsJSON, err := json.Marshal(template.Columns)
+	if err != nil {
+		return err
+	}
+	positionsJSON, err := json.Marshal(template.Positions)
+	if err != nil {
+		return err
+	}
+
+	query := `
+		INSERT INTO reporting_templates (id, name, dataset_id, columns, positions, resource_id, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+		ON CONFLICT (id) DO UPDATE SET
+			name = EXCLUDED.name,
+			dataset_id = EXCLUDED.dataset_id,
+			columns = EXCLUDED.columns,
+			positions = EXCLUDED.positions,
+			resource_id = EXCLUDED.resource_id,
+			updated_at = EXCLUDED.updated_at
+	`
+	if _, err := tx.ExecContext(ctx, query,
+		template.ID,
+		template.Name,
+		template.DatasetID,
+		columnsJSON,
+		positionsJSON,
+		template.ResourceID,
+		template.CreatedAt,
+		template.UpdatedAt,
+	); err != nil {
+		return err
+	}
+	return nil
+
+}
+
 func (p *psqlDatasetRepository) deleteSourceByID(ctx context.Context, tx *sqlx.Tx, sourceID string) error {
 	query := `
 		DELETE FROM sources WHERE id = $1

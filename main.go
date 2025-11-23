@@ -189,7 +189,7 @@ func main() {
 
 	psqlDataRepo := _psqldata_repo.NewPsqlDataRepository(dbConnectionManagerUsecase)
 	documentRepo := _document_repo.NewGRPCDocumentRepository(DOCUMENT_SERVICE_GRPC_ADDRESS, GRPC_TIMEOUT)
-
+	defer documentRepo.Close()
 	/* usecase */
 	dataUsecase := _data_usecase.NewDataUsecase(psqlDataRepo, psqlDatasetRepo, documentRepo, redisRepo, CRYPTO_SECRET)
 

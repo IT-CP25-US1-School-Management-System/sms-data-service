@@ -82,7 +82,12 @@ type PsqlDatasetRepository interface {
 	ExistDatasetVersionByID(ctx context.Context, datasetID string, version string) (bool, error)
 	UpdateDatasetVersionStatus(ctx context.Context, datasetID string, version string, status string) error
 
-	// Reporting
+	// Reporting Template
+	FetchReportingTemplateByID(ctx context.Context, templateID *uuid.UUID) (*entity.ReportingTemplate, error)
+	FetchReportingTemplatesList(ctx context.Context, filter *filter.ReportingTemplatesFilter, paginator *models.Paginator) ([]*entity.ReportingTemplate, error)
+	UpsertReportingTemplate(ctx context.Context, template *entity.ReportingTemplate) error
+	DeleteReportingTemplateByID(ctx context.Context, templateID *uuid.UUID) error
+	ExistReportingTemplateByID(ctx context.Context, templateID *uuid.UUID) (bool, error)
 	InsertExportJob(ctx context.Context, exportJob *entity.ExportJob) error
 	FetchExportJobByID(ctx context.Context, jobID *uuid.UUID) (*entity.ExportJob, error)
 }

@@ -16,6 +16,7 @@ require (
 	github.com/gofrs/uuid v4.4.0+incompatible
 	github.com/golang-jwt/jwt/v5 v5.3.0
 	github.com/jmoiron/sqlx v1.4.0
+	github.com/joncalhoun/qson v0.0.0-20200422171543-84433dcd3da0
 	github.com/labstack/echo/v4 v4.12.0
 	github.com/lib/pq v1.10.9
 	github.com/opentracing/opentracing-go v1.2.0
