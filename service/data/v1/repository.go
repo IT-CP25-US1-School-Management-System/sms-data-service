@@ -4,6 +4,8 @@ import (
 	"context"
 	"database/sql"
 
+	helperModel "github.com/GodeFvt/go-backend/helper/models"
+
 	"github.com/GodeFvt/go-backend/helper/models"
 	"github.com/IT-CP25-US1-School-Management-System/sms-data-service/models/entity"
 	"github.com/IT-CP25-US1-School-Management-System/sms-data-service/models/filter"
@@ -88,6 +90,10 @@ type PsqlDatasetRepository interface {
 	UpsertReportingTemplate(ctx context.Context, template *entity.ReportingTemplate) error
 	DeleteReportingTemplateByID(ctx context.Context, templateID *uuid.UUID) error
 	ExistReportingTemplateByID(ctx context.Context, templateID *uuid.UUID) (bool, error)
+	InsertExportJob(ctx context.Context, exportJob *entity.ExportJob) error
+	FetchExportJobByID(ctx context.Context, jobID *uuid.UUID) (*entity.ExportJob, error)
+	UpdateStatusSuccess(ctx context.Context, jobId *uuid.UUID, destinationUri string, completedAt *helperModel.Timestamp) error
+	UpdateStatusFail(ctx context.Context, jobId *uuid.UUID, errorMessage string) error
 }
 
 type RedisRepository interface {

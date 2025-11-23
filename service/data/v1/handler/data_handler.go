@@ -1018,6 +1018,58 @@ func (d *dataHandler) DeleteTableData(c echo.Context) error {
 	return c.JSON(http.StatusOK, res)
 }
 
+// FetchExportJobByJobId implements data.DataHandler.
+func (d *dataHandler) FetchExportJobByJobId(c echo.Context) error {
+	ctx := c.Request().Context()
+	jobIDParam := c.Param("job_id")
+
+	jobIDUUID, err := uuid.FromString(jobIDParam)
+	if err != nil {
+		return errs.NewBadRequestError(constants.ERR_INVALID_EXPORT_JOB_ID)
+	}
+	export_job, err := d.dataUs.FetchExportJobByID(ctx, &jobIDUUID)
+	if err != nil {
+		return err
+	}
+	if export_job == nil {
+		return errs.NewNotFoundError(constants.ERR_EXPORT_JOB_NOT_FOUND)
+	}
+	exportJobDTO, err := helperModel.ConvertStruct[entity.ExportJob, dto.ExportJobResponseDTO](*export_job)
+	if err != nil {
+		return err
+	}
+
+	res := map[string]interface{}{
+		"data": exportJobDTO,
+	}
+	return c.JSON(http.StatusOK, res)
+
+}
+
+
+// InsertExportJob implements data.DataHandler.
+func (d *dataHandler) ExportJob(c echo.Context) error {
+	ctx := c.Request().Context()
+	var exportJobDTO dto.ExportJobDTO
+	if err := c.Bind(&exportJobDTO); err != nil {
+		return errs.ErrBadRequest(err)
+	}
+	if err := c.Validate(&exportJobDTO); err != nil {
+		return errs.ErrBadRequest(err)
+	}
+
+	exportJobEntity := exportJobDTO.ExportJobDTOToEntity()
+	exportJobEntity.GenUUID()
+	if err := d.dataUs.InsertExportJob(ctx, exportJobEntity); err != nil {
+		return err
+	}
+
+	res := map[string]interface{}{
+		"job_id":      exportJobEntity.JobId,
+	}
+	return c.JSON(http.StatusOK, res)
+}
+
 func (d *dataHandler) UploadReportingTemplate(c echo.Context) error {
 	ctx := c.Request().Context()
 	if c.Get("file") == nil {

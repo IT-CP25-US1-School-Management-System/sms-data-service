@@ -14,4 +14,6 @@ const (
 	ERR_COLUMN_NOT_FOUND               = "column not found"
 	ERR_INVALID_SOURCE_ID              = "invalid source id"
 	ERR_DATASET_VERSION_NOT_FOUND      = "dataset version not found"
+	ERR_INVALID_EXPORT_JOB_ID          = "invalid export job id"
+	ERR_EXPORT_JOB_NOT_FOUND           = "export job not found"
 )
