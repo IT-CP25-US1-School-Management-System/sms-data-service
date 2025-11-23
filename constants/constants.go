@@ -14,6 +14,11 @@ const (
 	// Logical Operators
 	LOGICAL_OPERATOR_AND = "AND"
 	LOGICAL_OPERATOR_OR  = "OR"
+
+	// Export Job Status
+	EXPORT_JOB_STATUS_PENDING   = "pending"
+	EXPORT_JOB_STATUS_SUCCEEDED = "succeeded"
+	EXPORT_JOB_STATUS_FAILED    = "failed"
 )
 
 var (

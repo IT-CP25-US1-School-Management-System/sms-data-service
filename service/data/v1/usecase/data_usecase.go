@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"context"
+	"fmt"
 
 	helperModel "github.com/GodeFvt/go-backend/helper/models"
 	"github.com/IT-CP25-US1-School-Management-System/sms-data-service/constants"
@@ -9,10 +10,12 @@ import (
 	"github.com/IT-CP25-US1-School-Management-System/sms-data-service/models/dto"
 	"github.com/IT-CP25-US1-School-Management-System/sms-data-service/models/entity"
 	"github.com/IT-CP25-US1-School-Management-System/sms-data-service/models/filter"
+	"github.com/IT-CP25-US1-School-Management-System/sms-data-service/proto/proto_models"
 	"github.com/IT-CP25-US1-School-Management-System/sms-data-service/service/data/v1"
 	"github.com/IT-CP25-US1-School-Management-System/sms-data-service/service/document/v1"
 	"github.com/IT-CP25-US1-School-Management-System/sms-data-service/utils/crypto"
 	"github.com/gofrs/uuid"
+	"github.com/xuri/excelize/v2"
 )
 
 type dataUsecase struct {
@@ -783,5 +786,270 @@ func (d *dataUsecase) DeleteTableData(
 	if rowsAffected == 0 {
 		return errs.NewNotFoundError("data with the specified key not found")
 	}
+	return nil
+}
+
+// FetchExportJobByID implements data.DataUsecase.
+func (d *dataUsecase) FetchExportJobByID(ctx context.Context, jobID *uuid.UUID) (*entity.ExportJob, error) {
+	return d.datasetRepo.FetchExportJobByID(ctx, jobID)
+}
+
+func (d *dataUsecase) exportDatasetExcel(ctx context.Context, exportJob *entity.ExportJob) ([]byte, error) {
+	// Create Excel file first
+	f := excelize.NewFile()
+	sheetName := "Sheet1"
+
+	// Get or create sheet
+	index, err := f.GetSheetIndex(sheetName)
+	if err != nil || index == -1 {
+		index, err = f.NewSheet(sheetName)
+		if err != nil {
+			return nil, err
+		}
+	}
+	f.SetActiveSheet(index)
+
+	page := 1
+	currentRow := 1 // Start from row 1
+	columnNames := []string{}
+	headerWritten := false
+	hasData := false
+
+	for {
+		// Setup paginator for each batch
+		paginator := helperModel.NewPaginator()
+		paginator.Page = page
+		paginator.PerPage = 100
+
+		// Fetch data for this page
+		datas, err := d.ServingDatasetVersionData(ctx, exportJob.DatasetId, exportJob.Version, &paginator, exportJob.View, nil, "", "", "")
+		if err != nil {
+			return nil, err
+		}
+
+		// If no data returned, break the loop
+		if len(datas) == 0 {
+			break
+		}
+
+		hasData = true
+
+		// Process and write data immediately
+		for _, data := range datas {
+			rows := d.flattenDataForExcel(data)
+
+			// Write header on first batch only
+			if !headerWritten && len(rows) > 0 {
+				columnNames = d.getUniqueColumnNames(rows)
+				for colIdx, colName := range columnNames {
+					cellName, _ := excelize.CoordinatesToCellName(colIdx+1, currentRow)
+					f.SetCellValue(sheetName, cellName, colName)
+				}
+				currentRow++
+				headerWritten = true
+			}
+
+			// Update column names if new columns appear
+			if headerWritten {
+				newColumns := d.getUniqueColumnNames(rows)
+				for _, newCol := range newColumns {
+					found := false
+					for _, existingCol := range columnNames {
+						if existingCol == newCol {
+							found = true
+							break
+						}
+					}
+					if !found {
+						columnNames = append(columnNames, newCol)
+						// Add new column to header
+						cellName, _ := excelize.CoordinatesToCellName(len(columnNames), 1)
+						f.SetCellValue(sheetName, cellName, newCol)
+					}
+				}
+			}
+
+			// Write data rows
+			for _, row := range rows {
+				for colIdx, colName := range columnNames {
+					cellName, _ := excelize.CoordinatesToCellName(colIdx+1, currentRow)
+					value := row[colName]
+					f.SetCellValue(sheetName, cellName, value)
+				}
+				currentRow++
+			}
+		}
+
+		// If we got less than 100 records, this is the last page
+		if len(datas) < 100 {
+			break
+		}
+
+		// Move to next page
+		page++
+	}
+
+	// Check if we have any data
+	if !hasData {
+		return nil, errs.ErrNoContent()
+	}
+
+	// Save to buffer and build the Excel file
+	buffer, err := f.WriteToBuffer()
+	if err != nil {
+		return nil, err
+	}
+
+	return buffer.Bytes(), nil
+}
+
+// flattenDataForExcel flattens nested objects and expands arrays
+func (d *dataUsecase) flattenDataForExcel(data map[string]interface{}) []map[string]interface{} {
+	// First pass: separate array fields from non-array fields
+	arrayFields := make(map[string][]interface{})
+	maxArrayLen := 1
+
+	for key, value := range data {
+		if arr, ok := value.([]interface{}); ok {
+			arrayFields[key] = arr
+			if len(arr) > maxArrayLen {
+				maxArrayLen = len(arr)
+			}
+		}
+	}
+
+	// Create rows based on the maximum array length
+	rows := make([]map[string]interface{}, maxArrayLen)
+	for i := 0; i < maxArrayLen; i++ {
+		rows[i] = make(map[string]interface{})
+	}
+
+	// Process each field
+	for key, value := range data {
+		switch v := value.(type) {
+		case []interface{}:
+			// Case 2: Array of objects
+			// Skip empty arrays
+			if len(v) == 0 {
+				continue
+			}
+
+			for i, item := range v {
+				if i < maxArrayLen {
+					if obj, ok := item.(map[string]interface{}); ok {
+						// Flatten object in array with key_subkey format
+						for subKey, subValue := range obj {
+							columnName := fmt.Sprintf("%s_%s", key, subKey)
+							rows[i][columnName] = d.formatValue(subValue)
+						}
+					} else {
+						// Simple array value
+						rows[i][key] = d.formatValue(item)
+					}
+				}
+			}
+			// Fill empty rows with nil for this field
+			for i := len(v); i < maxArrayLen; i++ {
+				if obj, ok := v[0].(map[string]interface{}); ok {
+					for subKey := range obj {
+						columnName := fmt.Sprintf("%s_%s", key, subKey)
+						rows[i][columnName] = nil
+					}
+				} else {
+					rows[i][key] = nil
+				}
+			}
+		case map[string]interface{}:
+			// Case 1: Nested object - flatten with key_subkey format
+			for subKey, subValue := range v {
+				columnName := fmt.Sprintf("%s_%s", key, subKey)
+				for i := 0; i < maxArrayLen; i++ {
+					rows[i][columnName] = d.formatValue(subValue)
+				}
+			}
+		default:
+			// Case 3: Simple string or primitive value
+			for i := 0; i < maxArrayLen; i++ {
+				rows[i][key] = d.formatValue(v)
+			}
+		}
+	}
+
+	return rows
+}
+
+// formatValue converts values to appropriate Excel format
+func (d *dataUsecase) formatValue(value interface{}) interface{} {
+	if value == nil {
+		return ""
+	}
+
+	switch v := value.(type) {
+	case map[string]interface{}:
+		// If still nested, convert to string representation
+		return fmt.Sprintf("%v", v)
+	case []interface{}:
+		// If still array, convert to string representation
+		return fmt.Sprintf("%v", v)
+	default:
+		return v
+	}
+}
+
+// getUniqueColumnNames extracts all unique column names from rows
+func (d *dataUsecase) getUniqueColumnNames(rows []map[string]interface{}) []string {
+	columnSet := make(map[string]bool)
+	var columns []string
+
+	for _, row := range rows {
+		for key := range row {
+			if !columnSet[key] {
+				columnSet[key] = true
+				columns = append(columns, key)
+			}
+		}
+	}
+
+	return columns
+}
+
+func (d *dataUsecase) processJob(exportJob *entity.ExportJob) error {
+	ctx := context.Background()
+	excelByte, err := d.exportDatasetExcel(ctx, exportJob)
+	if err != nil {
+		fmt.Println(err)
+		return err
+	}
+	fileReq := proto_models.FileRequest{
+		Path:               "testy",
+		Folder:             "exports",
+		OriginalFilename:   "test.xlsx",
+		IsGenerateFilename: true,
+		Body:               excelByte,
+	}
+	_, _, err = d.documentRepo.UploadFile(ctx, &fileReq)
+	if err != nil {
+		fmt.Println(err)
+	}
+	return err
+}
+
+// ExportJob implements data.DataUsecase.
+func (d *dataUsecase) InsertExportJob(ctx context.Context, exportJob *entity.ExportJob) error {
+	if exportJob == nil {
+		return errs.NewBadRequestError(constants.ERR_INVALID_REQUEST_BODY)
+	}
+
+	now := helperModel.NewTimestampFromNow()
+	exportJob.CreatedAt = &now
+	exportJob.DestinationUri = ""
+	exportJob.Status = constants.EXPORT_JOB_STATUS_PENDING
+	//exportJob.CompletedAt = &now
+
+	// err := d.datasetRepo.InsertExportJob(ctx, exportJob)
+	// if err != nil {
+	// 	return err
+	// }
+	go d.processJob(exportJob)
 	return nil
 }

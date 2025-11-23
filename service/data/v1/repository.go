@@ -81,6 +81,10 @@ type PsqlDatasetRepository interface {
 	DeleteDatasetVersionByID(ctx context.Context, datasetID string, version string) error
 	ExistDatasetVersionByID(ctx context.Context, datasetID string, version string) (bool, error)
 	UpdateDatasetVersionStatus(ctx context.Context, datasetID string, version string, status string) error
+
+	// Reporting
+	InsertExportJob(ctx context.Context, exportJob *entity.ExportJob) error
+	FetchExportJobByID(ctx context.Context, jobID *uuid.UUID) (*entity.ExportJob, error)
 }
 
 type RedisRepository interface {

@@ -63,4 +63,8 @@ type DataUsecase interface {
 	CreateTableData(ctx context.Context, sourceID *uuid.UUID, schemaName, tableName string, data map[string]interface{}) (map[string]interface{}, error)
 	UpdateTableData(ctx context.Context, sourceID *uuid.UUID, schemaName, tableName, keyField string, keyValue interface{}, data map[string]interface{}) (map[string]interface{}, error)
 	DeleteTableData(ctx context.Context, sourceID *uuid.UUID, schemaName, tableName, keyField string, keyValue interface{}) error
+
+	//Reporting
+	InsertExportJob(ctx context.Context, exportJob *entity.ExportJob) error
+	FetchExportJobByID(ctx context.Context, jobID *uuid.UUID) (*entity.ExportJob, error)
 }

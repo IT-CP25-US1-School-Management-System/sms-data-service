@@ -43,4 +43,8 @@ type DataHandler interface {
 	CreateTableData(c echo.Context) error
 	UpdateTableData(c echo.Context) error
 	DeleteTableData(c echo.Context) error
+
+	//Reporting
+	ExportJob(c echo.Context) error
+	FetchExportJobByJobId(c echo.Context) error
 }
