@@ -124,7 +124,7 @@ func (g *grpcDocumentRepositoryInf) UploadFile(ctx context.Context, fileRequest 
 
 	stream, err := client.UploadFile(ctx)
 	if err != nil {
-		return http.StatusInternalServerError, nil, err
+		return grpcCodeToHTTPStatus(status.Code(err)), nil, err
 	}
 
 	if err := stream.Send(fileRequest); err != nil {

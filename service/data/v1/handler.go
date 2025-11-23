@@ -43,4 +43,7 @@ type DataHandler interface {
 	CreateTableData(c echo.Context) error
 	UpdateTableData(c echo.Context) error
 	DeleteTableData(c echo.Context) error
+
+	// Reporting Template
+	UploadReportingTemplate(c echo.Context) error
 }

@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"context"
+	"net/http"
 
 	helperModel "github.com/GodeFvt/go-backend/helper/models"
 	"github.com/IT-CP25-US1-School-Management-System/sms-data-service/constants"
@@ -9,6 +10,7 @@ import (
 	"github.com/IT-CP25-US1-School-Management-System/sms-data-service/models/dto"
 	"github.com/IT-CP25-US1-School-Management-System/sms-data-service/models/entity"
 	"github.com/IT-CP25-US1-School-Management-System/sms-data-service/models/filter"
+	"github.com/IT-CP25-US1-School-Management-System/sms-data-service/proto/proto_models"
 	"github.com/IT-CP25-US1-School-Management-System/sms-data-service/service/data/v1"
 	"github.com/IT-CP25-US1-School-Management-System/sms-data-service/service/document/v1"
 	"github.com/IT-CP25-US1-School-Management-System/sms-data-service/utils/crypto"
@@ -784,4 +786,55 @@ func (d *dataUsecase) DeleteTableData(
 		return errs.NewNotFoundError("data with the specified key not found")
 	}
 	return nil
+}
+
+func (d *dataUsecase) UploadReportingTemplate(ctx context.Context, template *entity.ReportingTemplate, fileData []byte, fileName string) error {
+	if template == nil {
+		return errs.NewBadRequestError(constants.ERR_INVALID_REQUEST_BODY)
+	}
+	if err := d.validateDatasetID(template.DatasetID); err != nil {
+		return err
+	}
+	if template.Name == "" {
+		return errs.NewBadRequestError("template name is required")
+	} else if len(template.Columns) == 0 || len(template.Columns) < 1 {
+		return errs.NewBadRequestError("template columns are required")
+	} else if len(template.Positions) == 0 || len(template.Positions) < 1 {
+		return errs.NewBadRequestError("template positions are required")
+	}
+	for _, col := range template.Columns {
+		if col.TableName == "" || col.ColumnsName == "" {
+			return errs.NewBadRequestError("template columns have invalid format")
+		}
+	}
+	for _, pos := range template.Positions {
+		if pos.TableName == "" || pos.ColumnsName == "" {
+			return errs.NewBadRequestError("template positions have invalid format")
+		}
+	}
+	now := helperModel.NewTimestampFromNow()
+	template.CreatedAt = &now
+	template.UpdatedAt = &now
+	template.GenUUID()
+
+	fileRequest := proto_models.FileRequest{
+		Path:               "reporting",
+		Folder:             "templates",
+		OriginalFilename:   fileName,
+		IsGenerateFilename: true,
+		Body:               fileData,
+	}
+	status, data, err := d.documentRepo.UploadFile(ctx, &fileRequest)
+	if err != nil || status != http.StatusOK {
+		if status == http.StatusServiceUnavailable {
+			return errs.NewInternalServerError("document service is unavailable")
+		}
+		return errs.NewInternalServerError("failed to upload reporting template file")
+	}
+	if data == nil {
+		return errs.NewInternalServerError("failed to upload reporting template file")
+	}
+	template.ResourceID = &data.ResourceId
+
+	return d.datasetRepo.UpsertReportingTemplate(ctx, template)
 }
