@@ -1,9 +1,11 @@
 package usecase
 
 import (
+	"bytes"
 	"context"
-	"net/http"
+	"encoding/csv"
 	"fmt"
+	"net/http"
 
 	helperModel "github.com/GodeFvt/go-backend/helper/models"
 	"github.com/IT-CP25-US1-School-Management-System/sms-data-service/constants"
@@ -843,7 +845,30 @@ func (d *dataUsecase) UploadReportingTemplate(ctx context.Context, template *ent
 
 // FetchExportJobByID implements data.DataUsecase.
 func (d *dataUsecase) FetchExportJobByID(ctx context.Context, jobID *uuid.UUID) (*entity.ExportJob, error) {
-	return d.datasetRepo.FetchExportJobByID(ctx, jobID)
+	job, err := d.datasetRepo.FetchExportJobByID(ctx, jobID)
+	if err != nil {
+		return nil, err
+	}
+	if job == nil {
+		return nil, errs.NewNotFoundError("export job not found")
+	}
+	req := proto_models.GetFileByResourceIDRequest{
+		ResourceId: job.DestinationUri,
+	}
+	status , response ,err := d.documentRepo.GetFileByResourceID(ctx ,&req)
+	if err != nil || status != http.StatusOK {
+		if status == http.StatusServiceUnavailable {
+			return nil, errs.NewInternalServerError("document service is unavailable")
+		}
+		return nil, errs.NewInternalServerError("failed to get export file information")
+	}
+	if response == nil {
+		return nil, errs.NewNotFoundError("export file not found")
+	}
+	job.DestinationUri = response.Url
+	job.OriginalFilename = response.OriginalFilename
+	job.FileSize = response.Size
+	return job, nil
 }
 
 func (d *dataUsecase) exportDatasetExcel(ctx context.Context, exportJob *entity.ExportJob) ([]byte, error) {
@@ -953,6 +978,121 @@ func (d *dataUsecase) exportDatasetExcel(ctx context.Context, exportJob *entity.
 	}
 
 	return buffer.Bytes(), nil
+}
+
+func (d *dataUsecase) exportDatasetCSV(ctx context.Context, exportJob *entity.ExportJob) ([]byte, error) {
+	// Create buffer for CSV
+	var buf bytes.Buffer
+	writer := csv.NewWriter(&buf)
+
+	page := 1
+	columnNames := []string{}
+	headerWritten := false
+	hasData := false
+
+	for {
+		// Setup paginator for each batch
+		paginator := helperModel.NewPaginator()
+		paginator.Page = page
+		paginator.PerPage = 100
+
+		// Fetch data for this page
+		datas, err := d.ServingDatasetVersionData(ctx, exportJob.DatasetId, exportJob.Version, &paginator, exportJob.View, nil, "", "", "")
+		if err != nil {
+			return nil, err
+		}
+
+		// If no data returned, break the loop
+		if len(datas) == 0 {
+			break
+		}
+
+		hasData = true
+
+		// Process and write data immediately
+		for _, data := range datas {
+			rows := d.flattenDataForExcel(data)
+
+			// Write header on first batch only
+			if !headerWritten && len(rows) > 0 {
+				columnNames = d.getUniqueColumnNames(rows)
+				if err := writer.Write(columnNames); err != nil {
+					return nil, err
+				}
+				headerWritten = true
+			}
+
+			// Update column names if new columns appear
+			if headerWritten {
+				newColumns := d.getUniqueColumnNames(rows)
+				for _, newCol := range newColumns {
+					found := false
+					for _, existingCol := range columnNames {
+						if existingCol == newCol {
+							found = true
+							break
+						}
+					}
+					if !found {
+						columnNames = append(columnNames, newCol)
+						// Note: CSV doesn't support adding columns dynamically like Excel
+						// New columns will only appear in subsequent rows
+					}
+				}
+			}
+
+			// Write data rows
+			for _, row := range rows {
+				record := make([]string, len(columnNames))
+				for colIdx, colName := range columnNames {
+					value := row[colName]
+					record[colIdx] = d.formatValueForCSV(value)
+				}
+				if err := writer.Write(record); err != nil {
+					return nil, err
+				}
+			}
+		}
+
+		// If we got less than 100 records, this is the last page
+		if len(datas) < 100 {
+			break
+		}
+
+		// Move to next page
+		page++
+	}
+
+	// Check if we have any data
+	if !hasData {
+		return nil, errs.ErrNoContent()
+	}
+
+	// Flush any buffered data
+	writer.Flush()
+	if err := writer.Error(); err != nil {
+		return nil, err
+	}
+
+	return buf.Bytes(), nil
+}
+
+// formatValueForCSV converts values to CSV-compatible string format
+func (d *dataUsecase) formatValueForCSV(value interface{}) string {
+	if value == nil {
+		return ""
+	}
+
+	switch v := value.(type) {
+	case string:
+		return v
+	case map[string]interface{}:
+		return fmt.Sprintf("%v", v)
+	case []interface{}:
+		return fmt.Sprintf("%v", v)
+	default:
+		return fmt.Sprintf("%v", v)
+	}
 }
 
 // flattenDataForExcel flattens nested objects and expands arrays
@@ -1067,23 +1207,49 @@ func (d *dataUsecase) getUniqueColumnNames(rows []map[string]interface{}) []stri
 
 func (d *dataUsecase) processJob(exportJob *entity.ExportJob) error {
 	ctx := context.Background()
-	excelByte, err := d.exportDatasetExcel(ctx, exportJob)
-	if err != nil {
-		fmt.Println(err)
+	var fileByte []byte
+	if exportJob.Format == constants.EXPORT_JOB_FORMAT_XLSX {
+		excelByte, err := d.exportDatasetExcel(ctx, exportJob)
+		if err != nil {
+			err := d.datasetRepo.UpdateStatusFail(ctx, exportJob.JobId, err.Error())
+			return err
+		}
+		fileByte = excelByte
+	} else if exportJob.Format == constants.EXPORT_JOB_FORMAT_CSV {
+		csvByte, err := d.exportDatasetCSV(ctx, exportJob)
+		if err != nil {
+			err := d.datasetRepo.UpdateStatusFail(ctx, exportJob.JobId, err.Error())
+			return err
+		}
+		fileByte = csvByte
+	} else {
+		err := d.datasetRepo.UpdateStatusFail(ctx, exportJob.JobId, "unsupported export format")
 		return err
 	}
+
 	fileReq := proto_models.FileRequest{
 		Path:               "testy",
 		Folder:             "exports",
-		OriginalFilename:   "test.xlsx",
+		OriginalFilename:   "test" + "." + exportJob.Format,
 		IsGenerateFilename: true,
-		Body:               excelByte,
+		Body:               fileByte,
 	}
-	_, _, err = d.documentRepo.UploadFile(ctx, &fileReq)
+	_, response, err := d.documentRepo.UploadFile(ctx, &fileReq)
 	if err != nil {
-		fmt.Println(err)
+		err := d.datasetRepo.UpdateStatusFail(ctx, exportJob.JobId, err.Error())
+		return err
 	}
-	return err
+	if response == nil || response.ResourceId == "" {
+		err := d.datasetRepo.UpdateStatusFail(ctx, exportJob.JobId, "No resource file")
+		return err
+	}
+	now := helperModel.NewTimestampFromNow()
+	err = d.datasetRepo.UpdateStatusSuccess(ctx, exportJob.JobId, response.ResourceId, &now)
+	if err != nil {
+		err := d.datasetRepo.UpdateStatusFail(ctx, exportJob.JobId, err.Error())
+		return err
+	}
+	return nil
 }
 
 // ExportJob implements data.DataUsecase.
@@ -1091,17 +1257,44 @@ func (d *dataUsecase) InsertExportJob(ctx context.Context, exportJob *entity.Exp
 	if exportJob == nil {
 		return errs.NewBadRequestError(constants.ERR_INVALID_REQUEST_BODY)
 	}
-
+	if err := d.validateDatasetID(exportJob.DatasetId); err != nil {
+		return err
+	}
+	if err := d.validateVersionFormat(exportJob.Version); err != nil {
+		return err
+	}
+	datasetVersion, err := d.datasetRepo.FetchDatasetVersionByID(ctx, exportJob.DatasetId, exportJob.Version)
+	if err != nil {
+		return err
+	}
+	if datasetVersion == nil {
+		return errs.NewNotFoundError("dataset version not found")
+	}
+	if datasetVersion.Policies.Runtime == nil {
+		return errs.NewConflictError("runtime policy is not configured for this dataset version")
+	}
+	if datasetVersion.Policies.Views == nil {
+		return errs.NewConflictError("views policy is not configured for this dataset version")
+	}
+	if exportJob.View == "" {
+		exportJob.View = datasetVersion.Policies.Runtime.DefaultView
+	} else {
+		viewConfigs, ok := datasetVersion.Policies.Views[exportJob.View]
+		if !ok || len(viewConfigs) == 0 {
+			return errs.NewNotFoundError(fmt.Sprintf("view '%s' not found or is empty in policies", exportJob.View))
+		}
+	}
 	now := helperModel.NewTimestampFromNow()
 	exportJob.CreatedAt = &now
 	exportJob.DestinationUri = ""
 	exportJob.Status = constants.EXPORT_JOB_STATUS_PENDING
 	//exportJob.CompletedAt = &now
 
-	// err := d.datasetRepo.InsertExportJob(ctx, exportJob)
-	// if err != nil {
-	// 	return err
-	// }
+	err = d.datasetRepo.InsertExportJob(ctx, exportJob)
+	if err != nil {
+		err := d.datasetRepo.UpdateStatusFail(ctx, exportJob.JobId, err.Error())
+		return err
+	}
 	go d.processJob(exportJob)
 	return nil
 }

@@ -1345,7 +1345,7 @@ func (p *psqlDatasetRepository) FetchExportJobByID(ctx context.Context, jobID *u
 		&job.CreatedAt,
 		&job.CompletedAt,
 	)
-	
+
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, nil
@@ -1354,7 +1354,6 @@ func (p *psqlDatasetRepository) FetchExportJobByID(ctx context.Context, jobID *u
 	}
 	return &job, nil
 }
-
 
 func (p *psqlDatasetRepository) insertExportJob(ctx context.Context, tx *sqlx.Tx, exportJob *entity.ExportJob) error {
 	query := `
@@ -1392,6 +1391,40 @@ func (p *psqlDatasetRepository) InsertExportJob(ctx context.Context, exportJob *
 	return tx.Commit()
 }
 
+// updateStatusExportJob implements data.PsqlDatasetRepository.
+func (p *psqlDatasetRepository) UpdateStatusSuccess(ctx context.Context, jobId *uuid.UUID, destinationUri string, completedAt *helperModel.Timestamp) error {
+	query := `
+		UPDATE export_jobs
+		SET status = $2 , destination_uri = $3 , completed_at = $4
+		WHERE job_id = $1
+	`
+	if _, err := p.client.GetClient().ExecContext(ctx, query,
+		jobId,
+		constants.EXPORT_JOB_STATUS_SUCCEEDED,
+		destinationUri,
+		completedAt,
+	); err != nil {
+		return err
+	}
+	return nil
+}
+
+// UpdateStatusExportJob implements data.PsqlDatasetRepository.
+func (p *psqlDatasetRepository) UpdateStatusFail(ctx context.Context, jobId *uuid.UUID, errorMessage string) error {
+	query := `
+		UPDATE export_jobs
+		SET status = $2 , error_message = $3
+		WHERE job_id = $1
+	`
+	if _, err := p.client.GetClient().ExecContext(ctx, query,
+		jobId,
+		constants.EXPORT_JOB_STATUS_FAILED,
+		errorMessage,
+	); err != nil {
+		return err
+	}
+	return nil
+}
 
 func NewPsqlDatasetRepository(client *psql.Client) data.PsqlDatasetRepository {
 	return &psqlDatasetRepository{

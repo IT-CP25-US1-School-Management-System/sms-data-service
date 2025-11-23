@@ -7,8 +7,8 @@ import (
 
 type ExportJobDTO struct {
 	DatasetId string `json:"dataset_id" validate:"required"`
-	View      string `json:"view" validate:"required"`
-	Format    string `json:"format" validate:"required,oneof=csv pdf"`
+	View      string `json:"view" validate:"omitempty"`
+	Format    string `json:"format" validate:"required,oneof=csv xlsx"`
 	Version   string `json:"version" validate:"required"`
 }
 
@@ -25,9 +25,11 @@ type ExportJobResponseDTO struct {
 	Status         string                 `json:"status"`
 	DatasetId      string                 `json:"dataset_id"`
 	View           string                 `json:"view"`
+	OriginalFilename string               `json:"original_filename"`
+	FileSize	   int64                  `json:"file_size"`
 	Format         string                 `json:"format"`
 	Version        string                 `json:"version"`
-	DestinationUri string                 `json:"destination_uri" db:"destination_uri"`
+	DestinationUri string                 `json:"destination_uri"`
 	CreatedAt      *helperModel.Timestamp `json:"created_at"`
 	CompletedAt    *helperModel.Timestamp `json:"completed_at"`
 	ErrorMessage   string                 `json:"error_message"`

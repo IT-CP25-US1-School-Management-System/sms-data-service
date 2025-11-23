@@ -17,6 +17,10 @@ type ExportJob struct {
 	CompletedAt     *helperModel.Timestamp  `json:"completed_at" db:"completed_at"`
 	ErrorMessage     string                 `json:"error_message" db:"error_message"`
 
+	// Additional fields
+	OriginalFilename string               `json:"original_filename,omitempty"`
+	FileSize	   int64                  `json:"file_size,omitempty"`
+
 }
 
 func (u *ExportJob) GenUUID() {
