@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strconv"
+	"time"
 
 	helperModel "github.com/GodeFvt/go-backend/helper/models"
 	"github.com/IT-CP25-US1-School-Management-System/sms-data-service/constants"
@@ -1582,4 +1584,476 @@ func (d *dataUsecase) InsertExportJob(ctx context.Context, exportJob *entity.Exp
 	}
 	go d.processJob(exportJob)
 	return nil
+}
+
+// CreateImportTemplate implements data.DataUsecase.
+func (d *dataUsecase) CreateImportTemplate(ctx context.Context, datasetID, version, format string) (string, error) {
+	// 1. Validate dataset and version
+	if err := d.validateDatasetID(datasetID); err != nil {
+		return "", err
+	}
+	if err := d.validateVersionFormat(version); err != nil {
+		return "", err
+	}
+
+	// 2. Fetch dataset version and validate
+	datasetVersion, err := d.datasetRepo.FetchDatasetVersionByID(ctx, datasetID, version)
+	if err != nil {
+		return "", err
+	}
+	if datasetVersion == nil {
+		return "", errs.NewNotFoundError("dataset version not found")
+	}
+	if datasetVersion.Policies.Write == nil {
+		return "", errs.NewConflictError("write policy is not configured for this dataset version")
+	}
+
+	// 3. Generate template file based on format
+	var fileBytes []byte
+	var fileName string
+	now := helperModel.NewTimestampFromNow()
+
+	if format == constants.EXPORT_JOB_FORMAT_CSV {
+		// Generate CSV template
+		var buf bytes.Buffer
+		writer := csv.NewWriter(&buf)
+
+		// Write header row with allowed fields
+		writer.Write(datasetVersion.Policies.Write.AllowEdit)
+		writer.Flush()
+
+		fileBytes = buf.Bytes()
+		fileName = fmt.Sprintf("%s_%s_import_template_%s.csv", datasetID, version, now.Format("20060102150405"))
+	} else if format == constants.EXPORT_JOB_FORMAT_XLSX {
+		// Generate Excel template
+		f := excelize.NewFile()
+		sheetName := "Sheet1"
+
+		// Write header row
+		for i, fieldName := range datasetVersion.Policies.Write.AllowEdit {
+			cellName, _ := excelize.CoordinatesToCellName(i+1, 1)
+			f.SetCellValue(sheetName, cellName, fieldName)
+		}
+
+		buffer, err := f.WriteToBuffer()
+		if err != nil {
+			return "", err
+		}
+		fileBytes = buffer.Bytes()
+		fileName = fmt.Sprintf("%s_%s_import_template_%s.xlsx", datasetID, version, now.Format("20060102150405"))
+	} else {
+		return "", errs.NewBadRequestError("unsupported format")
+	}
+
+	// 4. Upload template file to document service
+	fileRequest := proto_models.FileRequest{
+		Path:               constants.DOCUMENT_PATH_REPORTING,
+		Folder:             "import/templates",
+		OriginalFilename:   fileName,
+		IsGenerateFilename: true,
+		Body:               fileBytes,
+	}
+
+	status, data, err := d.documentRepo.UploadFile(ctx, &fileRequest)
+	if err != nil || status != http.StatusOK {
+		if status == http.StatusServiceUnavailable {
+			return "", errs.NewInternalServerError("document service is unavailable")
+		}
+		return "", errs.NewInternalServerError("failed to upload import template file")
+	}
+	if data == nil {
+		return "", errs.NewInternalServerError("failed to upload import template file")
+	}
+
+	// 5. Get file URL
+	resourceReq := &proto_models.GetFileByResourceIDRequest{
+		ResourceId: data.ResourceId,
+	}
+	status, resp, err := d.documentRepo.GetFileByResourceID(ctx, resourceReq)
+	if err != nil || status != http.StatusOK {
+		return "", errs.NewInternalServerError("failed to get template file URL")
+	}
+	if resp == nil {
+		return "", errs.NewInternalServerError("failed to get template file URL")
+	}
+
+	return resp.Url, nil
+}
+
+// CreateImportJob implements data.DataUsecase.
+func (d *dataUsecase) CreateImportJob(ctx context.Context, importJob *entity.ImportJob, fileBytes []byte) error {
+	if importJob == nil {
+		return errs.NewBadRequestError(constants.ERR_INVALID_REQUEST_BODY)
+	}
+
+	// Validate dataset and version
+	if err := d.validateDatasetID(importJob.DatasetID); err != nil {
+		return err
+	}
+	if err := d.validateVersionFormat(importJob.Version); err != nil {
+		return err
+	}
+
+	// Fetch dataset version
+	datasetVersion, err := d.datasetRepo.FetchDatasetVersionByID(ctx, importJob.DatasetID, importJob.Version)
+	if err != nil {
+		return err
+	}
+	if datasetVersion == nil {
+		return errs.NewNotFoundError("dataset version not found")
+	}
+	if datasetVersion.Policies.Write == nil {
+		return errs.NewConflictError("write policy is not configured for this dataset version")
+	}
+
+	fileName := fmt.Sprintf("%s_%s_import_%s.%s", importJob.DatasetID, importJob.Version, helperModel.NewTimestampFromNow().Format("20060102150405"), importJob.Format)
+	fileRequest := proto_models.FileRequest{
+		Path:               constants.DOCUMENT_PATH_REPORTING,
+		Folder:             "import/files",
+		OriginalFilename:   fileName,
+		IsGenerateFilename: true,
+		Body:               fileBytes,
+	}
+	// Upload import file to document service
+	status, data, err := d.documentRepo.UploadFile(ctx, &fileRequest)
+	if err != nil || status != http.StatusOK {
+		if status == http.StatusServiceUnavailable {
+			return errs.NewInternalServerError("document service is unavailable")
+		}
+		return errs.NewInternalServerError("failed to upload import file")
+	}
+	if data == nil {
+		return errs.NewInternalServerError("failed to upload import file")
+	}
+
+	importJob.ResourceID = data.ResourceId
+
+	// Set job initial values
+	now := helperModel.NewTimestampFromNow()
+	importJob.CreatedAt = &now
+	importJob.Status = constants.EXPORT_JOB_STATUS_PENDING
+
+	// Insert job into database
+	err = d.datasetRepo.InsertImportJob(ctx, importJob)
+	if err != nil {
+		return err
+	}
+
+	// Process import in background
+	go d.processImportJob(importJob.JobID, datasetVersion, fileBytes, importJob.Format)
+
+	return nil
+}
+
+// processImportJob processes the import file in background
+func (d *dataUsecase) processImportJob(jobID *uuid.UUID, datasetVersion *entity.DatasetVersion, fileBytes []byte, format string) {
+	ctx := context.Background()
+
+	var batchData []map[string]interface{}
+	var err error
+
+	// Parse file based on format
+	if format == constants.EXPORT_JOB_FORMAT_CSV {
+		batchData, err = d.parseCSVImport(fileBytes)
+	} else if format == constants.EXPORT_JOB_FORMAT_XLSX {
+		batchData, err = d.parseExcelImport(fileBytes)
+	} else {
+		d.datasetRepo.UpdateImportJobStatusFail(ctx, jobID, "unsupported format")
+		return
+	}
+
+	if err != nil {
+		d.datasetRepo.UpdateImportJobStatusFail(ctx, jobID, err.Error())
+		return
+	}
+
+	if len(batchData) == 0 {
+		d.datasetRepo.UpdateImportJobStatusFail(ctx, jobID, "no data to import")
+		return
+	}
+
+	// Convert data types based on schema before validation
+	targetTable := datasetVersion.Policies.Write.Query.From.Table
+	schemaMap := make(map[string]entity.Column)
+	for _, col := range datasetVersion.Schema.Columns {
+		if col.TableName == targetTable {
+			schemaMap[col.Name] = col
+		}
+	}
+
+	// Convert types for all rows
+	for i := range batchData {
+		for fieldName, value := range batchData[i] {
+			if schemaCol, ok := schemaMap[fieldName]; ok {
+				batchData[i][fieldName] = d.convertValueByDataType(value, schemaCol.DataType)
+			}
+		}
+	}
+
+	// Perform batch insert
+	rowsAffected, err := d.dataRepo.ExecuteBatchCreate(ctx, datasetVersion.SourceID, datasetVersion.Schema, datasetVersion.Policies.Write, batchData)
+	if err != nil {
+		d.datasetRepo.UpdateImportJobStatusFail(ctx, jobID, err.Error())
+		return
+	}
+
+	if rowsAffected == 0 {
+		d.datasetRepo.UpdateImportJobStatusFail(ctx, jobID, "no rows were inserted")
+		return
+	}
+
+	// Update job status to success
+	now := helperModel.NewTimestampFromNow()
+	err = d.datasetRepo.UpdateImportJobStatusSuccess(ctx, jobID, &now)
+	if err != nil {
+		// Log error but don't fail the import
+		fmt.Printf("Failed to update import job status: %v\n", err)
+	}
+}
+
+// parseCSVImport parses CSV file and returns batch data
+func (d *dataUsecase) parseCSVImport(fileBytes []byte) ([]map[string]interface{}, error) {
+	reader := csv.NewReader(bytes.NewReader(fileBytes))
+
+	// Read header
+	headers, err := reader.Read()
+	if err != nil {
+		return nil, fmt.Errorf("failed to read CSV header: %w", err)
+	}
+
+	// Read data rows
+	var batchData []map[string]interface{}
+	for {
+		record, err := reader.Read()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return nil, fmt.Errorf("failed to read CSV row: %w", err)
+		}
+
+		// Skip empty rows
+		if len(record) == 0 {
+			continue
+		}
+
+		// Map record to headers
+		rowData := make(map[string]interface{})
+		for i, value := range record {
+			if i < len(headers) {
+				// Skip empty values
+				if value != "" {
+					// Store raw string value - type conversion will happen later based on schema
+					rowData[headers[i]] = value
+				}
+			}
+		}
+
+		if len(rowData) > 0 {
+			batchData = append(batchData, rowData)
+		}
+	}
+
+	return batchData, nil
+}
+
+// parseExcelImport parses Excel file and returns batch data
+func (d *dataUsecase) parseExcelImport(fileBytes []byte) ([]map[string]interface{}, error) {
+	f, err := excelize.OpenReader(bytes.NewReader(fileBytes))
+	if err != nil {
+		return nil, fmt.Errorf("failed to open Excel file: %w", err)
+	}
+	defer f.Close()
+
+	// Get the first sheet
+	sheetName := f.GetSheetName(0)
+	if sheetName == "" {
+		return nil, fmt.Errorf("no sheets found in Excel file")
+	}
+
+	rows, err := f.GetRows(sheetName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read Excel rows: %w", err)
+	}
+
+	if len(rows) == 0 {
+		return nil, fmt.Errorf("Excel file is empty")
+	}
+
+	// First row is header
+	headers := rows[0]
+	var batchData []map[string]interface{}
+
+	// Process data rows
+	for i := 1; i < len(rows); i++ {
+		row := rows[i]
+		if len(row) == 0 {
+			continue
+		}
+
+		rowData := make(map[string]interface{})
+		for j, value := range row {
+			if j < len(headers) && value != "" {
+				// Store raw string value - type conversion will happen later based on schema
+				rowData[headers[j]] = value
+			}
+		}
+
+		if len(rowData) > 0 {
+			batchData = append(batchData, rowData)
+		}
+	}
+
+	return batchData, nil
+}
+
+// FetchImportJobByID implements data.DataUsecase.
+func (d *dataUsecase) FetchImportJobByID(ctx context.Context, jobID *uuid.UUID) (*dto.ImportJobResponseDTO, error) {
+	job, err := d.datasetRepo.FetchImportJobByID(ctx, jobID)
+	if err != nil {
+		return nil, err
+	}
+	if job == nil {
+		return nil, errs.NewNotFoundError("import job not found")
+	}
+
+	resp := &dto.ImportJobResponseDTO{
+		Status:       job.Status,
+		ErrorMessage: job.ErrorMessage,
+		CreatedAt:    job.CreatedAt,
+		CompletedAt:  job.CompletedAt,
+	}
+
+	return resp, nil
+}
+
+// convertValueType attempts to convert string values to appropriate types
+func (d *dataUsecase) convertValueType(value string) interface{} {
+	// Try to parse as integer
+	if intVal, err := strconv.ParseInt(value, 10, 64); err == nil {
+		return float64(intVal)
+	}
+
+	// Try to parse as float
+	if floatVal, err := strconv.ParseFloat(value, 64); err == nil {
+		return floatVal
+	}
+
+	// Try to parse as boolean
+	if boolVal, err := strconv.ParseBool(value); err == nil {
+		return boolVal
+	}
+
+	// Return as string if no conversion possible
+	return value
+}
+
+// convertValueByDataType converts value based on the target data type from schema
+func (d *dataUsecase) convertValueByDataType(value interface{}, dataType string) interface{} {
+	// If already nil, return nil
+	if value == nil {
+		return nil
+	}
+
+	// Convert to string first if not already
+	var strValue string
+	switch v := value.(type) {
+	case string:
+		strValue = v
+	case float64:
+		// For float64, use %.0f to avoid scientific notation for large numbers
+		// This is important for fields like national_id, passport_id which are stored as varchar
+		strValue = fmt.Sprintf("%.0f", v)
+	case int, int64:
+		strValue = fmt.Sprintf("%v", v)
+	case bool:
+		strValue = fmt.Sprintf("%v", v)
+	default:
+		strValue = fmt.Sprintf("%v", v)
+	}
+
+	// Convert based on data type
+	switch dataType {
+	case "int", "serial", "int4", "int8", "integer", "bigint", "smallint":
+		if intVal, err := strconv.ParseInt(strValue, 10, 64); err == nil {
+			return float64(intVal)
+		}
+		return value
+
+	case "decimal(12,2)", "numeric", "float", "float4", "float8", "double precision":
+		if floatVal, err := strconv.ParseFloat(strValue, 64); err == nil {
+			return floatVal
+		}
+		return value
+
+	case "bool", "boolean":
+		if boolVal, err := strconv.ParseBool(strValue); err == nil {
+			return boolVal
+		}
+		return value
+
+	case "varchar", "text", "genders", "blood_types", "honor_types", "character varying", "USER-DEFINED", "longtext":
+		// For string types, always return as string
+		return strValue
+
+	case "uuid":
+		// UUID should be string
+		return strValue
+
+	case "date", "timestamp", "timestamp without time zone", "timestamp with time zone":
+		// Date/timestamp should be string in correct format
+		return d.normalizeDateValue(strValue, dataType)
+
+	default:
+		// For unknown types, return as-is
+		return value
+	}
+}
+
+// normalizeDateValue attempts to parse and normalize date values to YYYY-MM-DD format
+func (d *dataUsecase) normalizeDateValue(value string, dataType string) string {
+	if value == "" {
+		return value
+	}
+
+	// List of common date formats to try
+	dateFormats := []string{
+		"2006-01-02",          // YYYY-MM-DD
+		"2006-1-2",            // YYYY-M-D
+		"02-01-2006",          // DD-MM-YYYY
+		"2-1-2006",            // D-M-YYYY
+		"01-02-2006",          // MM-DD-YYYY
+		"1-2-2006",            // M-D-YYYY
+		"02/01/2006",          // DD/MM/YYYY
+		"2/1/2006",            // D/M/YYYY
+		"01/02/2006",          // MM/DD/YYYY
+		"1/2/2006",            // M/D/YYYY
+		"01-02-06",            // MM-DD-YY
+		"1-2-06",              // M-D-YY
+		"02-01-06",            // DD-MM-YY
+		"2-1-06",              // D-M-YY
+		"01/02/06",            // MM/DD/YY
+		"1/2/06",              // M/D/YY
+		"02/01/06",            // DD/MM/YY
+		"2/1/06",              // D/M/YY
+		"2006-01-02 15:04:05", // YYYY-MM-DD HH:MM:SS
+		"02-01-2006 15:04:05", // DD-MM-YYYY HH:MM:SS
+		"01/02/2006 15:04:05", // MM/DD/YYYY HH:MM:SS
+	}
+
+	// Try to parse with each format
+	for _, format := range dateFormats {
+		if t, err := time.Parse(format, value); err == nil {
+			// Successfully parsed
+			if dataType == "date" {
+				return t.Format("2006-01-02")
+			}
+			// For timestamp types, return with time
+			return t.Format("2006-01-02 15:04:05")
+		}
+	}
+
+	// If all parsing fails, return original value
+	// The validation will catch invalid formats
+	return value
 }

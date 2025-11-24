@@ -1864,3 +1864,158 @@ func (p *psqlDataRepository) DeleteTableData(
 
 	return sqlResult, nil
 }
+
+// validateAndPrepareBatchData validates and prepares batch data for insertion
+// Returns array of validated data maps ready for batch insert
+func (p *psqlDataRepository) validateAndPrepareBatchData(
+	schema entity.Schema,
+	writePolicy *entity.WritePolicy,
+	batchData []map[string]interface{},
+) ([]map[string]interface{}, error) {
+
+	if len(batchData) == 0 {
+		return nil, fmt.Errorf("batch data cannot be empty")
+	}
+
+	// 1. Create Schema Map
+	targetTable := writePolicy.Query.From.Table
+	schemaMap := make(map[string]entity.Column)
+	for _, col := range schema.Columns {
+		if col.TableName == targetTable {
+			schemaMap[col.Name] = col
+		}
+	}
+
+	// 2. Create AllowEdit Map
+	allowedEditMap := make(map[string]bool)
+	for _, fieldName := range writePolicy.AllowEdit {
+		allowedEditMap[fieldName] = true
+	}
+
+	// 3. Validate each row in batch
+	validatedBatch := make([]map[string]interface{}, 0, len(batchData))
+
+	for rowIdx, data := range batchData {
+		validatedRow := make(map[string]interface{})
+
+		for fieldName := range allowedEditMap {
+			schemaCol, ok := schemaMap[fieldName]
+			if !ok {
+				return nil, fmt.Errorf("row %d: field '%s' in AllowEdit not found in schema for table '%s'", rowIdx, fieldName, targetTable)
+			}
+
+			val, dataExists := data[fieldName]
+
+			// Handle nil or missing data
+			if !dataExists || val == nil {
+				if schemaCol.Default != nil {
+					validatedRow[fieldName] = *schemaCol.Default
+				} else if !schemaCol.IsNullable {
+					return nil, fmt.Errorf("row %d: field '%s' is required (not nullable) but was not provided", rowIdx, fieldName)
+				} else {
+					validatedRow[fieldName] = nil
+				}
+				continue
+			}
+
+			// Validate Enum
+			if len(schemaCol.Enum) > 0 {
+				if err := validateEnum(schemaCol.Enum, val); err != nil {
+					return nil, fmt.Errorf("row %d: validation failed for field '%s': %w", rowIdx, fieldName, err)
+				}
+			}
+
+			// Validate DataType
+			if err := validateDataType(schemaCol.DataType, val); err != nil {
+				return nil, fmt.Errorf("row %d: validation failed for field '%s': %w", rowIdx, fieldName, err)
+			}
+
+			validatedRow[fieldName] = val
+		}
+
+		validatedBatch = append(validatedBatch, validatedRow)
+	}
+
+	return validatedBatch, nil
+}
+
+// buildBatchCreateSQLBuilder creates a batch insert SQL builder
+// This function creates a single INSERT statement with multiple value rows
+func buildBatchCreateSQLBuilder(ctx context.Context, queryPlan *entity.QueryPlan, validatedBatch []map[string]interface{}) (squirrel.InsertBuilder, error) {
+	if queryPlan.From == nil || queryPlan.From.Table == "" {
+		return squirrel.InsertBuilder{}, fmt.Errorf("WritePolicy.Query.From.Table is required for CREATE")
+	}
+
+	if len(validatedBatch) == 0 {
+		return squirrel.InsertBuilder{}, fmt.Errorf("batch data cannot be empty")
+	}
+
+	// Get columns from first row (all rows should have same columns after validation)
+	var columns []string
+	for key := range validatedBatch[0] {
+		columns = append(columns, key)
+	}
+
+	builder := psqlBuilder.Insert(queryPlan.From.Table).Columns(columns...)
+
+	// Add all rows to the builder
+	for _, row := range validatedBatch {
+		values := make([]interface{}, len(columns))
+		for i, col := range columns {
+			values[i] = row[col]
+		}
+		builder = builder.Values(values...)
+	}
+
+	return builder, nil
+}
+
+// ExecuteBatchCreate performs batch insert operation
+func (p *psqlDataRepository) ExecuteBatchCreate(
+	ctx context.Context,
+	sourceID *uuid.UUID,
+	schema entity.Schema,
+	writePolicy *entity.WritePolicy,
+	batchData []map[string]interface{},
+) (int64, error) {
+
+	// 1. Validate and prepare batch data
+	validatedBatch, err := p.validateAndPrepareBatchData(schema, writePolicy, batchData)
+	if err != nil {
+		return 0, errs.NewBadRequestError(fmt.Sprintf("batch create validation failed: %v", err))
+	}
+
+	if len(validatedBatch) == 0 {
+		return 0, errs.NewBadRequestError("no valid data provided for batch creation")
+	}
+
+	// 2. Get Connection
+	client, err := p.dbConnectionManager.GetConnection(ctx, *sourceID)
+	if err != nil {
+		return 0, err
+	}
+
+	// 3. Build SQL
+	builder, err := buildBatchCreateSQLBuilder(ctx, &writePolicy.Query, validatedBatch)
+	if err != nil {
+		return 0, err
+	}
+
+	querySQL, args, err := builder.ToSql()
+	if err != nil {
+		return 0, err
+	}
+
+	// 4. Execute batch insert
+	result, err := client.GetClient().ExecContext(ctx, querySQL, args...)
+	if err != nil {
+		return 0, fmt.Errorf("failed to execute batch create: %w", err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return 0, fmt.Errorf("failed to get rows affected: %w", err)
+	}
+
+	return rowsAffected, nil
+}

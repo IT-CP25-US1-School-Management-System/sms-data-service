@@ -1507,6 +1507,86 @@ func (p *psqlDatasetRepository) UpdateStatusFail(ctx context.Context, jobId *uui
 	return nil
 }
 
+// InsertImportJob implements data.PsqlDatasetRepository.
+func (p *psqlDatasetRepository) InsertImportJob(ctx context.Context, importJob *entity.ImportJob) error {
+	query := `
+		INSERT INTO import_jobs (job_id, dataset_id, version, format, status, error_message, created_at, completed_at, resource_id)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+	`
+	_, err := p.client.GetClient().ExecContext(ctx, query,
+		importJob.JobID,
+		importJob.DatasetID,
+		importJob.Version,
+		importJob.Format,
+		importJob.Status,
+		importJob.ErrorMessage,
+		importJob.CreatedAt,
+		importJob.CompletedAt,
+		importJob.ResourceID,
+	)
+	return err
+}
+
+// FetchImportJobByID implements data.PsqlDatasetRepository.
+func (p *psqlDatasetRepository) FetchImportJobByID(ctx context.Context, jobID *uuid.UUID) (*entity.ImportJob, error) {
+	query := `
+		SELECT job_id, dataset_id, version, format, status, error_message, created_at, completed_at, resource_id
+		FROM import_jobs
+		WHERE job_id = $1
+	`
+	var job entity.ImportJob
+	row := p.client.GetClient().QueryRowxContext(ctx, query, jobID)
+	err := row.Scan(
+		&job.JobID,
+		&job.DatasetID,
+		&job.Version,
+		&job.Format,
+		&job.Status,
+		&job.ErrorMessage,
+		&job.CreatedAt,
+		&job.CompletedAt,
+		&job.ResourceID,
+	)
+
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &job, nil
+}
+
+// UpdateImportJobStatusSuccess implements data.PsqlDatasetRepository.
+func (p *psqlDatasetRepository) UpdateImportJobStatusSuccess(ctx context.Context, jobID *uuid.UUID, completedAt *helperModel.Timestamp) error {
+	query := `
+		UPDATE import_jobs
+		SET status = $2, completed_at = $3
+		WHERE job_id = $1
+	`
+	_, err := p.client.GetClient().ExecContext(ctx, query,
+		jobID,
+		constants.EXPORT_JOB_STATUS_SUCCEEDED,
+		completedAt,
+	)
+	return err
+}
+
+// UpdateImportJobStatusFail implements data.PsqlDatasetRepository.
+func (p *psqlDatasetRepository) UpdateImportJobStatusFail(ctx context.Context, jobID *uuid.UUID, errorMessage string) error {
+	query := `
+		UPDATE import_jobs
+		SET status = $2, error_message = $3
+		WHERE job_id = $1
+	`
+	_, err := p.client.GetClient().ExecContext(ctx, query,
+		jobID,
+		constants.EXPORT_JOB_STATUS_FAILED,
+		errorMessage,
+	)
+	return err
+}
+
 func NewPsqlDatasetRepository(client *psql.Client) data.PsqlDatasetRepository {
 	return &psqlDatasetRepository{
 		client: client,

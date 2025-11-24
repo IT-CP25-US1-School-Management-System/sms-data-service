@@ -2,6 +2,7 @@ package handler
 
 import (
 	"fmt"
+	"io"
 	"mime/multipart"
 	"net/http"
 	"strconv"
@@ -1155,6 +1156,113 @@ func (d *dataHandler) FetchReportingExportJobByID(c echo.Context) error {
 
 	res := map[string]interface{}{
 		"data": reportingExportJob,
+	}
+	return c.JSON(http.StatusOK, res)
+}
+
+// CreateImportTemplate implements data.DataHandler.
+func (d *dataHandler) CreateImportTemplate(c echo.Context) error {
+	ctx := c.Request().Context()
+
+	var req dto.CreateImportTemplateDTO
+	if err := c.Bind(&req); err != nil {
+		return errs.ErrBadRequest(err)
+	}
+	if err := c.Validate(&req); err != nil {
+		return errs.ErrBadRequest(err)
+	}
+
+	// Create import template
+	url, err := d.dataUs.CreateImportTemplate(ctx, req.DatasetID, req.Version, req.Format)
+	if err != nil {
+		return err
+	}
+
+	res := map[string]interface{}{
+		"url": url,
+	}
+	return c.JSON(http.StatusOK, res)
+}
+
+// CreateImportJob implements data.DataHandler.
+func (d *dataHandler) CreateImportJob(c echo.Context) error {
+	ctx := c.Request().Context()
+
+	// Get file from multipart form
+	file, err := c.FormFile("file")
+	if err != nil {
+		return errs.NewBadRequestError("file is required")
+	}
+
+	// Read file content
+	src, err := file.Open()
+	if err != nil {
+		return errs.NewInternalServerError("failed to open uploaded file")
+	}
+	defer src.Close()
+
+	fileBytes, err := io.ReadAll(src)
+	if err != nil {
+		return errs.NewInternalServerError("failed to read uploaded file")
+	}
+
+	// Get form fields
+	datasetID := c.FormValue("dataset_id")
+	version := c.FormValue("version")
+	format := c.FormValue("format")
+
+	if datasetID == "" || version == "" || format == "" {
+		return errs.NewBadRequestError("dataset_id, version, and format are required")
+	}
+
+	// Create import job DTO
+	importJobDTO := dto.CreateImportJobDTO{
+		DatasetID:  datasetID,
+		Version:    version,
+		Format:     format,
+	}
+
+	// Validate
+	if err := c.Validate(&importJobDTO); err != nil {
+		return errs.ErrBadRequest(err)
+	}
+
+	// Convert to entity
+	importJob := importJobDTO.ToEntity()
+	importJob.GenUUID()
+
+	// Create import job
+	err = d.dataUs.CreateImportJob(ctx, importJob, fileBytes)
+	if err != nil {
+		return err
+	}
+
+	res := map[string]interface{}{
+		"job_id": importJob.JobID,
+	}
+	return c.JSON(http.StatusOK, res)
+}
+
+// FetchImportJobByID implements data.DataHandler.
+func (d *dataHandler) FetchImportJobByID(c echo.Context) error {
+	ctx := c.Request().Context()
+	jobIDParam := c.Param("job_id")
+
+	jobIDUUID, err := uuid.FromString(jobIDParam)
+	if err != nil {
+		return errs.NewBadRequestError("invalid job_id")
+	}
+
+	job, err := d.dataUs.FetchImportJobByID(ctx, &jobIDUUID)
+	if err != nil {
+		return err
+	}
+	if job == nil {
+		return errs.NewNotFoundError("import job not found")
+	}
+
+	res := map[string]interface{}{
+		"data": job,
 	}
 	return c.JSON(http.StatusOK, res)
 }
