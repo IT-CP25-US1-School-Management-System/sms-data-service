@@ -1046,7 +1046,6 @@ func (d *dataHandler) FetchExportJobByJobId(c echo.Context) error {
 
 }
 
-
 // InsertExportJob implements data.DataHandler.
 func (d *dataHandler) ExportJob(c echo.Context) error {
 	ctx := c.Request().Context()
@@ -1065,7 +1064,7 @@ func (d *dataHandler) ExportJob(c echo.Context) error {
 	}
 
 	res := map[string]interface{}{
-		"job_id":      exportJobEntity.JobId,
+		"job_id": exportJobEntity.JobId,
 	}
 	return c.JSON(http.StatusOK, res)
 }
@@ -1111,4 +1110,51 @@ func (d *dataHandler) UploadReportingTemplate(c echo.Context) error {
 	}
 	return c.JSON(http.StatusOK, res)
 
+}
+
+func (d *dataHandler) ExportReportingJob(c echo.Context) error {
+	ctx := c.Request().Context()
+	reportingTemplateIDParam := c.Param("reporting_template_id")
+	key := c.Param("key")
+	reportingTemplateIDUUID, err := uuid.FromString(reportingTemplateIDParam)
+	if err != nil {
+		return errs.NewBadRequestError(constants.ERR_INVALID_EXPORT_JOB_ID)
+	}
+	if key == "" {
+		return errs.NewBadRequestError("key parameter is required")
+	}
+
+	reportingJobEntity := entity.ReportingTemplateExportJob{
+		ReportingTemplateID: &reportingTemplateIDUUID,
+	}
+	reportingJobEntity.GenUUID()
+	if err := d.dataUs.InsertReportingJob(ctx, &reportingJobEntity, key); err != nil {
+		return err
+	}
+
+	res := map[string]interface{}{
+		"job_id": reportingJobEntity.JobID,
+	}
+	return c.JSON(http.StatusOK, res)
+}
+
+func (d *dataHandler) FetchReportingExportJobByID(c echo.Context) error {
+	ctx := c.Request().Context()
+	jobIDParam := c.Param("job_id")
+	jobIDUUID, err := uuid.FromString(jobIDParam)
+	if err != nil {
+		return errs.NewBadRequestError(constants.ERR_INVALID_EXPORT_JOB_ID)
+	}
+	reportingExportJob, err := d.dataUs.FetchReportingExportJobByID(ctx, &jobIDUUID)
+	if err != nil {
+		return err
+	}
+	if reportingExportJob == nil {
+		return errs.NewNotFoundError(constants.ERR_EXPORT_JOB_NOT_FOUND)
+	}
+
+	res := map[string]interface{}{
+		"data": reportingExportJob,
+	}
+	return c.JSON(http.StatusOK, res)
 }

@@ -90,6 +90,10 @@ type PsqlDatasetRepository interface {
 	UpsertReportingTemplate(ctx context.Context, template *entity.ReportingTemplate) error
 	DeleteReportingTemplateByID(ctx context.Context, templateID *uuid.UUID) error
 	ExistReportingTemplateByID(ctx context.Context, templateID *uuid.UUID) (bool, error)
+	UpdateReportingExportStatusSuccess(ctx context.Context, jobID *uuid.UUID, completedAt *helperModel.Timestamp, resourceID string) error
+	UpdateReportingExportStatusFail(ctx context.Context, jobID *uuid.UUID, errorMessage string) error
+	UpsertReportingTemplateExportJob(ctx context.Context, job *entity.ReportingTemplateExportJob) error
+	FetchReportingExportJobByID(ctx context.Context, jobID *uuid.UUID) (*entity.ReportingTemplateExportJob, error)
 	InsertExportJob(ctx context.Context, exportJob *entity.ExportJob) error
 	FetchExportJobByID(ctx context.Context, jobID *uuid.UUID) (*entity.ExportJob, error)
 	UpdateStatusSuccess(ctx context.Context, jobId *uuid.UUID, destinationUri string, completedAt *helperModel.Timestamp) error

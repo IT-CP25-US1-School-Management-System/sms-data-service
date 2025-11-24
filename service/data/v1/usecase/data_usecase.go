@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/csv"
 	"fmt"
+	"io"
 	"net/http"
 
 	helperModel "github.com/GodeFvt/go-backend/helper/models"
@@ -18,6 +19,8 @@ import (
 	"github.com/IT-CP25-US1-School-Management-System/sms-data-service/service/document/v1"
 	"github.com/IT-CP25-US1-School-Management-System/sms-data-service/utils/crypto"
 	"github.com/gofrs/uuid"
+	"github.com/jung-kurt/gofpdf"
+	"github.com/jung-kurt/gofpdf/contrib/gofpdi"
 	"github.com/xuri/excelize/v2"
 )
 
@@ -799,22 +802,66 @@ func (d *dataUsecase) UploadReportingTemplate(ctx context.Context, template *ent
 	if err := d.validateDatasetID(template.DatasetID); err != nil {
 		return err
 	}
+	if err := d.validateVersionFormat(template.Version); err != nil {
+		return err
+	}
 	if template.Name == "" {
 		return errs.NewBadRequestError("template name is required")
-	} else if len(template.Columns) == 0 || len(template.Columns) < 1 {
-		return errs.NewBadRequestError("template columns are required")
 	} else if len(template.Positions) == 0 || len(template.Positions) < 1 {
 		return errs.NewBadRequestError("template positions are required")
 	}
-	for _, col := range template.Columns {
-		if col.TableName == "" || col.ColumnsName == "" {
-			return errs.NewBadRequestError("template columns have invalid format")
+	datasetVersion, err := d.datasetRepo.FetchDatasetVersionByID(ctx, template.DatasetID, template.Version)
+	if err != nil {
+		return err
+	}
+	if datasetVersion == nil {
+		return errs.NewNotFoundError("dataset version not found")
+	}
+	if datasetVersion.Policies.Runtime == nil {
+		return errs.NewConflictError("runtime policy is not configured for this dataset version")
+	}
+	if datasetVersion.Policies.Views == nil {
+		return errs.NewConflictError("views policy is not configured for this dataset version")
+	}
+	if template.View == "" {
+		template.View = datasetVersion.Policies.Runtime.DefaultView
+	} else {
+		viewConfigs, ok := datasetVersion.Policies.Views[template.View]
+		if !ok || len(viewConfigs) == 0 {
+			return errs.NewNotFoundError(fmt.Sprintf("view '%s' not found or is empty in policies", template.View))
 		}
 	}
+	datasetViews := datasetVersion.Policies.Views[template.View]
+
+	// Build a map of available columns per table from the view definition
+	viewColumnsMap := make(map[string]map[string]bool)
+	for _, v := range datasetViews {
+		table := v.TableName
+		if _, ok := viewColumnsMap[table]; !ok {
+			viewColumnsMap[table] = make(map[string]bool)
+		}
+		for _, c := range v.Columns {
+			viewColumnsMap[table][c] = true
+		}
+	}
+
+	// Validate template positions exist in the view
+	missingPos := []string{}
 	for _, pos := range template.Positions {
 		if pos.TableName == "" || pos.ColumnsName == "" {
 			return errs.NewBadRequestError("template positions have invalid format")
 		}
+		if colsMap, ok := viewColumnsMap[pos.TableName]; ok {
+			if !colsMap[pos.ColumnsName] {
+				missingPos = append(missingPos, fmt.Sprintf("%s.%s", pos.TableName, pos.ColumnsName))
+			}
+		} else {
+			missingPos = append(missingPos, fmt.Sprintf("%s.%s", pos.TableName, pos.ColumnsName))
+		}
+	}
+
+	if len(missingPos) > 0 {
+		return errs.NewConflictError(fmt.Sprintf("template references not found in view: missing_positions=%v", missingPos))
 	}
 	now := helperModel.NewTimestampFromNow()
 	template.CreatedAt = &now
@@ -838,12 +885,249 @@ func (d *dataUsecase) UploadReportingTemplate(ctx context.Context, template *ent
 	if data == nil {
 		return errs.NewInternalServerError("failed to upload reporting template file")
 	}
-	template.ResourceID = &data.ResourceId
+	template.ResourceID = data.ResourceId
 
 	return d.datasetRepo.UpsertReportingTemplate(ctx, template)
 }
 
-// FetchExportJobByID implements data.DataUsecase.
+func (d *dataUsecase) InsertReportingJob(ctx context.Context, job *entity.ReportingTemplateExportJob, key string) error {
+	if job == nil {
+		return errs.NewBadRequestError(constants.ERR_INVALID_REQUEST_BODY)
+	}
+	exists, err := d.datasetRepo.ExistReportingTemplateByID(ctx, job.ReportingTemplateID)
+	if err != nil {
+		return err
+	}
+	if !exists {
+		return errs.NewNotFoundError("reporting template not found")
+	}
+	now := helperModel.NewTimestampFromNow()
+	job.CreatedAt = &now
+	job.Status = constants.EXPORT_JOB_STATUS_PENDING
+	job.ResourceID = ""
+
+	template, err := d.datasetRepo.FetchReportingTemplateByID(ctx, job.ReportingTemplateID)
+	if err != nil {
+		return err
+	}
+	if template == nil {
+		return errs.NewNotFoundError("reporting template not found")
+	}
+
+	go d.processReportingTemplateExportJob(job.JobID, template, key)
+
+	return d.datasetRepo.UpsertReportingTemplateExportJob(ctx, job)
+}
+
+func (d *dataUsecase) processReportingTemplateExportJob(JobID *uuid.UUID, template *entity.ReportingTemplate, key string) error {
+	ctx := context.Background()
+	exportData, err := d.generateReportingTemplateExportFile(ctx, JobID, template, key)
+	if err != nil {
+		d.datasetRepo.UpdateReportingExportStatusFail(ctx, JobID, err.Error())
+		return err
+	}
+
+	now := helperModel.NewTimestampFromNow()
+	fileName := fmt.Sprintf("%s_%s_%s.pdf", template.Name, key, now.Format("20060102150405"))
+	fileRequest := proto_models.FileRequest{
+		Path:               constants.DOCUMENT_PATH_REPORTING,
+		Folder:             constants.DOCUMENT_FOLDER_EXPORT_TEMPLATES,
+		OriginalFilename:   fileName,
+		IsGenerateFilename: true,
+		Body:               exportData,
+	}
+	status, data, err := d.documentRepo.UploadFile(ctx, &fileRequest)
+	if err != nil || status != http.StatusOK {
+		if status == http.StatusServiceUnavailable {
+			d.datasetRepo.UpdateReportingExportStatusFail(ctx, JobID, "document service is unavailable")
+			return err
+		}
+		d.datasetRepo.UpdateReportingExportStatusFail(ctx, JobID, "failed to upload export file")
+		return err
+	}
+	if data == nil {
+		d.datasetRepo.UpdateReportingExportStatusFail(ctx, JobID, "failed to upload export file")
+		return errs.NewInternalServerError("failed to upload export file")
+	}
+
+	err = d.datasetRepo.UpdateReportingExportStatusSuccess(ctx, JobID, &now, data.ResourceId)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (d *dataUsecase) generateReportingTemplateExportFile(ctx context.Context, JobID *uuid.UUID, template *entity.ReportingTemplate, key string) ([]byte, error) {
+	datasetVersion, err := d.datasetRepo.FetchDatasetVersionByID(ctx, template.DatasetID, template.Version)
+	if err != nil {
+		return nil, err
+	}
+
+	var fileData []byte
+	if datasetVersion != nil && datasetVersion.Policies.Runtime != nil && datasetVersion.Policies.Views != nil {
+		// Fetch data using the key
+		data, err := d.ServingDatasetVersionDataByKey(ctx, template.DatasetID, template.Version, key, template.View)
+		if err != nil {
+			return nil, err
+		}
+		if data == nil {
+			return nil, errs.NewNotFoundError("data not found for the provided key")
+		}
+
+		// Get the PDF template file
+		resourceReq := &proto_models.GetFileByResourceIDRequest{
+			ResourceId: template.ResourceID,
+		}
+		status, resp, err := d.documentRepo.GetFileByResourceID(ctx, resourceReq)
+		if err != nil || status != http.StatusOK {
+			if status == http.StatusServiceUnavailable {
+				return nil, errs.NewInternalServerError("document service is unavailable")
+			}
+			return nil, errs.NewInternalServerError("failed to get reporting template file")
+		}
+		if resp == nil {
+			return nil, errs.NewNotFoundError("reporting template file not found")
+		}
+
+		// Download the PDF template from URL
+		httpResp, err := http.Get(resp.Url)
+		if err != nil {
+			return nil, errs.NewInternalServerError("failed to download PDF template")
+		}
+		defer httpResp.Body.Close()
+
+		if httpResp.StatusCode != http.StatusOK {
+			return nil, errs.NewInternalServerError("failed to download PDF template")
+		}
+
+		templateData, err := io.ReadAll(httpResp.Body)
+		if err != nil {
+			return nil, errs.NewInternalServerError("failed to read PDF template")
+		}
+
+		// Generate PDF with data
+		fileData, err = d.generatePDFFromTemplate(templateData, template, data)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return fileData, nil
+}
+
+func (d *dataUsecase) generatePDFFromTemplate(templateData []byte, template *entity.ReportingTemplate, data map[string]interface{}) ([]byte, error) {
+	// Initialize PDF
+	pdf := gofpdf.New("P", "mm", "A4", "")
+
+	// Import the template PDF
+	templateReader := bytes.NewReader(templateData)
+	imp := gofpdi.NewImporter()
+
+	// Read the template
+	var rs io.ReadSeeker = templateReader
+	tpl := imp.ImportPageFromStream(pdf, &rs, 1, "/MediaBox")
+
+	// Add a page and use the template
+	pdf.AddPage()
+	imp.UseImportedTemplate(pdf, tpl, 0, 0, 210, 297) // A4 size in mm
+
+	// Set font for text
+	pdf.AddUTF8Font("THSarabunNew", "", "./assets/fonts/THSarabunNew/THSarabunNew.ttf")
+	pdf.AddUTF8Font("THSarabunNew Bold", "B", "./assets/fonts/THSarabunNew/THSarabunNew Bold.ttf")
+
+	pdf.SetFont("THSarabunNew", "", 16)
+	pdf.SetTextColor(0, 0, 0)
+	// Process positions and add text to PDF
+	for _, pos := range template.Positions {
+		var value string
+		// Extract value based on position type
+		if pos.TableName != "" && pos.ColumnsName != "" {
+			// Case 1: Key matches TableName
+			if tableData, ok := data[pos.TableName]; ok {
+				fmt.Printf("Extracting value from table '%s' for alias '%s'\n", pos.TableName, pos.Alias)
+				value = d.extractValueFromTableData(tableData, pos.Alias)
+			}
+		}
+		if pos.ColumnsName != "" {
+			// Case 2: Key matches ColumnsName or Alias - use value directly
+			if val, ok := data[pos.ColumnsName]; ok {
+				value = fmt.Sprintf("%v", val)
+			} else if pos.Alias != "" {
+				if val, ok := data[pos.Alias]; ok {
+					value = fmt.Sprintf("%v", val)
+				}
+			}
+		}
+
+		// Set text position and write
+		if value != "" {
+			pdf.SetXY(pos.X, pos.Y)
+			pdf.Cell(0, 0, value)
+		}
+	}
+
+	// Output PDF to buffer
+	var buf bytes.Buffer
+	err := pdf.Output(&buf)
+	if err != nil {
+		return nil, errs.NewInternalServerError("failed to generate PDF")
+	}
+
+	return buf.Bytes(), nil
+}
+
+func (d *dataUsecase) FetchReportingExportJobByID(ctx context.Context, jobID *uuid.UUID) (*dto.ReportingExportJobResponseDTO, error) {
+	job, err := d.datasetRepo.FetchReportingExportJobByID(ctx, jobID)
+	if err != nil {
+		return nil, err
+	}
+	if job == nil {
+		return nil, errs.NewNotFoundError("reporting export job not found")
+	}
+	req := proto_models.GetFileByResourceIDRequest{
+		ResourceId: job.ResourceID,
+	}
+	status, response, err := d.documentRepo.GetFileByResourceID(ctx, &req)
+	if err != nil || status != http.StatusOK {
+		if status == http.StatusServiceUnavailable {
+			return nil, errs.NewInternalServerError("document service is unavailable")
+		}
+		return nil, errs.NewInternalServerError("failed to get export file information")
+	}
+	if response == nil {
+		return nil, errs.NewNotFoundError("export file not found")
+	}
+	resp, err := helperModel.ConvertStruct[*entity.ReportingTemplateExportJob, *dto.ReportingExportJobResponseDTO](job)
+	if err != nil {
+		return nil, err
+	}
+	resp.Url = response.Url
+	resp.OriginalFilename = response.OriginalFilename
+	resp.FileSize = response.Size
+	resp.ContentType = response.ContentType
+	return resp, nil
+}
+
+func (d *dataUsecase) extractValueFromTableData(tableData interface{}, alias string) string {
+	switch v := tableData.(type) {
+	case map[string]interface{}:
+		// Single object - extract value by alias
+		if val, ok := v[alias]; ok {
+			return fmt.Sprintf("%v", val)
+		}
+	case []interface{}:
+		// Array of objects - take the first one
+		if len(v) > 0 {
+			if firstObj, ok := v[0].(map[string]interface{}); ok {
+				if val, ok := firstObj[alias]; ok {
+					return fmt.Sprintf("%v", val)
+				}
+			}
+		}
+	}
+	return ""
+}
+
 func (d *dataUsecase) FetchExportJobByID(ctx context.Context, jobID *uuid.UUID) (*entity.ExportJob, error) {
 	job, err := d.datasetRepo.FetchExportJobByID(ctx, jobID)
 	if err != nil {
@@ -855,7 +1139,7 @@ func (d *dataUsecase) FetchExportJobByID(ctx context.Context, jobID *uuid.UUID) 
 	req := proto_models.GetFileByResourceIDRequest{
 		ResourceId: job.DestinationUri,
 	}
-	status , response ,err := d.documentRepo.GetFileByResourceID(ctx ,&req)
+	status, response, err := d.documentRepo.GetFileByResourceID(ctx, &req)
 	if err != nil || status != http.StatusOK {
 		if status == http.StatusServiceUnavailable {
 			return nil, errs.NewInternalServerError("document service is unavailable")
@@ -1227,10 +1511,12 @@ func (d *dataUsecase) processJob(exportJob *entity.ExportJob) error {
 		return err
 	}
 
+	now := helperModel.NewTimestampFromNow()
+	fileName := "exported_data_" + now.Format("20060102150405") + "." + exportJob.Format
 	fileReq := proto_models.FileRequest{
-		Path:               "testy",
-		Folder:             "exports",
-		OriginalFilename:   "test" + "." + exportJob.Format,
+		Path:               constants.DOCUMENT_PATH_REPORTING,
+		Folder:             constants.DOCUMENT_FOLDER_EXPORT,
+		OriginalFilename:   fileName,
 		IsGenerateFilename: true,
 		Body:               fileByte,
 	}
@@ -1243,7 +1529,6 @@ func (d *dataUsecase) processJob(exportJob *entity.ExportJob) error {
 		err := d.datasetRepo.UpdateStatusFail(ctx, exportJob.JobId, "No resource file")
 		return err
 	}
-	now := helperModel.NewTimestampFromNow()
 	err = d.datasetRepo.UpdateStatusSuccess(ctx, exportJob.JobId, response.ResourceId, &now)
 	if err != nil {
 		err := d.datasetRepo.UpdateStatusFail(ctx, exportJob.JobId, err.Error())
