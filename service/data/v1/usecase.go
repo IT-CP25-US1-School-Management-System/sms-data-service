@@ -70,4 +70,9 @@ type DataUsecase interface {
 	FetchExportJobByID(ctx context.Context, jobID *uuid.UUID) (*entity.ExportJob, error)
 	FetchReportingExportJobByID(ctx context.Context, jobID *uuid.UUID) (*dto.ReportingExportJobResponseDTO, error)
 	InsertReportingJob(ctx context.Context, job *entity.ReportingTemplateExportJob, key string) error
+
+	// Import methods
+	CreateImportTemplate(ctx context.Context, datasetID, version, format string) (string, error)
+	CreateImportJob(ctx context.Context, importJob *entity.ImportJob, fileBytes []byte) error
+	FetchImportJobByID(ctx context.Context, jobID *uuid.UUID) (*dto.ImportJobResponseDTO, error)
 }

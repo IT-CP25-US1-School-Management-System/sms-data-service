@@ -44,6 +44,7 @@ type PsqlDataRepository interface {
 	ExecuteCreate(ctx context.Context, sourceID *uuid.UUID, schema entity.Schema, writePolicy *entity.WritePolicy, data map[string]interface{}) (map[string]interface{}, error)
 	ExecuteUpdate(ctx context.Context, sourceID *uuid.UUID, schema entity.Schema, writePolicy *entity.WritePolicy, key interface{}, data map[string]interface{}) (map[string]interface{}, error)
 	ExecuteDelete(ctx context.Context, sourceID *uuid.UUID, deletePolicy *entity.DeletePolicy, key interface{}) (sql.Result, error)
+	ExecuteBatchCreate(ctx context.Context, sourceID *uuid.UUID, schema entity.Schema, writePolicy *entity.WritePolicy, batchData []map[string]interface{}) (int64, error)
 
 	// Table Data CRUD (direct table access)
 	FetchTableData(ctx context.Context, sourceID *uuid.UUID, schemaName, tableName string, filterGroups [][]entity.FilterInput, logicalOperator string, paginator *models.Paginator, sortBy, sortOrder string) ([]map[string]interface{}, error)
@@ -98,6 +99,12 @@ type PsqlDatasetRepository interface {
 	FetchExportJobByID(ctx context.Context, jobID *uuid.UUID) (*entity.ExportJob, error)
 	UpdateStatusSuccess(ctx context.Context, jobId *uuid.UUID, destinationUri string, completedAt *helperModel.Timestamp) error
 	UpdateStatusFail(ctx context.Context, jobId *uuid.UUID, errorMessage string) error
+
+	// Import Job
+	InsertImportJob(ctx context.Context, importJob *entity.ImportJob) error
+	FetchImportJobByID(ctx context.Context, jobID *uuid.UUID) (*entity.ImportJob, error)
+	UpdateImportJobStatusSuccess(ctx context.Context, jobID *uuid.UUID, completedAt *helperModel.Timestamp) error
+	UpdateImportJobStatusFail(ctx context.Context, jobID *uuid.UUID, errorMessage string) error
 }
 
 type RedisRepository interface {

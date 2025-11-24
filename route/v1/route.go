@@ -66,4 +66,9 @@ func (r *Route) RegisterDataRoute(handler data.DataHandler) {
 	reportingTemplateGroup.GET("/export/job/:job_id", handler.FetchReportingExportJobByID, r.middl.ValidateParamId("job_id"))
 	reportingGroup.GET("/export/job/:job_id", handler.FetchExportJobByJobId, r.middl.ValidateParamId("job_id"))
 	reportingGroup.POST("/export/job", handler.ExportJob)
+
+	// Import Routes
+	reportingGroup.POST("/import/template", handler.CreateImportTemplate)
+	reportingGroup.POST("/import/job", handler.CreateImportJob)
+	reportingGroup.GET("/import/job/:job_id", handler.FetchImportJobByID, r.middl.ValidateParamId("job_id"))
 }

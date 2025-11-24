@@ -50,4 +50,9 @@ type DataHandler interface {
 	FetchExportJobByJobId(c echo.Context) error
 	ExportReportingJob(c echo.Context) error
 	FetchReportingExportJobByID(c echo.Context) error
+
+	// Import
+	CreateImportTemplate(c echo.Context) error
+	CreateImportJob(c echo.Context) error
+	FetchImportJobByID(c echo.Context) error
 }
