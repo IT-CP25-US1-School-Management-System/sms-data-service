@@ -23,7 +23,90 @@ type psqlDatasetRepository struct {
 	client *psql.Client
 }
 
-// DeleteReportingTemplateByID implements data.PsqlDatasetRepository.
+func (p *psqlDatasetRepository) FetchReportingExportJobByID(ctx context.Context, jobID *uuid.UUID) (*entity.ReportingTemplateExportJob, error) {
+	query := `
+		SELECT
+			job_id, reporting_template_id, resource_id, status, created_at, completed_at, error_message
+		FROM reporting_template_export_jobs
+		WHERE job_id = $1
+	`
+	var job entity.ReportingTemplateExportJob
+	row := p.client.GetClient().QueryRowxContext(ctx, query, jobID)
+	err := row.Scan(
+		&job.JobID,
+		&job.ReportingTemplateID,
+		&job.ResourceID,
+		&job.Status,
+		&job.CreatedAt,
+		&job.CompletedAt,
+		&job.ErrorMessage,
+	)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &job, nil
+}
+
+func (p *psqlDatasetRepository) UpdateReportingExportStatusSuccess(ctx context.Context, jobID *uuid.UUID, completedAt *helperModel.Timestamp, resourceID string) error {
+	query := `
+		UPDATE reporting_template_export_jobs
+		SET status = $1, completed_at = $2, resource_id = $3
+		WHERE job_id = $4
+	`
+	_, err := p.client.GetClient().ExecContext(ctx, query, constants.EXPORT_JOB_STATUS_SUCCEEDED, completedAt, resourceID, jobID)
+	return err
+}
+
+func (p *psqlDatasetRepository) UpdateReportingExportStatusFail(ctx context.Context, jobID *uuid.UUID, errorMessage string) error {
+	query := `
+		UPDATE reporting_template_export_jobs
+		SET status = $1, error_message = $2
+		WHERE job_id = $3
+	`
+	_, err := p.client.GetClient().ExecContext(ctx, query, constants.EXPORT_JOB_STATUS_FAILED, errorMessage, jobID)
+	return err
+}
+
+func (p *psqlDatasetRepository) UpsertReportingTemplateExportJob(ctx context.Context, job *entity.ReportingTemplateExportJob) error {
+	tx, err := p.client.GetClient().BeginTxx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	if err := p.upsertReportingTemplateExportJob(ctx, tx, job); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
+func (p *psqlDatasetRepository) upsertReportingTemplateExportJob(ctx context.Context, tx *sqlx.Tx, job *entity.ReportingTemplateExportJob) error {
+	query := `
+		INSERT INTO reporting_template_export_jobs (job_id, reporting_template_id, resource_id, status, created_at, completed_at, error_message)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)
+		ON CONFLICT (job_id) DO UPDATE SET
+			reporting_template_id = EXCLUDED.reporting_template_id,
+			resource_id = EXCLUDED.resource_id,
+			status = EXCLUDED.status,
+			created_at = EXCLUDED.created_at,
+			completed_at = EXCLUDED.completed_at,
+			error_message = EXCLUDED.error_message
+	`
+	_, err := tx.ExecContext(ctx, query,
+		job.JobID,
+		job.ReportingTemplateID,
+		job.ResourceID,
+		job.Status,
+		job.CreatedAt,
+		job.CompletedAt,
+		job.ErrorMessage,
+	)
+	return err
+}
+
 func (p *psqlDatasetRepository) DeleteReportingTemplateByID(ctx context.Context, templateID *uuid.UUID) error {
 	query := `
 		DELETE FROM reporting_templates WHERE id = $1
@@ -32,7 +115,6 @@ func (p *psqlDatasetRepository) DeleteReportingTemplateByID(ctx context.Context,
 	return err
 }
 
-// ExistReportingTemplateByID implements data.PsqlDatasetRepository.
 func (p *psqlDatasetRepository) ExistReportingTemplateByID(ctx context.Context, templateID *uuid.UUID) (bool, error) {
 	query := `
 		SELECT EXISTS (
@@ -44,29 +126,30 @@ func (p *psqlDatasetRepository) ExistReportingTemplateByID(ctx context.Context, 
 	if err != nil {
 		return false, err
 	}
+	fmt.Println("ExistReportingTemplateByID:", exists)
 	return exists, nil
 }
 
-// FetchReportingTemplateByID implements data.PsqlDatasetRepository.
 func (p *psqlDatasetRepository) FetchReportingTemplateByID(ctx context.Context, templateID *uuid.UUID) (*entity.ReportingTemplate, error) {
 	query := `
 		SELECT
-			id, name, dataset_id, columns, positions, resource_id, created_at, updated_at
+			id, name, dataset_id, positions, resource_id, created_at, updated_at, view, version
 		FROM reporting_templates
 		WHERE id = $1
 	`
 	var template entity.ReportingTemplate
-	var columnsJSON, positionsJSON []byte
+	var positionsJSON []byte
 	row := p.client.GetClient().QueryRowxContext(ctx, query, templateID)
 	err := row.Scan(
 		&template.ID,
 		&template.Name,
 		&template.DatasetID,
-		&columnsJSON,
 		&positionsJSON,
 		&template.ResourceID,
 		&template.CreatedAt,
 		&template.UpdatedAt,
+		&template.View,
+		&template.Version,
 	)
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -75,10 +158,13 @@ func (p *psqlDatasetRepository) FetchReportingTemplateByID(ctx context.Context, 
 		return nil, err
 	}
 
+	if err := json.Unmarshal(positionsJSON, &template.Positions); err != nil {
+		return nil, err
+	}
+
 	return &template, nil
 }
 
-// FetchReportingTemplatesList implements data.PsqlDatasetRepository.
 func (p *psqlDatasetRepository) FetchReportingTemplatesList(ctx context.Context, filter *filter.ReportingTemplatesFilter, paginator *helperModel.Paginator) ([]*entity.ReportingTemplate, error) {
 	var (
 		conds    []string
@@ -109,7 +195,7 @@ func (p *psqlDatasetRepository) FetchReportingTemplatesList(ctx context.Context,
 
 	query := fmt.Sprintf(`
 		SELECT
-			id, name, dataset_id, columns, positions, resource_id, created_at, updated_at
+			id, name, dataset_id, positions, resource_id, created_at, updated_at, view, version
 		FROM reporting_templates
 		%s
 		%s
@@ -125,23 +211,21 @@ func (p *psqlDatasetRepository) FetchReportingTemplatesList(ctx context.Context,
 	var templates []*entity.ReportingTemplate
 	for rows.Next() {
 		var template entity.ReportingTemplate
-		var columnsJSON, positionsJSON []byte
+		var positionsJSON []byte
 		if err := rows.Scan(
 			&template.ID,
 			&template.Name,
 			&template.DatasetID,
-			&columnsJSON,
 			&positionsJSON,
 			&template.ResourceID,
 			&template.CreatedAt,
 			&template.UpdatedAt,
+			&template.View,
+			&template.Version,
 		); err != nil {
 			return nil, err
 		}
 
-		if err := json.Unmarshal(columnsJSON, &template.Columns); err != nil {
-			return nil, err
-		}
 		if err := json.Unmarshal(positionsJSON, &template.Positions); err != nil {
 			return nil, err
 		}
@@ -152,7 +236,6 @@ func (p *psqlDatasetRepository) FetchReportingTemplatesList(ctx context.Context,
 	return templates, nil
 }
 
-// UpsertReportingTemplate implements data.PsqlDatasetRepository.
 func (p *psqlDatasetRepository) UpsertReportingTemplate(ctx context.Context, template *entity.ReportingTemplate) error {
 	tx, err := p.client.GetClient().BeginTxx(ctx, nil)
 	if err != nil {
@@ -169,35 +252,33 @@ func (p *psqlDatasetRepository) UpsertReportingTemplate(ctx context.Context, tem
 
 func (p *psqlDatasetRepository) upsertReportingTemplate(ctx context.Context, tx *sqlx.Tx, template *entity.ReportingTemplate) error {
 	// Marshal JSON fields
-	columnsJSON, err := json.Marshal(template.Columns)
-	if err != nil {
-		return err
-	}
 	positionsJSON, err := json.Marshal(template.Positions)
 	if err != nil {
 		return err
 	}
 
 	query := `
-		INSERT INTO reporting_templates (id, name, dataset_id, columns, positions, resource_id, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+		INSERT INTO reporting_templates (id, name, dataset_id, positions, resource_id, created_at, updated_at, view, version)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 		ON CONFLICT (id) DO UPDATE SET
 			name = EXCLUDED.name,
 			dataset_id = EXCLUDED.dataset_id,
-			columns = EXCLUDED.columns,
 			positions = EXCLUDED.positions,
 			resource_id = EXCLUDED.resource_id,
-			updated_at = EXCLUDED.updated_at
+			updated_at = EXCLUDED.updated_at,
+			view = EXCLUDED.view,
+			version = EXCLUDED.version
 	`
 	if _, err := tx.ExecContext(ctx, query,
 		template.ID,
 		template.Name,
 		template.DatasetID,
-		columnsJSON,
 		positionsJSON,
 		template.ResourceID,
 		template.CreatedAt,
 		template.UpdatedAt,
+		template.View,
+		template.Version,
 	); err != nil {
 		return err
 	}

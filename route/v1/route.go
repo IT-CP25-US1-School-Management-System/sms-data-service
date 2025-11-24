@@ -62,6 +62,8 @@ func (r *Route) RegisterDataRoute(handler data.DataHandler) {
 	reportingGroup := r.e.Group("/v1/reporting")
 	reportingTemplateGroup := reportingGroup.Group("/templates")
 	reportingTemplateGroup.POST("/upload", handler.UploadReportingTemplate, r.middl.InputForm)
+	reportingTemplateGroup.POST("/:reporting_template_id/export/key/:key", handler.ExportReportingJob)
+	reportingTemplateGroup.GET("/export/job/:job_id", handler.FetchReportingExportJobByID, r.middl.ValidateParamId("job_id"))
 	reportingGroup.GET("/export/job/:job_id", handler.FetchExportJobByJobId, r.middl.ValidateParamId("job_id"))
 	reportingGroup.POST("/export/job", handler.ExportJob)
 }

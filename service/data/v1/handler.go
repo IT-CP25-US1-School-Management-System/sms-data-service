@@ -48,4 +48,6 @@ type DataHandler interface {
 	UploadReportingTemplate(c echo.Context) error
 	ExportJob(c echo.Context) error
 	FetchExportJobByJobId(c echo.Context) error
+	ExportReportingJob(c echo.Context) error
+	FetchReportingExportJobByID(c echo.Context) error
 }

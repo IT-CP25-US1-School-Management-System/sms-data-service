@@ -19,8 +19,12 @@ const (
 	EXPORT_JOB_STATUS_PENDING   = "pending"
 	EXPORT_JOB_STATUS_SUCCEEDED = "succeeded"
 	EXPORT_JOB_STATUS_FAILED    = "failed"
-	EXPORT_JOB_FORMAT_CSV      = "csv"
-	EXPORT_JOB_FORMAT_XLSX     = "xlsx"
+	EXPORT_JOB_FORMAT_CSV       = "csv"
+	EXPORT_JOB_FORMAT_XLSX      = "xlsx"
+
+	DOCUMENT_PATH_REPORTING          = "reporting"
+	DOCUMENT_FOLDER_EXPORT_TEMPLATES = "export/templates"
+	DOCUMENT_FOLDER_EXPORT           = "exports"
 )
 
 var (

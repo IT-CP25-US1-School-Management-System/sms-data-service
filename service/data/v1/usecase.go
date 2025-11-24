@@ -68,4 +68,6 @@ type DataUsecase interface {
 	UploadReportingTemplate(ctx context.Context, template *entity.ReportingTemplate, fileData []byte, fileName string) error
 	InsertExportJob(ctx context.Context, exportJob *entity.ExportJob) error
 	FetchExportJobByID(ctx context.Context, jobID *uuid.UUID) (*entity.ExportJob, error)
+	FetchReportingExportJobByID(ctx context.Context, jobID *uuid.UUID) (*dto.ReportingExportJobResponseDTO, error)
+	InsertReportingJob(ctx context.Context, job *entity.ReportingTemplateExportJob, key string) error
 }
