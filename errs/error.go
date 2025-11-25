@@ -75,6 +75,10 @@ func NewBadRequestError(message string) *AppError {
 	return NewAppError(message, http.StatusBadRequest, int(codes.InvalidArgument), nil)
 }
 
+func NewForbiddenError(message string) *AppError {
+	return NewAppError(message, http.StatusForbidden, int(codes.PermissionDenied), nil)
+}
+
 func NewConflictError(message string) *AppError {
 	return NewAppError(message, http.StatusConflict, int(codes.AlreadyExists), nil)
 }

@@ -10,15 +10,11 @@ import (
 	"sync"
 	"time"
 
+	"github.com/IT-CP25-US1-School-Management-System/sms-data-service/constants"
 	keyfunc "github.com/MicahParks/keyfunc/v3"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/labstack/echo/v4"
 )
-
-const contextClaimsKey = "claims"
-const contextUserIDKey = "user_id"
-const contextTokenKey = "token"
-const contextSessionIDKey = "session_id"
 
 // ---------- JWKS cache (ต่อ "ชุด" ของ URL) ----------
 var (
@@ -219,14 +215,16 @@ func (m *GoMiddleware) parseJWTWithoutClaimsValidation(c echo.Context, tokenStri
 	return token, nil
 }
 
-// Helper function สำหรับ set claims ใน context
 func setTokenClaims(c echo.Context, token *jwt.Token, tokenString string) {
 	if claims, ok := token.Claims.(jwt.MapClaims); ok {
-		c.Set(contextClaimsKey, claims)
+		c.Set(constants.CONTEXT_CLAIMS_KEY, claims)
 		if userID, err := claims.GetSubject(); err == nil {
-			c.Set(contextUserIDKey, userID)
+			c.Set(constants.CONTEXT_USER_ID_KEY, userID)
 		}
-		c.Set(contextTokenKey, tokenString)
+		c.Set(constants.CONTEXT_TOKEN_KEY, tokenString)
+
+		roles := collectRolesKeycloak(claims)
+		c.Set(constants.CONTEXT_ROLES_KEY, roles)
 	}
 }
 
@@ -242,7 +240,7 @@ func (m *GoMiddleware) IsAuthorizationWithKeycloak(next echo.HandlerFunc) echo.H
 
 		token, err := m.parseJWTWithJWKS(c, raw, true)
 		if err != nil {
-			return c.JSON(http.StatusUnauthorized, map[string]string{"error": "Invalid token"})
+			return c.JSON(http.StatusUnauthorized, map[string]string{"error": err.Error()})
 		}
 
 		setTokenClaims(c, token, raw)
@@ -277,7 +275,7 @@ func (m *GoMiddleware) Role(requiredRoles []string) echo.MiddlewareFunc {
 	}
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
-			val := c.Get(contextClaimsKey)
+			val := c.Get(constants.CONTEXT_CLAIMS_KEY)
 			claims, ok := val.(jwt.MapClaims)
 			if !ok || claims == nil {
 				return c.JSON(http.StatusUnauthorized, map[string]string{"error": "No user claims found. Please authenticate first"})
@@ -408,7 +406,7 @@ func collectPermissions(claims jwt.MapClaims) []Permission {
 
 // Helper functions สำหรับดึงข้อมูลจาก context
 func GetUserRoles(c echo.Context) []string {
-	val := c.Get(contextClaimsKey)
+	val := c.Get(constants.CONTEXT_CLAIMS_KEY)
 	claims, ok := val.(jwt.MapClaims)
 	if !ok || claims == nil {
 		return []string{}
@@ -417,7 +415,7 @@ func GetUserRoles(c echo.Context) []string {
 }
 
 func GetUserPermissions(c echo.Context) []Permission {
-	val := c.Get(contextClaimsKey)
+	val := c.Get(constants.CONTEXT_CLAIMS_KEY)
 	claims, ok := val.(jwt.MapClaims)
 	if !ok || claims == nil {
 		return []Permission{}
@@ -426,7 +424,7 @@ func GetUserPermissions(c echo.Context) []Permission {
 }
 
 func GetUserID(c echo.Context) string {
-	val := c.Get(contextUserIDKey)
+	val := c.Get(constants.CONTEXT_USER_ID_KEY)
 	if userID, ok := val.(string); ok {
 		return userID
 	}
@@ -434,7 +432,7 @@ func GetUserID(c echo.Context) string {
 }
 
 func GetSessionID(c echo.Context) string {
-	val := c.Get(contextSessionIDKey)
+	val := c.Get(constants.CONTEXT_SESSION_ID_KEY)
 	if sessionID, ok := val.(string); ok {
 		return sessionID
 	}
@@ -496,7 +494,7 @@ func HasPermission(c echo.Context, resourceName string, requiredScopes []string)
 func (m *GoMiddleware) Permission(resourceName string, requiredScopes []string) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
-			val := c.Get(contextClaimsKey)
+			val := c.Get(constants.CONTEXT_CLAIMS_KEY)
 			claims, ok := val.(jwt.MapClaims)
 			if !ok || claims == nil {
 				return c.JSON(http.StatusUnauthorized, map[string]string{"error": "No user claims found. Please authenticate first"})
@@ -549,7 +547,7 @@ func (m *GoMiddleware) Permission(resourceName string, requiredScopes []string) 
 func (m *GoMiddleware) AnyPermission(resourceScopeMap map[string][]string) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
-			val := c.Get(contextClaimsKey)
+			val := c.Get(constants.CONTEXT_CLAIMS_KEY)
 			claims, ok := val.(jwt.MapClaims)
 			if !ok || claims == nil {
 				return c.JSON(http.StatusUnauthorized, map[string]string{"error": "No user claims found. Please authenticate first"})
@@ -704,7 +702,7 @@ func (m *GoMiddleware) SessionMiddleware() echo.MiddlewareFunc {
 			// ถ้าไม่มี access token หรือหมดอายุ ก็ไม่เป็นไร เพราะมี refresh token อยู่
 
 			// เก็บ session ID และ refresh token ใน context
-			c.Set(contextSessionIDKey, sessionID)
+			c.Set(constants.CONTEXT_SESSION_ID_KEY, sessionID)
 			c.Set("refresh_token", refreshToken)
 
 			return next(c)

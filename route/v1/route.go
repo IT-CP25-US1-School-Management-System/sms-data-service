@@ -1,6 +1,7 @@
 package route
 
 import (
+	"github.com/IT-CP25-US1-School-Management-System/sms-data-service/constants"
 	"github.com/IT-CP25-US1-School-Management-System/sms-data-service/middleware"
 	"github.com/IT-CP25-US1-School-Management-System/sms-data-service/service/data/v1"
 	"github.com/labstack/echo/v4"
@@ -16,7 +17,9 @@ func NewRoute(e *echo.Echo, middl middleware.GoMiddlewareInf) *Route {
 }
 
 func (r *Route) RegisterDataRoute(handler data.DataHandler) {
-	introspectGroup := r.e.Group("/v1/introspect")
+	v1Group := r.e.Group("/v1", r.middl.IsAuthorizationWithKeycloak)
+
+	introspectGroup := v1Group.Group("/introspect", r.middl.Role([]string{constants.ROLE_ADMIN}))
 	introspectGroup.GET("/sources", handler.FetchSourceList)
 	introspectGroup.GET("/sources/:id", handler.FetchSourceByID)
 	introspectGroup.GET("/schemas", handler.FetchSchemasList)
@@ -28,7 +31,7 @@ func (r *Route) RegisterDataRoute(handler data.DataHandler) {
 	introspectGroup.PATCH("/sources/:id/activate", handler.ActivateSourceByID, r.middl.ValidateParamId("id"))
 	introspectGroup.PATCH("/sources/:id/deactivate", handler.DeactivateSourceByID, r.middl.ValidateParamId("id"))
 	// Table Data CRUD (direct source access)
-	tableDataGroup := introspectGroup.Group("/sources/:id/schemas/:schema/tables/:table", r.middl.ValidateParamId("id"))
+	tableDataGroup := introspectGroup.Group("/sources/:id/schemas/:schema/tables/:table", r.middl.ValidateParamId("id"), r.middl.Role([]string{constants.ROLE_ADMIN}))
 	tableDataGroup.GET("/data", handler.FetchTableData)
 	tableDataGroup.GET("/data/key/:key", handler.FetchTableDataByKey)
 	tableDataGroup.POST("/data", handler.CreateTableData)
@@ -36,14 +39,14 @@ func (r *Route) RegisterDataRoute(handler data.DataHandler) {
 	tableDataGroup.DELETE("/data/key/:key", handler.DeleteTableData)
 
 	// Datasets Route
-	datasetsGroup := r.e.Group("/v1/datasets")
+	datasetsGroup := v1Group.Group("/datasets", r.middl.Role([]string{constants.ROLE_ADMIN}))
 	datasetsGroup.GET("", handler.FetchDatasetList)
 	datasetsGroup.GET("/:id", handler.FetchDatasetByID)
 	datasetsGroup.POST("", handler.UpsertDataset)
 	datasetsGroup.DELETE("/:id", handler.DeleteDatasetByID)
 
 	// Dataset Versions Route
-	datasetVersionsGroup := r.e.Group("/v1/datasets/:id/versions")
+	datasetVersionsGroup := v1Group.Group("/datasets/:id/versions", r.middl.Role([]string{constants.ROLE_ADMIN}))
 	datasetVersionsGroup.GET("", handler.FetchDatasetVersionsList) // filter validate // finish
 	datasetVersionsGroup.GET("/:version", handler.FetchDatasetVersionByID)
 	datasetVersionsGroup.POST("", handler.InsertDatasetVersion)                 //insert + DTO validate //REPO function ไม่ต้องแก้
@@ -51,23 +54,22 @@ func (r *Route) RegisterDataRoute(handler data.DataHandler) {
 	datasetVersionsGroup.PATCH("/:version", handler.UpdateDatasetVersionStatus) // patch update status active,preview,deprecated + DTO validate รับ status
 
 	// Serving Routes
-	servingGroup := r.e.Group("/v1/datasets/:id/versions/:version")
+	servingGroup := v1Group.Group("/datasets/:id/versions/:version")
 	servingGroup.GET("/data", handler.ServingDatasetVersionData)
 	servingGroup.GET("/data/key/:key", handler.ServingDatasetVersionDataByKey)
 	servingGroup.POST("/data", handler.CreateDatasetVersionData)
 	servingGroup.PUT("/data/key/:key", handler.UpdateDatasetVersionDataByKey)
 	servingGroup.DELETE("/data/key/:key", handler.DeleteDatasetVersionDataByKey)
 
-	// Reporting Template Route
-	reportingGroup := r.e.Group("/v1/reporting")
+	reportingGroup := v1Group.Group("/reporting")
+	// Export with Template
 	reportingTemplateGroup := reportingGroup.Group("/templates")
-	reportingTemplateGroup.POST("/upload", handler.UploadReportingTemplate, r.middl.InputForm)
+	reportingTemplateGroup.POST("/upload", handler.UploadReportingTemplate, r.middl.InputForm, r.middl.Role([]string{constants.ROLE_ADMIN}))
 	reportingTemplateGroup.POST("/:reporting_template_id/export/key/:key", handler.ExportReportingJob)
 	reportingTemplateGroup.GET("/export/job/:job_id", handler.FetchReportingExportJobByID, r.middl.ValidateParamId("job_id"))
-	reportingGroup.GET("/export/job/:job_id", handler.FetchExportJobByJobId, r.middl.ValidateParamId("job_id"))
+	// Export Import dataset
 	reportingGroup.POST("/export/job", handler.ExportJob)
-
-	// Import Routes
+	reportingGroup.GET("/export/job/:job_id", handler.FetchExportJobByJobId, r.middl.ValidateParamId("job_id"))
 	reportingGroup.POST("/import/template", handler.CreateImportTemplate)
 	reportingGroup.POST("/import/job", handler.CreateImportJob)
 	reportingGroup.GET("/import/job/:job_id", handler.FetchImportJobByID, r.middl.ValidateParamId("job_id"))

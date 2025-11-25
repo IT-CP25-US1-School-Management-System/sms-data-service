@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	helperModel "github.com/GodeFvt/go-backend/helper/models"
@@ -411,6 +412,107 @@ func (d *dataUsecase) UpdateDatasetVersionStatus(ctx context.Context, datasetID 
 	return d.datasetRepo.UpdateDatasetVersionStatus(ctx, datasetID, version, status)
 }
 
+// checkAccessPermission checks if user has permission to access the dataset version
+func (d *dataUsecase) checkAccessPermission(datasetVersion *entity.DatasetVersion, roles []string, requiredPermission string) error {
+	if datasetVersion == nil {
+		return errs.NewBadRequestError("dataset version is required")
+	}
+
+	// If roles is empty (internal usage), skip permission check
+	if len(roles) == 0 {
+		return nil
+	}
+
+	// If no access policies defined, deny access
+	if len(datasetVersion.AccessPolicies) == 0 {
+		return errs.NewForbiddenError(constants.ERR_PERMISSION_DENIED)
+	}
+
+	roleSet := map[string]struct{}{}
+	for _, r := range roles {
+		normalizedRole := strings.ToLower(strings.TrimSpace(r))
+		roleSet[normalizedRole] = struct{}{}
+		if strings.Contains(normalizedRole, ":") {
+			parts := strings.SplitN(normalizedRole, ":", 2)
+			if len(parts) == 2 {
+				roleSet[parts[1]] = struct{}{}
+			}
+		}
+	}
+
+	for _, policy := range datasetVersion.AccessPolicies {
+		if _, ok := roleSet[policy.Role]; ok {
+			switch requiredPermission {
+			case "view":
+				if policy.CanView {
+					return nil
+				}
+			case "edit":
+				if policy.CanEdit {
+					return nil
+				}
+			case "delete":
+				if policy.CanDelete {
+					return nil
+				}
+			}
+		}
+	}
+
+	return errs.NewForbiddenError(constants.ERR_PERMISSION_DENIED)
+}
+
+// checkViewPermission checks if user has permission to access the specific view
+func (d *dataUsecase) checkViewPermission(datasetVersion *entity.DatasetVersion, roles []string, viewName string) error {
+	if datasetVersion == nil {
+		return errs.NewBadRequestError("dataset version is required")
+	}
+
+	// If roles is empty (internal usage), skip permission check
+	if len(roles) == 0 {
+		return nil
+	}
+
+	// If viewName is empty, use default view
+	if viewName == "" {
+		if datasetVersion.Policies.Runtime != nil {
+			viewName = datasetVersion.Policies.Runtime.DefaultView
+		}
+	}
+
+	// If no access policies defined, deny access
+	if len(datasetVersion.AccessPolicies) == 0 {
+		return errs.NewForbiddenError(constants.ERR_PERMISSION_DENIED)
+	}
+
+	roleSet := map[string]struct{}{}
+	for _, r := range roles {
+		normalizedRole := strings.ToLower(strings.TrimSpace(r))
+		roleSet[normalizedRole] = struct{}{}
+		if strings.Contains(normalizedRole, ":") {
+			parts := strings.SplitN(normalizedRole, ":", 2)
+			if len(parts) == 2 {
+				roleSet[parts[1]] = struct{}{}
+			}
+		}
+	}
+
+	for _, policy := range datasetVersion.AccessPolicies {
+		if _, ok := roleSet[policy.Role]; ok && policy.CanView {
+			if len(policy.AllowView) == 0 {
+				return nil
+			}
+			for _, allowedView := range policy.AllowView {
+				if allowedView == viewName {
+					return nil
+				}
+			}
+		}
+	}
+
+	return errs.NewForbiddenError(constants.ERR_PERMISSION_DENIED)
+}
+
 func (d *dataUsecase) ServingDatasetVersionData(
 	ctx context.Context,
 	datasetID string,
@@ -421,6 +523,7 @@ func (d *dataUsecase) ServingDatasetVersionData(
 	logicalOperator string,
 	sortBy string,
 	sortOrder string,
+	roles []string,
 ) ([]map[string]interface{}, error) {
 	if err := d.validateDatasetID(datasetID); err != nil {
 		return nil, err
@@ -437,6 +540,14 @@ func (d *dataUsecase) ServingDatasetVersionData(
 	}
 	if datasetVersion.Policies.Runtime == nil {
 		return nil, errs.NewConflictError("runtime policy is not configured for this dataset version")
+	}
+
+	if err := d.checkAccessPermission(datasetVersion, roles, "view"); err != nil {
+		return nil, err
+	}
+
+	if err := d.checkViewPermission(datasetVersion, roles, viewName); err != nil {
+		return nil, err
 	}
 
 	results, err := d.dataRepo.ExecuteQuery(
@@ -459,7 +570,7 @@ func (d *dataUsecase) ServingDatasetVersionData(
 }
 
 // ServingDatasetVersionDataByKey implements data.DataUsecase.
-func (d *dataUsecase) ServingDatasetVersionDataByKey(ctx context.Context, datasetID, version, key, viewName string) (map[string]interface{}, error) {
+func (d *dataUsecase) ServingDatasetVersionDataByKey(ctx context.Context, datasetID, version, key, viewName string, roles []string) (map[string]interface{}, error) {
 	if err := d.validateDatasetID(datasetID); err != nil {
 		return nil, err
 	}
@@ -474,6 +585,16 @@ func (d *dataUsecase) ServingDatasetVersionDataByKey(ctx context.Context, datase
 	}
 	if datasetVersion == nil {
 		return nil, errs.NewNotFoundError("dataset version not found")
+	}
+
+	// Check access permission
+	if err := d.checkAccessPermission(datasetVersion, roles, "view"); err != nil {
+		return nil, err
+	}
+
+	// Check view permission
+	if err := d.checkViewPermission(datasetVersion, roles, viewName); err != nil {
+		return nil, err
 	}
 
 	// Use runtime policy and prepare for key-based filtering
@@ -490,7 +611,7 @@ func (d *dataUsecase) ServingDatasetVersionDataByKey(ctx context.Context, datase
 }
 
 // CreateDatasetVersionData implements data.DataUsecase.
-func (d *dataUsecase) CreateDatasetVersionData(ctx context.Context, datasetID string, version string, data map[string]interface{}) (map[string]interface{}, error) {
+func (d *dataUsecase) CreateDatasetVersionData(ctx context.Context, datasetID string, version string, data map[string]interface{}, roles []string) (map[string]interface{}, error) {
 	if err := d.validateDatasetID(datasetID); err != nil {
 		return nil, err
 	}
@@ -505,6 +626,11 @@ func (d *dataUsecase) CreateDatasetVersionData(ctx context.Context, datasetID st
 	}
 	if datasetVersion == nil {
 		return nil, errs.NewNotFoundError("dataset version not found")
+	}
+
+	// Check access permission
+	if err := d.checkAccessPermission(datasetVersion, roles, "edit"); err != nil {
+		return nil, err
 	}
 
 	// Check if WritePolicy exists
@@ -526,7 +652,7 @@ func (d *dataUsecase) CreateDatasetVersionData(ctx context.Context, datasetID st
 }
 
 // UpdateDatasetVersionDataByKey implements data.DataUsecase.
-func (d *dataUsecase) UpdateDatasetVersionDataByKey(ctx context.Context, datasetID string, version string, key string, data map[string]interface{}) (map[string]interface{}, error) {
+func (d *dataUsecase) UpdateDatasetVersionDataByKey(ctx context.Context, datasetID string, version string, key string, data map[string]interface{}, roles []string) (map[string]interface{}, error) {
 	if err := d.validateDatasetID(datasetID); err != nil {
 		return nil, err
 	}
@@ -539,6 +665,11 @@ func (d *dataUsecase) UpdateDatasetVersionDataByKey(ctx context.Context, dataset
 	}
 	if datasetVersion == nil {
 		return nil, errs.NewNotFoundError("dataset version not found")
+	}
+
+	// Check access permission
+	if err := d.checkAccessPermission(datasetVersion, roles, "edit"); err != nil {
+		return nil, err
 	}
 
 	if datasetVersion.Policies.Write == nil {
@@ -565,7 +696,7 @@ func (d *dataUsecase) UpdateDatasetVersionDataByKey(ctx context.Context, dataset
 }
 
 // DeleteDatasetVersionDataByKey implements data.DataUsecase.
-func (d *dataUsecase) DeleteDatasetVersionDataByKey(ctx context.Context, datasetID string, version string, key string) error {
+func (d *dataUsecase) DeleteDatasetVersionDataByKey(ctx context.Context, datasetID string, version string, key string, roles []string) error {
 	if err := d.validateDatasetID(datasetID); err != nil {
 		return err
 	}
@@ -579,6 +710,12 @@ func (d *dataUsecase) DeleteDatasetVersionDataByKey(ctx context.Context, dataset
 	if datasetVersion == nil {
 		return errs.NewNotFoundError("dataset version not found")
 	}
+
+	// Check access permission
+	if err := d.checkAccessPermission(datasetVersion, roles, "delete"); err != nil {
+		return err
+	}
+
 	if datasetVersion.Policies.Delete == nil {
 		return errs.NewConflictError("DeletePolicy is not configured for data deletion")
 	}
@@ -892,7 +1029,7 @@ func (d *dataUsecase) UploadReportingTemplate(ctx context.Context, template *ent
 	return d.datasetRepo.UpsertReportingTemplate(ctx, template)
 }
 
-func (d *dataUsecase) InsertReportingJob(ctx context.Context, job *entity.ReportingTemplateExportJob, key string) error {
+func (d *dataUsecase) InsertReportingJob(ctx context.Context, job *entity.ReportingTemplateExportJob, key string, roles []string) error {
 	if job == nil {
 		return errs.NewBadRequestError(constants.ERR_INVALID_REQUEST_BODY)
 	}
@@ -914,6 +1051,17 @@ func (d *dataUsecase) InsertReportingJob(ctx context.Context, job *entity.Report
 	}
 	if template == nil {
 		return errs.NewNotFoundError("reporting template not found")
+	}
+
+	datasetVersion, err := d.datasetRepo.FetchDatasetVersionByID(ctx, template.DatasetID, template.Version)
+	if err != nil {
+		return err
+	}
+	if datasetVersion == nil {
+		return errs.NewNotFoundError("dataset version not found")
+	}
+	if err := d.checkAccessPermission(datasetVersion, roles, "view"); err != nil {
+		return err
 	}
 
 	go d.processReportingTemplateExportJob(job.JobID, template, key)
@@ -968,8 +1116,8 @@ func (d *dataUsecase) generateReportingTemplateExportFile(ctx context.Context, J
 
 	var fileData []byte
 	if datasetVersion != nil && datasetVersion.Policies.Runtime != nil && datasetVersion.Policies.Views != nil {
-		// Fetch data using the key
-		data, err := d.ServingDatasetVersionDataByKey(ctx, template.DatasetID, template.Version, key, template.View)
+		// Fetch data using the key (internal usage, bypass permission check with empty roles)
+		data, err := d.ServingDatasetVersionDataByKey(ctx, template.DatasetID, template.Version, key, template.View, []string{})
 		if err != nil {
 			return nil, err
 		}
@@ -1078,7 +1226,7 @@ func (d *dataUsecase) generatePDFFromTemplate(templateData []byte, template *ent
 	return buf.Bytes(), nil
 }
 
-func (d *dataUsecase) FetchReportingExportJobByID(ctx context.Context, jobID *uuid.UUID) (*dto.ReportingExportJobResponseDTO, error) {
+func (d *dataUsecase) FetchReportingExportJobByID(ctx context.Context, jobID *uuid.UUID, roles []string) (*dto.ReportingExportJobResponseDTO, error) {
 	job, err := d.datasetRepo.FetchReportingExportJobByID(ctx, jobID)
 	if err != nil {
 		return nil, err
@@ -1086,6 +1234,26 @@ func (d *dataUsecase) FetchReportingExportJobByID(ctx context.Context, jobID *uu
 	if job == nil {
 		return nil, errs.NewNotFoundError("reporting export job not found")
 	}
+
+	// Check access permission (internal usage, bypass permission check with empty roles)
+	template, err := d.datasetRepo.FetchReportingTemplateByID(ctx, job.ReportingTemplateID)
+	if err != nil {
+		return nil, err
+	}
+	if template == nil {
+		return nil, errs.NewNotFoundError("reporting template not found")
+	}
+	datasetVersion, err := d.datasetRepo.FetchDatasetVersionByID(ctx, template.DatasetID, template.Version)
+	if err != nil {
+		return nil, err
+	}
+	if datasetVersion == nil {
+		return nil, errs.NewNotFoundError("dataset version not found")
+	}
+	if err := d.checkAccessPermission(datasetVersion, roles, "view"); err != nil {
+		return nil, err
+	}
+
 	req := proto_models.GetFileByResourceIDRequest{
 		ResourceId: job.ResourceID,
 	}
@@ -1130,7 +1298,7 @@ func (d *dataUsecase) extractValueFromTableData(tableData interface{}, alias str
 	return ""
 }
 
-func (d *dataUsecase) FetchExportJobByID(ctx context.Context, jobID *uuid.UUID) (*entity.ExportJob, error) {
+func (d *dataUsecase) FetchExportJobByID(ctx context.Context, jobID *uuid.UUID, roles []string) (*entity.ExportJob, error) {
 	job, err := d.datasetRepo.FetchExportJobByID(ctx, jobID)
 	if err != nil {
 		return nil, err
@@ -1138,6 +1306,20 @@ func (d *dataUsecase) FetchExportJobByID(ctx context.Context, jobID *uuid.UUID) 
 	if job == nil {
 		return nil, errs.NewNotFoundError("export job not found")
 	}
+	// Fetch dataset version to check permissions
+	datasetVersion, err := d.datasetRepo.FetchDatasetVersionByID(ctx, job.DatasetId, job.Version)
+	if err != nil {
+		return nil, err
+	}
+	if datasetVersion == nil {
+		return nil, errs.NewNotFoundError("dataset version not found")
+	}
+
+	// Check access permission
+	if err := d.checkAccessPermission(datasetVersion, roles, "view"); err != nil {
+		return nil, err
+	}
+
 	req := proto_models.GetFileByResourceIDRequest{
 		ResourceId: job.DestinationUri,
 	}
@@ -1184,8 +1366,8 @@ func (d *dataUsecase) exportDatasetExcel(ctx context.Context, exportJob *entity.
 		paginator.Page = page
 		paginator.PerPage = 100
 
-		// Fetch data for this page
-		datas, err := d.ServingDatasetVersionData(ctx, exportJob.DatasetId, exportJob.Version, &paginator, exportJob.View, nil, "", "", "")
+		// Fetch data for this page (internal usage, bypass permission check with empty roles)
+		datas, err := d.ServingDatasetVersionData(ctx, exportJob.DatasetId, exportJob.Version, &paginator, exportJob.View, nil, "", "", "", []string{})
 		if err != nil {
 			return nil, err
 		}
@@ -1282,8 +1464,8 @@ func (d *dataUsecase) exportDatasetCSV(ctx context.Context, exportJob *entity.Ex
 		paginator.Page = page
 		paginator.PerPage = 100
 
-		// Fetch data for this page
-		datas, err := d.ServingDatasetVersionData(ctx, exportJob.DatasetId, exportJob.Version, &paginator, exportJob.View, nil, "", "", "")
+		// Fetch data for this page (internal usage, bypass permission check with empty roles)
+		datas, err := d.ServingDatasetVersionData(ctx, exportJob.DatasetId, exportJob.Version, &paginator, exportJob.View, nil, "", "", "", []string{})
 		if err != nil {
 			return nil, err
 		}
@@ -1540,7 +1722,7 @@ func (d *dataUsecase) processJob(exportJob *entity.ExportJob) error {
 }
 
 // ExportJob implements data.DataUsecase.
-func (d *dataUsecase) InsertExportJob(ctx context.Context, exportJob *entity.ExportJob) error {
+func (d *dataUsecase) InsertExportJob(ctx context.Context, exportJob *entity.ExportJob, roles []string) error {
 	if exportJob == nil {
 		return errs.NewBadRequestError(constants.ERR_INVALID_REQUEST_BODY)
 	}
@@ -1571,6 +1753,12 @@ func (d *dataUsecase) InsertExportJob(ctx context.Context, exportJob *entity.Exp
 			return errs.NewNotFoundError(fmt.Sprintf("view '%s' not found or is empty in policies", exportJob.View))
 		}
 	}
+
+	// Check access permission
+	if err := d.checkAccessPermission(datasetVersion, roles, "view"); err != nil {
+		return err
+	}
+
 	now := helperModel.NewTimestampFromNow()
 	exportJob.CreatedAt = &now
 	exportJob.DestinationUri = ""
@@ -1587,7 +1775,7 @@ func (d *dataUsecase) InsertExportJob(ctx context.Context, exportJob *entity.Exp
 }
 
 // CreateImportTemplate implements data.DataUsecase.
-func (d *dataUsecase) CreateImportTemplate(ctx context.Context, datasetID, version, format string) (string, error) {
+func (d *dataUsecase) CreateImportTemplate(ctx context.Context, datasetID, version, format string, roles []string) (string, error) {
 	// 1. Validate dataset and version
 	if err := d.validateDatasetID(datasetID); err != nil {
 		return "", err
@@ -1606,6 +1794,11 @@ func (d *dataUsecase) CreateImportTemplate(ctx context.Context, datasetID, versi
 	}
 	if datasetVersion.Policies.Write == nil {
 		return "", errs.NewConflictError("write policy is not configured for this dataset version")
+	}
+
+	// Check access permission
+	if err := d.checkAccessPermission(datasetVersion, roles, "edit"); err != nil {
+		return "", err
 	}
 
 	// 3. Generate template file based on format
@@ -1681,7 +1874,7 @@ func (d *dataUsecase) CreateImportTemplate(ctx context.Context, datasetID, versi
 }
 
 // CreateImportJob implements data.DataUsecase.
-func (d *dataUsecase) CreateImportJob(ctx context.Context, importJob *entity.ImportJob, fileBytes []byte) error {
+func (d *dataUsecase) CreateImportJob(ctx context.Context, importJob *entity.ImportJob, fileBytes []byte, roles []string) error {
 	if importJob == nil {
 		return errs.NewBadRequestError(constants.ERR_INVALID_REQUEST_BODY)
 	}
@@ -1704,6 +1897,11 @@ func (d *dataUsecase) CreateImportJob(ctx context.Context, importJob *entity.Imp
 	}
 	if datasetVersion.Policies.Write == nil {
 		return errs.NewConflictError("write policy is not configured for this dataset version")
+	}
+
+	// Check access permission
+	if err := d.checkAccessPermission(datasetVersion, roles, "edit"); err != nil {
+		return err
 	}
 
 	fileName := fmt.Sprintf("%s_%s_import_%s.%s", importJob.DatasetID, importJob.Version, helperModel.NewTimestampFromNow().Format("20060102150405"), importJob.Format)
@@ -1908,13 +2106,27 @@ func (d *dataUsecase) parseExcelImport(fileBytes []byte) ([]map[string]interface
 }
 
 // FetchImportJobByID implements data.DataUsecase.
-func (d *dataUsecase) FetchImportJobByID(ctx context.Context, jobID *uuid.UUID) (*dto.ImportJobResponseDTO, error) {
+func (d *dataUsecase) FetchImportJobByID(ctx context.Context, jobID *uuid.UUID, roles []string) (*dto.ImportJobResponseDTO, error) {
 	job, err := d.datasetRepo.FetchImportJobByID(ctx, jobID)
 	if err != nil {
 		return nil, err
 	}
 	if job == nil {
 		return nil, errs.NewNotFoundError("import job not found")
+	}
+
+	// Fetch dataset version to check permissions
+	datasetVersion, err := d.datasetRepo.FetchDatasetVersionByID(ctx, job.DatasetID, job.Version)
+	if err != nil {
+		return nil, err
+	}
+	if datasetVersion == nil {
+		return nil, errs.NewNotFoundError("dataset version not found")
+	}
+
+	// Check access permission
+	if err := d.checkAccessPermission(datasetVersion, roles, "edit"); err != nil {
+		return nil, err
 	}
 
 	resp := &dto.ImportJobResponseDTO{

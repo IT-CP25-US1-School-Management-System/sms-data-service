@@ -46,16 +46,18 @@ type DataUsecase interface {
 		logicalOperator string,
 		sortBy string,
 		sortOrder string,
+		roles []string,
 	) ([]map[string]interface{}, error)
 	ServingDatasetVersionDataByKey(
 		ctx context.Context,
 		datasetID, version, key, viewName string,
+		roles []string,
 	) (map[string]interface{}, error)
 
 	// Data Modification methods (requires write policies)
-	CreateDatasetVersionData(ctx context.Context, datasetID, version string, data map[string]interface{}) (map[string]interface{}, error)
-	UpdateDatasetVersionDataByKey(ctx context.Context, datasetID, version, key string, data map[string]interface{}) (map[string]interface{}, error)
-	DeleteDatasetVersionDataByKey(ctx context.Context, datasetID, version, key string) error
+	CreateDatasetVersionData(ctx context.Context, datasetID, version string, data map[string]interface{}, roles []string) (map[string]interface{}, error)
+	UpdateDatasetVersionDataByKey(ctx context.Context, datasetID, version, key string, data map[string]interface{}, roles []string) (map[string]interface{}, error)
+	DeleteDatasetVersionDataByKey(ctx context.Context, datasetID, version, key string, roles []string) error
 
 	// Table Data CRUD (direct source access)
 	FetchTableData(ctx context.Context, sourceID *uuid.UUID, schemaName, tableName string, filterGroups [][]entity.FilterInput, logicalOperator string, paginator *helperModel.Paginator, sortBy, sortOrder string) ([]map[string]interface{}, error)
@@ -66,13 +68,13 @@ type DataUsecase interface {
 
 	// Reporting Template methods
 	UploadReportingTemplate(ctx context.Context, template *entity.ReportingTemplate, fileData []byte, fileName string) error
-	InsertExportJob(ctx context.Context, exportJob *entity.ExportJob) error
-	FetchExportJobByID(ctx context.Context, jobID *uuid.UUID) (*entity.ExportJob, error)
-	FetchReportingExportJobByID(ctx context.Context, jobID *uuid.UUID) (*dto.ReportingExportJobResponseDTO, error)
-	InsertReportingJob(ctx context.Context, job *entity.ReportingTemplateExportJob, key string) error
+	InsertExportJob(ctx context.Context, exportJob *entity.ExportJob, roles []string) error
+	FetchExportJobByID(ctx context.Context, jobID *uuid.UUID, roles []string) (*entity.ExportJob, error)
+	FetchReportingExportJobByID(ctx context.Context, jobID *uuid.UUID, roles []string) (*dto.ReportingExportJobResponseDTO, error)
+	InsertReportingJob(ctx context.Context, job *entity.ReportingTemplateExportJob, key string, roles []string) error
 
 	// Import methods
-	CreateImportTemplate(ctx context.Context, datasetID, version, format string) (string, error)
-	CreateImportJob(ctx context.Context, importJob *entity.ImportJob, fileBytes []byte) error
-	FetchImportJobByID(ctx context.Context, jobID *uuid.UUID) (*dto.ImportJobResponseDTO, error)
+	CreateImportTemplate(ctx context.Context, datasetID, version, format string, roles []string) (string, error)
+	CreateImportJob(ctx context.Context, importJob *entity.ImportJob, fileBytes []byte, roles []string) error
+	FetchImportJobByID(ctx context.Context, jobID *uuid.UUID, roles []string) (*dto.ImportJobResponseDTO, error)
 }

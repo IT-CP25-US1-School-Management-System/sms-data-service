@@ -635,7 +635,10 @@ func (d *dataHandler) ServingDatasetVersionData(c echo.Context) error {
 		sortOrder = strings.ToUpper(sortOrder)
 	}
 
-	data, err := d.dataUs.ServingDatasetVersionData(ctx, datasetID, version, &paginator, servingFilter.View, filterGroups, logicalOperator, servingFilter.SortBy, sortOrder)
+	// Get roles from context
+	roles, _ := c.Get(constants.CONTEXT_ROLES_KEY).([]string)
+
+	data, err := d.dataUs.ServingDatasetVersionData(ctx, datasetID, version, &paginator, servingFilter.View, filterGroups, logicalOperator, servingFilter.SortBy, sortOrder, roles)
 	if err != nil {
 		return err
 	}
@@ -672,7 +675,10 @@ func (d *dataHandler) ServingDatasetVersionDataByKey(c echo.Context) error {
 
 	viewName := c.QueryParam("view")
 
-	data, err := d.dataUs.ServingDatasetVersionDataByKey(ctx, datasetID, version, key, viewName)
+	// Get roles from context
+	roles, _ := c.Get(constants.CONTEXT_ROLES_KEY).([]string)
+
+	data, err := d.dataUs.ServingDatasetVersionDataByKey(ctx, datasetID, version, key, viewName, roles)
 	if err != nil {
 		return err
 	}
@@ -704,7 +710,10 @@ func (d *dataHandler) CreateDatasetVersionData(c echo.Context) error {
 		return errs.ErrBadRequest(err)
 	}
 
-	result, err := d.dataUs.CreateDatasetVersionData(ctx, datasetID, version, data)
+	// Get roles from context
+	roles, _ := c.Get(constants.CONTEXT_ROLES_KEY).([]string)
+
+	result, err := d.dataUs.CreateDatasetVersionData(ctx, datasetID, version, data, roles)
 	if err != nil {
 		return err
 	}
@@ -738,7 +747,10 @@ func (d *dataHandler) UpdateDatasetVersionDataByKey(c echo.Context) error {
 		return errs.ErrBadRequest(err)
 	}
 
-	result, err := d.dataUs.UpdateDatasetVersionDataByKey(ctx, datasetID, version, key, data)
+	// Get roles from context
+	roles, _ := c.Get(constants.CONTEXT_ROLES_KEY).([]string)
+
+	result, err := d.dataUs.UpdateDatasetVersionDataByKey(ctx, datasetID, version, key, data, roles)
 	if err != nil {
 		return err
 	}
@@ -767,7 +779,10 @@ func (d *dataHandler) DeleteDatasetVersionDataByKey(c echo.Context) error {
 		return errs.NewBadRequestError("key parameter is required")
 	}
 
-	err := d.dataUs.DeleteDatasetVersionDataByKey(ctx, datasetID, version, key)
+	// Get roles from context
+	roles, _ := c.Get(constants.CONTEXT_ROLES_KEY).([]string)
+
+	err := d.dataUs.DeleteDatasetVersionDataByKey(ctx, datasetID, version, key, roles)
 	if err != nil {
 		return err
 	}
@@ -1028,7 +1043,9 @@ func (d *dataHandler) FetchExportJobByJobId(c echo.Context) error {
 	if err != nil {
 		return errs.NewBadRequestError(constants.ERR_INVALID_EXPORT_JOB_ID)
 	}
-	export_job, err := d.dataUs.FetchExportJobByID(ctx, &jobIDUUID)
+	roles, _ := c.Get(constants.CONTEXT_ROLES_KEY).([]string)
+
+	export_job, err := d.dataUs.FetchExportJobByID(ctx, &jobIDUUID, roles)
 	if err != nil {
 		return err
 	}
@@ -1057,10 +1074,12 @@ func (d *dataHandler) ExportJob(c echo.Context) error {
 	if err := c.Validate(&exportJobDTO); err != nil {
 		return errs.ErrBadRequest(err)
 	}
+	// Get roles from context
+	roles, _ := c.Get(constants.CONTEXT_ROLES_KEY).([]string)
 
 	exportJobEntity := exportJobDTO.ExportJobDTOToEntity()
 	exportJobEntity.GenUUID()
-	if err := d.dataUs.InsertExportJob(ctx, exportJobEntity); err != nil {
+	if err := d.dataUs.InsertExportJob(ctx, exportJobEntity, roles); err != nil {
 		return err
 	}
 
@@ -1107,6 +1126,7 @@ func (d *dataHandler) UploadReportingTemplate(c echo.Context) error {
 	}
 
 	res := map[string]interface{}{
+		"id":      entityResult.ID,
 		"message": "success",
 	}
 	return c.JSON(http.StatusOK, res)
@@ -1129,7 +1149,9 @@ func (d *dataHandler) ExportReportingJob(c echo.Context) error {
 		ReportingTemplateID: &reportingTemplateIDUUID,
 	}
 	reportingJobEntity.GenUUID()
-	if err := d.dataUs.InsertReportingJob(ctx, &reportingJobEntity, key); err != nil {
+	roles, _ := c.Get(constants.CONTEXT_ROLES_KEY).([]string)
+
+	if err := d.dataUs.InsertReportingJob(ctx, &reportingJobEntity, key, roles); err != nil {
 		return err
 	}
 
@@ -1146,7 +1168,8 @@ func (d *dataHandler) FetchReportingExportJobByID(c echo.Context) error {
 	if err != nil {
 		return errs.NewBadRequestError(constants.ERR_INVALID_EXPORT_JOB_ID)
 	}
-	reportingExportJob, err := d.dataUs.FetchReportingExportJobByID(ctx, &jobIDUUID)
+	roles, _ := c.Get(constants.CONTEXT_ROLES_KEY).([]string)
+	reportingExportJob, err := d.dataUs.FetchReportingExportJobByID(ctx, &jobIDUUID, roles)
 	if err != nil {
 		return err
 	}
@@ -1171,9 +1194,9 @@ func (d *dataHandler) CreateImportTemplate(c echo.Context) error {
 	if err := c.Validate(&req); err != nil {
 		return errs.ErrBadRequest(err)
 	}
+	roles, _ := c.Get(constants.CONTEXT_ROLES_KEY).([]string)
 
-	// Create import template
-	url, err := d.dataUs.CreateImportTemplate(ctx, req.DatasetID, req.Version, req.Format)
+	url, err := d.dataUs.CreateImportTemplate(ctx, req.DatasetID, req.Version, req.Format, roles)
 	if err != nil {
 		return err
 	}
@@ -1217,9 +1240,9 @@ func (d *dataHandler) CreateImportJob(c echo.Context) error {
 
 	// Create import job DTO
 	importJobDTO := dto.CreateImportJobDTO{
-		DatasetID:  datasetID,
-		Version:    version,
-		Format:     format,
+		DatasetID: datasetID,
+		Version:   version,
+		Format:    format,
 	}
 
 	// Validate
@@ -1231,8 +1254,10 @@ func (d *dataHandler) CreateImportJob(c echo.Context) error {
 	importJob := importJobDTO.ToEntity()
 	importJob.GenUUID()
 
+	roles, _ := c.Get(constants.CONTEXT_ROLES_KEY).([]string)
+
 	// Create import job
-	err = d.dataUs.CreateImportJob(ctx, importJob, fileBytes)
+	err = d.dataUs.CreateImportJob(ctx, importJob, fileBytes, roles)
 	if err != nil {
 		return err
 	}
@@ -1252,8 +1277,8 @@ func (d *dataHandler) FetchImportJobByID(c echo.Context) error {
 	if err != nil {
 		return errs.NewBadRequestError("invalid job_id")
 	}
-
-	job, err := d.dataUs.FetchImportJobByID(ctx, &jobIDUUID)
+	roles, _ := c.Get(constants.CONTEXT_ROLES_KEY).([]string)
+	job, err := d.dataUs.FetchImportJobByID(ctx, &jobIDUUID, roles)
 	if err != nil {
 		return err
 	}

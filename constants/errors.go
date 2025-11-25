@@ -16,4 +16,5 @@ const (
 	ERR_DATASET_VERSION_NOT_FOUND      = "dataset version not found"
 	ERR_INVALID_EXPORT_JOB_ID          = "invalid export job id"
 	ERR_EXPORT_JOB_NOT_FOUND           = "export job not found"
+	ERR_PERMISSION_DENIED              = "permission denied"
 )

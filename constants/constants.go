@@ -3,6 +3,18 @@ package constants
 import "regexp"
 
 const (
+	CONTEXT_CLAIMS_KEY     = "claims"
+	CONTEXT_USER_ID_KEY    = "user_id"
+	CONTEXT_TOKEN_KEY      = "token"
+	CONTEXT_SESSION_ID_KEY = "session_id"
+	CONTEXT_ROLES_KEY      = "roles"
+)
+
+const (
+	ROLE_ADMIN = "admin"
+)
+
+const (
 	// Sort Datasets
 	DATASET_SORT_BY_NAME       = "name"
 	DATASET_SORT_BY_CREATED_AT = "created_at"
