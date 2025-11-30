@@ -14,7 +14,7 @@ import (
 	"github.com/IT-CP25-US1-School-Management-System/sms-data-service/errs"
 	"github.com/IT-CP25-US1-School-Management-System/sms-data-service/models/entity"
 	"github.com/IT-CP25-US1-School-Management-System/sms-data-service/service/data/v1"
-	"github.com/IT-CP25-US1-School-Management-System/sms-data-service/service/database/v1"
+	database "github.com/IT-CP25-US1-School-Management-System/sms-data-service/service/database/v1"
 	"github.com/Masterminds/squirrel"
 	"github.com/gofrs/uuid"
 )
@@ -29,6 +29,16 @@ func NewPsqlDataRepository(dbConnectionManager database.DBConnectionManagerUseca
 	}
 }
 
+// getDBType retrieves the database type for a given sourceID
+func (p *psqlDataRepository) getDBType(sourceID uuid.UUID) string {
+	dbType, err := p.dbConnectionManager.GetDBType(sourceID)
+	if err != nil {
+		// Fallback to postgres if unable to get dbType
+		return "postgres"
+	}
+	return dbType
+}
+
 func (p *psqlDataRepository) FetchInformationTablesBySourceID(ctx context.Context, dbType string, sourceID *uuid.UUID) ([]*entity.Tables, error) {
 	client, err := p.dbConnectionManager.GetConnection(ctx, *sourceID)
 	if err != nil {
@@ -39,25 +49,13 @@ func (p *psqlDataRepository) FetchInformationTablesBySourceID(ctx context.Contex
 		return nil, fmt.Errorf("sourceID is nil")
 	}
 
-	var query string
-	switch dbType {
-	case "mysql":
-		query = `
-			SELECT table_schema, table_name
-			FROM information_schema.tables
-			WHERE table_type = 'BASE TABLE'
-			  AND table_schema NOT IN ('information_schema', 'performance_schema', 'mysql', 'sys')
-			ORDER BY table_schema, table_name
-		`
-	default:
-		query = `
-			SELECT table_schema, table_name
-			FROM information_schema.tables
-			WHERE table_type = 'BASE TABLE'
-			  AND table_schema NOT IN ('pg_catalog', 'information_schema')
-			ORDER BY table_schema, table_name
-		`
+	// Get adapter to retrieve database-specific query
+	adapter, err := database.GetAdapter(dbType)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get adapter for dbType %s: %w", dbType, err)
 	}
+
+	query := adapter.GetInformationTablesQuery()
 
 	rows, err := client.GetClient().QueryxContext(ctx, query)
 	if err != nil {
@@ -99,37 +97,13 @@ func (p *psqlDataRepository) FetchInformationColumnsBySourceID(ctx context.Conte
 		return nil, fmt.Errorf("sourceID is nil")
 	}
 
-	var query string
-	switch dbType {
-	case "mysql":
-		query = `
-			SELECT 
-				table_schema, 
-				table_name, 
-				column_name, 
-				data_type, 
-				is_nullable, 
-				column_default, 
-				ordinal_position
-			FROM information_schema.columns
-			WHERE table_schema NOT IN ('information_schema', 'performance_schema', 'mysql', 'sys')
-			ORDER BY table_schema, table_name, ordinal_position
-		`
-	default:
-		query = `
-			SELECT 
-				table_schema, 
-				table_name, 
-				column_name, 
-				data_type, 
-				is_nullable, 
-				column_default, 
-				ordinal_position
-			FROM information_schema.columns
-			WHERE table_schema NOT IN ('pg_catalog', 'information_schema')
-			ORDER BY table_schema, table_name, ordinal_position
-		`
+	// Get adapter to retrieve database-specific query
+	adapter, err := database.GetAdapter(dbType)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get adapter for dbType %s: %w", dbType, err)
 	}
+
+	query := adapter.GetInformationColumnsQuery()
 
 	rows, err := client.GetClient().QueryxContext(ctx, query)
 	if err != nil {
@@ -181,23 +155,13 @@ func (p *psqlDataRepository) FetchInformationSchemasBySourceID(ctx context.Conte
 		return nil, fmt.Errorf("sourceID is nil")
 	}
 
-	var query string
-	switch dbType {
-	case "mysql":
-		query = `
-			SELECT schema_name
-			FROM information_schema.schemata
-			WHERE schema_name NOT IN ('information_schema', 'performance_schema', 'mysql', 'sys')
-			ORDER BY schema_name
-		`
-	default:
-		query = `
-			SELECT schema_name
-			FROM information_schema.schemata
-			WHERE schema_name NOT IN ('pg_catalog', 'information_schema', 'pg_toast', 'pg_temp_1', 'pg_toast_temp_1')
-			ORDER BY schema_name
-		`
+	// Get adapter to retrieve database-specific query
+	adapter, err := database.GetAdapter(dbType)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get adapter for dbType %s: %w", dbType, err)
 	}
+
+	query := adapter.GetInformationSchemasQuery()
 
 	rows, err := client.GetClient().QueryxContext(ctx, query)
 	if err != nil {
@@ -237,48 +201,13 @@ func (p *psqlDataRepository) FetchInformationTableRelationsBySourceID(ctx contex
 		return nil, fmt.Errorf("sourceID is nil")
 	}
 
-	var query string
-	switch dbType {
-	case "mysql":
-		query = `
-			SELECT 
-				tc.table_name as table_from,
-				kcu.column_name as column_from,
-				ccu.table_name as table_to,
-				ccu.column_name as column_to
-			FROM information_schema.table_constraints tc
-			JOIN information_schema.key_column_usage kcu 
-				ON tc.constraint_name = kcu.constraint_name 
-				AND tc.table_schema = kcu.table_schema
-			JOIN information_schema.referential_constraints rc 
-				ON tc.constraint_name = rc.constraint_name 
-				AND tc.table_schema = rc.constraint_schema
-			JOIN information_schema.constraint_column_usage ccu 
-				ON rc.unique_constraint_name = ccu.constraint_name 
-				AND rc.unique_constraint_schema = ccu.constraint_schema
-			WHERE tc.constraint_type = 'FOREIGN KEY'
-			  AND tc.table_schema NOT IN ('information_schema', 'performance_schema', 'mysql', 'sys')
-			ORDER BY tc.table_name, kcu.column_name
-		`
-	default:
-		query = `
-			SELECT 
-				tc.table_name as table_from,
-				kcu.column_name as column_from,
-				ccu.table_name as table_to,
-				ccu.column_name as column_to
-			FROM information_schema.table_constraints tc
-			JOIN information_schema.key_column_usage kcu 
-				ON tc.constraint_name = kcu.constraint_name 
-				AND tc.table_schema = kcu.table_schema
-			JOIN information_schema.constraint_column_usage ccu 
-				ON tc.constraint_name = ccu.constraint_name 
-				AND tc.table_schema = ccu.table_schema
-			WHERE tc.constraint_type = 'FOREIGN KEY'
-			  AND tc.table_schema NOT IN ('pg_catalog', 'information_schema', 'pg_toast', 'pg_temp_1', 'pg_toast_temp_1')
-			ORDER BY tc.table_name, kcu.column_name
-		`
+	// Get adapter to retrieve database-specific query
+	adapter, err := database.GetAdapter(dbType)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get adapter for dbType %s: %w", dbType, err)
 	}
+
+	query := adapter.GetInformationTableRelationsQuery()
 
 	rows, err := client.GetClient().QueryxContext(ctx, query)
 	if err != nil {
@@ -312,10 +241,18 @@ func (p *psqlDataRepository) FetchInformationTableRelationsBySourceID(ctx contex
 	return tableRelations, nil
 }
 
-// psql รันบน Postgres, squirrel.Dollar
-var psqlBuilder = squirrel.StatementBuilder.PlaceholderFormat(squirrel.Dollar)
+// getStatementBuilder returns appropriate SQL builder based on database type
+func getStatementBuilder(dbType string) squirrel.StatementBuilderType {
+	// Try to get adapter from registry
+	adapter, err := database.GetAdapter(dbType)
+	if err != nil {
+		// Fallback to PostgreSQL if adapter not found
+		return squirrel.StatementBuilder.PlaceholderFormat(squirrel.Dollar)
+	}
 
-// aliasManager สร้าง alias (t0, t1, t2...)
+	// Use adapter's placeholder format
+	return squirrel.StatementBuilder.PlaceholderFormat(adapter.GetPlaceholderFormat())
+} // aliasManager สร้าง alias (t0, t1, t2...)
 // map[real_table_name]alias
 type aliasManager struct {
 	aliasMap  map[string]string
@@ -592,6 +529,7 @@ func createViewMap(viewConfigs []entity.View) map[string]map[string]bool {
 
 func buildRuntimeSQLBuilder(
 	ctx context.Context,
+	dbType string,
 	schemaMap map[string]map[string]entity.Column,
 	queryPlan *entity.QueryPlan,
 	filterGroups [][]entity.FilterInput,
@@ -607,7 +545,8 @@ func buildRuntimeSQLBuilder(
 		return squirrel.SelectBuilder{}, fmt.Errorf("QueryPlan.From.Table is required")
 	}
 	am := newAliasManager(queryPlan.From.Table)
-	builder := psqlBuilder.Select().From(fmt.Sprintf("%s AS %s", am.fromTable, am.fromAlias))
+	sqlbuilder := getStatementBuilder(dbType)
+	builder := sqlbuilder.Select().From(fmt.Sprintf("%s AS %s", am.fromTable, am.fromAlias))
 
 	// [NEW] ตรวจสอบโหมด
 	isAggregateQuery := len(queryPlan.GroupBy) > 0
@@ -648,7 +587,7 @@ func buildRuntimeSQLBuilder(
 			joinedTables[j.TableTo] = toAlias
 
 			if !isAggregateQuery {
-				// (ถ้าเป็น Nesting Mode, สร้าง JSON_BUILD_OBJECT)
+				// (ถ้าเป็น Nesting Mode, สร้าง JSON object)
 				var joinProjections []string
 				for _, p := range j.Projections {
 					if !joinViewCols[p.Column] {
@@ -662,7 +601,14 @@ func buildRuntimeSQLBuilder(
 					continue
 				}
 
-				jsonBuild := fmt.Sprintf("COALESCE(JSON_BUILD_OBJECT(%s), NULL) AS %s", strings.Join(joinProjections, ", "), j.Alias)
+				// Get adapter to build JSON object
+				adapter, err := database.GetAdapter(dbType)
+				if err != nil {
+					return builder, fmt.Errorf("failed to get adapter for JSON building: %w", err)
+				}
+
+				jsonBuild := fmt.Sprintf("COALESCE(%s, NULL) AS %s",
+					adapter.BuildJSONObject(joinProjections), j.Alias)
 				builder = builder.Column(jsonBuild)
 
 				// (เพิ่มเข้า GroupBy สำหรับ Nesting Mode)
@@ -688,10 +634,14 @@ func buildRuntimeSQLBuilder(
 					continue
 				}
 
-				subQuery := fmt.Sprintf(
-					`(SELECT COALESCE(JSON_AGG(JSON_BUILD_OBJECT(%s)), '[]') FROM %s AS %s WHERE %s) AS %s`,
-					strings.Join(joinProjections, ", "), j.TableTo, toAlias, onClause, j.Alias,
-				)
+				// Get adapter to build JSON array aggregation
+				adapter, err := database.GetAdapter(dbType)
+				if err != nil {
+					return builder, fmt.Errorf("failed to get adapter for JSON building: %w", err)
+				}
+
+				jsonObjectSQL := adapter.BuildJSONObject(joinProjections)
+				subQuery := adapter.BuildJSONArrayAgg(jsonObjectSQL, j.TableTo, toAlias, onClause, j.Alias)
 				builder = builder.Column(subQuery)
 			}
 			// (ถ้าเป็น Aggregate Mode, เราจะ *ข้าม* 1:N Join ทั้งหมด)
@@ -886,6 +836,7 @@ func buildRuntimeSQLBuilder(
 
 func buildCountSQLBuilder(
 	ctx context.Context,
+	dbType string,
 	schemaMap map[string]map[string]entity.Column,
 	queryPlan *entity.QueryPlan,
 	filterGroups [][]entity.FilterInput,
@@ -898,7 +849,8 @@ func buildCountSQLBuilder(
 	}
 	am := newAliasManager(queryPlan.From.Table)
 	countCol := fmt.Sprintf("COUNT(DISTINCT %s.id)", am.fromAlias)
-	builder := psqlBuilder.Select(countCol).From(fmt.Sprintf("%s AS %s", am.fromTable, am.fromAlias))
+	sqlbuilder := getStatementBuilder(dbType)
+	builder := sqlbuilder.Select(countCol).From(fmt.Sprintf("%s AS %s", am.fromTable, am.fromAlias))
 
 	// --- 3. Where ---
 	allowedWhereMap, err := buildAllowedWhereMap(queryPlan.WhereAllow, am)
@@ -1033,14 +985,17 @@ func (p *psqlDataRepository) ExecuteQuery(
 	// สร้าง Schema Map
 	schemaMap := createSchemaMap(schema)
 
+	// Get dbType from connection manager
+	dbType := p.getDBType(*sourceID)
+
 	// 1. สร้าง Base Query Builder
-	baseBuilder, err := buildRuntimeSQLBuilder(ctx, schemaMap, &runtime.Query, filterGroups, logicalOperator, paginator, sortBy, sortOrder, viewMap)
+	baseBuilder, err := buildRuntimeSQLBuilder(ctx, dbType, schemaMap, &runtime.Query, filterGroups, logicalOperator, paginator, sortBy, sortOrder, viewMap)
 	if err != nil {
 		return nil, fmt.Errorf("failed to build base query: %w", err)
 	}
 
 	// 2. สร้าง Count Query Builder
-	countBuilder, err := buildCountSQLBuilder(ctx, schemaMap, &runtime.Query, filterGroups, logicalOperator)
+	countBuilder, err := buildCountSQLBuilder(ctx, dbType, schemaMap, &runtime.Query, filterGroups, logicalOperator)
 	if err != nil {
 		return nil, fmt.Errorf("failed to build count query: %w", err)
 	}
@@ -1154,8 +1109,11 @@ func (p *psqlDataRepository) ExecuteQueryByKey(
 	// สร้าง Schema Map
 	schemaMap := createSchemaMap(schema)
 
+	// Get dbType from connection manager
+	dbType := p.getDBType(*sourceID)
+
 	// 1. สร้าง Base Query Builder
-	builder, err := buildRuntimeSQLBuilder(ctx, schemaMap, &runtime.Query, filterGroups, "AND", nil, "", "", viewMap)
+	builder, err := buildRuntimeSQLBuilder(ctx, dbType, schemaMap, &runtime.Query, filterGroups, "AND", nil, "", "", viewMap)
 	if err != nil {
 		return nil, fmt.Errorf("failed to build key query: %w", err)
 	}
@@ -1209,12 +1167,12 @@ func (p *psqlDataRepository) ExecuteQueryByKey(
 	return resultMap, nil
 }
 
-func buildCreateSQLBuilder(ctx context.Context, queryPlan *entity.QueryPlan, validatedData map[string]interface{}) (squirrel.InsertBuilder, error) {
+func buildCreateSQLBuilder(ctx context.Context, dbType string, queryPlan *entity.QueryPlan, validatedData map[string]interface{}) (squirrel.InsertBuilder, error) {
 	if queryPlan.From == nil || queryPlan.From.Table == "" {
 		return squirrel.InsertBuilder{}, fmt.Errorf("WritePolicy.Query.From.Table is required for CREATE")
 	}
 
-	builder := psqlBuilder.Insert(queryPlan.From.Table)
+	builder := getStatementBuilder(dbType).Insert(queryPlan.From.Table)
 
 	var columns []string
 	var values []interface{}
@@ -1252,8 +1210,11 @@ func (p *psqlDataRepository) ExecuteCreate(
 		return nil, err
 	}
 
+	// Get dbType from connection manager
+	dbType := p.getDBType(*sourceID)
+
 	// 3. สร้าง Builder (โดยใช้ข้อมูลที่ Validate แล้ว)
-	builder, err := buildCreateSQLBuilder(ctx, &writePolicy.Query, validatedData)
+	builder, err := buildCreateSQLBuilder(ctx, dbType, &writePolicy.Query, validatedData)
 	if err != nil {
 		return nil, err
 	}
@@ -1292,12 +1253,12 @@ func (p *psqlDataRepository) ExecuteCreate(
 	return row, nil
 }
 
-func buildUpdateSQLBuilder(ctx context.Context, queryPlan *entity.QueryPlan, validatedData map[string]interface{}, whereConditions map[string]interface{}) (squirrel.UpdateBuilder, error) {
+func buildUpdateSQLBuilder(ctx context.Context, dbType string, queryPlan *entity.QueryPlan, validatedData map[string]interface{}, whereConditions map[string]interface{}) (squirrel.UpdateBuilder, error) {
 	if queryPlan.From == nil || queryPlan.From.Table == "" {
 		return squirrel.UpdateBuilder{}, fmt.Errorf("WritePolicy.Query.From.Table is required for UPDATE")
 	}
 
-	builder := psqlBuilder.Update(queryPlan.From.Table)
+	builder := getStatementBuilder(dbType).Update(queryPlan.From.Table)
 
 	// [CHANGED] 1. SET clause (ไม่ต้องกรอง/Error)
 	// (เราเช็ค len(validatedData) ใน ExecuteUpdate ไปแล้ว)
@@ -1343,13 +1304,16 @@ func (p *psqlDataRepository) ExecuteUpdate(
 		return nil, err
 	}
 
+	// Get dbType from connection manager
+	dbType := p.getDBType(*sourceID)
+
 	// 4. สร้าง whereConditions map จาก key
 	whereConditions := map[string]interface{}{
 		writePolicy.KeyField: key,
 	}
 
 	// 5. สร้าง SQL query
-	builder, err := buildUpdateSQLBuilder(ctx, &writePolicy.Query, validatedData, whereConditions)
+	builder, err := buildUpdateSQLBuilder(ctx, dbType, &writePolicy.Query, validatedData, whereConditions)
 	if err != nil {
 		return nil, fmt.Errorf("failed to build update query: %w", err)
 	}
@@ -1385,12 +1349,12 @@ func (p *psqlDataRepository) ExecuteUpdate(
 	return row, nil
 }
 
-func buildDeleteSQLBuilder(ctx context.Context, queryPlan *entity.QueryPlan, whereConditions map[string]interface{}) (squirrel.DeleteBuilder, error) {
+func buildDeleteSQLBuilder(ctx context.Context, dbType string, queryPlan *entity.QueryPlan, whereConditions map[string]interface{}) (squirrel.DeleteBuilder, error) {
 	if queryPlan.From == nil || queryPlan.From.Table == "" {
 		return squirrel.DeleteBuilder{}, fmt.Errorf("DeletePolicy.Query.From.Table is required for DELETE")
 	}
 
-	builder := psqlBuilder.Delete(queryPlan.From.Table)
+	builder := getStatementBuilder(dbType).Delete(queryPlan.From.Table)
 
 	// WHERE clause
 	if len(whereConditions) == 0 {
@@ -1418,13 +1382,16 @@ func (p *psqlDataRepository) ExecuteDelete(
 		return nil, err
 	}
 
+	// Get dbType from connection manager
+	dbType := p.getDBType(*sourceID)
+
 	// สร้าง whereConditions map จาก key ที่รับเข้ามา
 	whereConditions := map[string]interface{}{
 		deletePolicy.KeyField: key,
 	}
 
 	// สร้าง SQL query
-	builder, err := buildDeleteSQLBuilder(ctx, &deletePolicy.Query, whereConditions)
+	builder, err := buildDeleteSQLBuilder(ctx, dbType, &deletePolicy.Query, whereConditions)
 	if err != nil {
 		return nil, fmt.Errorf("failed to build delete query: %w", err)
 	}
@@ -1510,9 +1477,12 @@ func (p *psqlDataRepository) FetchTableData(
 		return nil, err
 	}
 
+	// Get dbType from connection manager
+	dbType := p.getDBType(*sourceID)
+
 	// Build SELECT query
 	fullTableName := fmt.Sprintf("\"%s\".\"%s\"", schemaName, tableName)
-	builder := psqlBuilder.Select("*").From(fullTableName)
+	builder := getStatementBuilder(dbType).Select("*").From(fullTableName)
 
 	// Apply WHERE filters
 	var masterWhereClause squirrel.Sqlizer
@@ -1563,7 +1533,7 @@ func (p *psqlDataRepository) FetchTableData(
 	// Count total rows
 	if len(filterGroups) > 0 {
 		// Build count query with same WHERE filters
-		countBuilder := psqlBuilder.Select("COUNT(*)").From(fullTableName)
+		countBuilder := getStatementBuilder(dbType).Select("COUNT(*)").From(fullTableName)
 
 		// Apply same WHERE clause
 		if addWhere {
@@ -1581,7 +1551,7 @@ func (p *psqlDataRepository) FetchTableData(
 			}
 		}
 	} else {
-		countBuilder := psqlBuilder.Select("COUNT(*)").From(fullTableName)
+		countBuilder := getStatementBuilder(dbType).Select("COUNT(*)").From(fullTableName)
 		countSQL, countArgs, _ := countBuilder.ToSql()
 		var total int64
 		if err := client.GetClient().GetContext(ctx, &total, countSQL, countArgs...); err != nil {
@@ -1660,8 +1630,11 @@ func (p *psqlDataRepository) FetchTableDataByKey(
 		return nil, err
 	}
 
+	// Get dbType from connection manager
+	dbType := p.getDBType(*sourceID)
+
 	fullTableName := fmt.Sprintf("\"%s\".\"%s\"", schemaName, tableName)
-	builder := psqlBuilder.Select("*").
+	builder := getStatementBuilder(dbType).Select("*").
 		From(fullTableName).
 		Where(squirrel.Eq{keyField: keyValue}).
 		Limit(1)
@@ -1741,8 +1714,11 @@ func (p *psqlDataRepository) CreateTableData(
 		return nil, err
 	}
 
+	// Get dbType from connection manager
+	dbType := p.getDBType(*sourceID)
+
 	fullTableName := fmt.Sprintf("\"%s\".\"%s\"", schemaName, tableName)
-	builder := psqlBuilder.Insert(fullTableName)
+	builder := getStatementBuilder(dbType).Insert(fullTableName)
 
 	var columns []string
 	var values []interface{}
@@ -1801,8 +1777,11 @@ func (p *psqlDataRepository) UpdateTableData(
 		return nil, err
 	}
 
+	// Get dbType from connection manager
+	dbType := p.getDBType(*sourceID)
+
 	fullTableName := fmt.Sprintf("\"%s\".\"%s\"", schemaName, tableName)
-	builder := psqlBuilder.Update(fullTableName).
+	builder := getStatementBuilder(dbType).Update(fullTableName).
 		SetMap(data).
 		Where(squirrel.Eq{keyField: keyValue})
 
@@ -1848,8 +1827,11 @@ func (p *psqlDataRepository) DeleteTableData(
 		return nil, err
 	}
 
+	// Get dbType from connection manager
+	dbType := p.getDBType(*sourceID)
+
 	fullTableName := fmt.Sprintf("\"%s\".\"%s\"", schemaName, tableName)
-	builder := psqlBuilder.Delete(fullTableName).
+	builder := getStatementBuilder(dbType).Delete(fullTableName).
 		Where(squirrel.Eq{keyField: keyValue})
 
 	querySQL, args, err := builder.ToSql()
@@ -1941,7 +1923,7 @@ func (p *psqlDataRepository) validateAndPrepareBatchData(
 
 // buildBatchCreateSQLBuilder creates a batch insert SQL builder
 // This function creates a single INSERT statement with multiple value rows
-func buildBatchCreateSQLBuilder(ctx context.Context, queryPlan *entity.QueryPlan, validatedBatch []map[string]interface{}) (squirrel.InsertBuilder, error) {
+func buildBatchCreateSQLBuilder(ctx context.Context, dbType string, queryPlan *entity.QueryPlan, validatedBatch []map[string]interface{}) (squirrel.InsertBuilder, error) {
 	if queryPlan.From == nil || queryPlan.From.Table == "" {
 		return squirrel.InsertBuilder{}, fmt.Errorf("WritePolicy.Query.From.Table is required for CREATE")
 	}
@@ -1956,7 +1938,7 @@ func buildBatchCreateSQLBuilder(ctx context.Context, queryPlan *entity.QueryPlan
 		columns = append(columns, key)
 	}
 
-	builder := psqlBuilder.Insert(queryPlan.From.Table).Columns(columns...)
+	builder := getStatementBuilder(dbType).Insert(queryPlan.From.Table).Columns(columns...)
 
 	// Add all rows to the builder
 	for _, row := range validatedBatch {
@@ -1995,8 +1977,11 @@ func (p *psqlDataRepository) ExecuteBatchCreate(
 		return 0, err
 	}
 
+	// Get dbType from connection manager
+	dbType := p.getDBType(*sourceID)
+
 	// 3. Build SQL
-	builder, err := buildBatchCreateSQLBuilder(ctx, &writePolicy.Query, validatedBatch)
+	builder, err := buildBatchCreateSQLBuilder(ctx, dbType, &writePolicy.Query, validatedBatch)
 	if err != nil {
 		return 0, err
 	}

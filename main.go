@@ -18,13 +18,15 @@ import (
 
 	helperMiddl "github.com/GodeFvt/go-backend/helper/middleware"
 	helperRoute "github.com/GodeFvt/go-backend/helper/route"
-	"github.com/GodeFvt/go-backend/psql"
 
 	_data_handler "github.com/IT-CP25-US1-School-Management-System/sms-data-service/service/data/v1/handler"
 	_psqldata_repo "github.com/IT-CP25-US1-School-Management-System/sms-data-service/service/data/v1/repository"
 	_psqldataset_repo "github.com/IT-CP25-US1-School-Management-System/sms-data-service/service/data/v1/repository"
 	_redis_repo "github.com/IT-CP25-US1-School-Management-System/sms-data-service/service/data/v1/repository"
 	_data_usecase "github.com/IT-CP25-US1-School-Management-System/sms-data-service/service/data/v1/usecase"
+	database "github.com/IT-CP25-US1-School-Management-System/sms-data-service/service/database/v1"
+	_database_adapters "github.com/IT-CP25-US1-School-Management-System/sms-data-service/service/database/v1/adapters"
+	"github.com/IT-CP25-US1-School-Management-System/sms-data-service/service/database/v1/client"
 	_db_connection_manager_repo "github.com/IT-CP25-US1-School-Management-System/sms-data-service/service/database/v1/repository"
 	_db_connection_manager_usercase "github.com/IT-CP25-US1-School-Management-System/sms-data-service/service/database/v1/usecase"
 	_document_repo "github.com/IT-CP25-US1-School-Management-System/sms-data-service/service/document/v1/repository"
@@ -76,8 +78,12 @@ var (
 	DOCUMENT_SERVICE_GRPC_ADDRESS = helper.GetENV("DOCUMENT_SERVICE_GRPC_ADDRESS", "localhost:3200")
 )
 
-func connectPsqlDB(con string) *psql.Client {
-	db, err := psql.NewConnection(con, psql.Postgres)
+func connectPsqlDB(con string) *client.Client {
+	db, err := database.NewClient(client.ClientConfig{
+		ConnectionString: con,
+		DBType:           "postgres",
+		Tracer:           nil,
+	})
 	if err != nil {
 		panic(err)
 	}
@@ -120,6 +126,12 @@ func startGRPCServer(server *grpc.Server) {
 }
 
 func main() {
+	// Register all database adapters (single registration point)
+	if err := _database_adapters.RegisterAllAdapters(); err != nil {
+		log.Fatalf("Failed to register database adapters: %v", err)
+	}
+	log.Println("Database adapters registered successfully")
+
 	// /* init sentry */
 	sentryErr := sentry.Init(sentry.ClientOptions{
 		Dsn: SENTRY_DSN,

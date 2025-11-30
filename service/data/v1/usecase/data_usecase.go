@@ -94,6 +94,14 @@ func (d *dataUsecase) InsertSource(ctx context.Context, source *entity.Sources) 
 	if source == nil {
 		return errs.NewBadRequestError(constants.ERR_INVALID_REQUEST_BODY)
 	}
+	exist, err := d.datasetRepo.ExistSourceByName(ctx, source.Name)
+	if err != nil {
+		return err
+	}
+	if exist {
+		return errs.NewConflictError(constants.ERR_SOURCE_NAME_ALREADY_EXISTS)
+	}
+
 	encryptPass, err := crypto.Encrypt(source.Password, d.cryptoSecret)
 	if err != nil {
 		return err
@@ -150,11 +158,18 @@ func (d *dataUsecase) UpdateSource(ctx context.Context, sourceID *uuid.UUID, sou
 	if oldSource == nil {
 		return errs.NewNotFoundError(constants.ERR_SOURCE_NOT_FOUND)
 	}
-
-	oldSource.ID = sourceID
 	if sourceUpdate.Name != nil {
 		oldSource.Name = *sourceUpdate.Name
 	}
+	exist, err := d.datasetRepo.ExistSourceByNameAndNotID(ctx, sourceID, *sourceUpdate.Name)
+	if err != nil {
+		return err
+	}
+	if exist {
+		return errs.NewConflictError(constants.ERR_SOURCE_NAME_ALREADY_EXISTS)
+	}
+
+	oldSource.ID = sourceID
 	if sourceUpdate.Description != nil {
 		oldSource.Description = sourceUpdate.Description
 	}

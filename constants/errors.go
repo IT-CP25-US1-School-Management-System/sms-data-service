@@ -17,4 +17,5 @@ const (
 	ERR_INVALID_EXPORT_JOB_ID          = "invalid export job id"
 	ERR_EXPORT_JOB_NOT_FOUND           = "export job not found"
 	ERR_PERMISSION_DENIED              = "permission denied"
+	ERR_SOURCE_NAME_ALREADY_EXISTS     = "source name already exists"
 )

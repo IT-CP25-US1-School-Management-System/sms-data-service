@@ -69,6 +69,8 @@ type PsqlDatasetRepository interface {
 	ExistSchemaByName(ctx context.Context, sourceID *uuid.UUID, schemaName string) (bool, error)
 	ExistTableByName(ctx context.Context, sourceID *uuid.UUID, schemaName, tableName string) (bool, error)
 	ExistColumnByName(ctx context.Context, sourceID *uuid.UUID, schemaName, tableName, columnName string) (bool, error)
+	ExistSourceByName(ctx context.Context, sourceName string) (bool, error)
+	ExistSourceByNameAndNotID(ctx context.Context, sourceID *uuid.UUID, sourceName string) (bool, error)
 
 	// Dataset
 	FetchDatasetList(ctx context.Context, filter *filter.DatasetsFilter, paginator *models.Paginator) ([]*entity.Datasets, error)

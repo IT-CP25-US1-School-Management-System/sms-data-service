@@ -8,11 +8,11 @@ import (
 	"strings"
 
 	helperModel "github.com/GodeFvt/go-backend/helper/models"
-	"github.com/GodeFvt/go-backend/psql"
 	"github.com/IT-CP25-US1-School-Management-System/sms-data-service/constants"
 	"github.com/IT-CP25-US1-School-Management-System/sms-data-service/models/entity"
 	"github.com/IT-CP25-US1-School-Management-System/sms-data-service/models/filter"
 	"github.com/IT-CP25-US1-School-Management-System/sms-data-service/service/data/v1"
+	"github.com/IT-CP25-US1-School-Management-System/sms-data-service/service/database/v1/client"
 	"github.com/gofrs/uuid"
 	"github.com/jmoiron/sqlx"
 
@@ -20,7 +20,7 @@ import (
 )
 
 type psqlDatasetRepository struct {
-	client *psql.Client
+	client *client.Client
 }
 
 func (p *psqlDatasetRepository) FetchReportingExportJobByID(ctx context.Context, jobID *uuid.UUID) (*entity.ReportingTemplateExportJob, error) {
@@ -426,6 +426,36 @@ func (p *psqlDatasetRepository) ExistSourceByID(ctx context.Context, sourceID *u
 	`
 	var exists bool
 	if err := p.client.GetClient().QueryRowxContext(ctx, query, sourceID).Scan(&exists); err != nil {
+		return false, err
+	}
+	return exists, nil
+}
+
+func (p *psqlDatasetRepository) ExistSourceByName(ctx context.Context, sourceName string) (bool, error) {
+	query := `
+		SELECT EXISTS (
+			SELECT 1
+			FROM sources
+			WHERE name = $1
+		)
+	`
+	var exists bool
+	if err := p.client.GetClient().QueryRowxContext(ctx, query, sourceName).Scan(&exists); err != nil {
+		return false, err
+	}
+	return exists, nil
+}
+
+func (p *psqlDatasetRepository) ExistSourceByNameAndNotID(ctx context.Context, sourceID *uuid.UUID, sourceName string) (bool, error) {
+	query := `
+		SELECT EXISTS (
+			SELECT 1
+			FROM sources
+			WHERE name = $1 AND id != $2
+		)
+	`
+	var exists bool
+	if err := p.client.GetClient().QueryRowxContext(ctx, query, sourceName, sourceID).Scan(&exists); err != nil {
 		return false, err
 	}
 	return exists, nil
@@ -1587,8 +1617,8 @@ func (p *psqlDatasetRepository) UpdateImportJobStatusFail(ctx context.Context, j
 	return err
 }
 
-func NewPsqlDatasetRepository(client *psql.Client) data.PsqlDatasetRepository {
+func NewPsqlDatasetRepository(dbClient *client.Client) data.PsqlDatasetRepository {
 	return &psqlDatasetRepository{
-		client: client,
+		client: dbClient,
 	}
 }
