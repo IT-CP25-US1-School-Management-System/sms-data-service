@@ -540,7 +540,7 @@ func buildRuntimeSQLBuilder(
 	viewMap map[string]map[string]bool,
 ) (squirrel.SelectBuilder, error) {
 
-	// --- 0. Alias Management & Mode Detection ---
+	// --- Alias Management & Mode Detection ---
 	if queryPlan.From == nil || queryPlan.From.Table == "" {
 		return squirrel.SelectBuilder{}, fmt.Errorf("QueryPlan.From.Table is required")
 	}
@@ -548,7 +548,7 @@ func buildRuntimeSQLBuilder(
 	sqlbuilder := getStatementBuilder(dbType)
 	builder := sqlbuilder.Select().From(fmt.Sprintf("%s AS %s", am.fromTable, am.fromAlias))
 
-	// [NEW] ตรวจสอบโหมด
+	// ตรวจสอบโหมด
 	isAggregateQuery := len(queryPlan.GroupBy) > 0
 
 	// (ดึง View ของตาราง From)
@@ -574,13 +574,15 @@ func buildRuntimeSQLBuilder(
 		}
 
 		fromAlias, _ := am.Get(j.TableFrom)
-		toAlias := am.generate(j.TableTo)
-		onClause, err := buildOnClause(j.Condition, fromAlias, toAlias)
-		if err != nil {
-			return builder, fmt.Errorf("failed to build ON clause for join '%s': %w", j.Alias, err)
-		}
 
 		if j.Relation == "one_to_one" || j.Relation == "many_to_one" {
+			// สร้าง alias และเพิ่มเข้า aliasManager สำหรับ 1:1 relation
+			toAlias := am.generate(j.TableTo)
+			onClause, err := buildOnClause(j.Condition, fromAlias, toAlias)
+			if err != nil {
+				return builder, fmt.Errorf("failed to build ON clause for join '%s': %w", j.Alias, err)
+			}
+
 			// (Join 1:1 ทำงานได้ทั้ง 2 โหมด)
 			joinTableSQL := fmt.Sprintf("%s AS %s", j.TableTo, toAlias)
 			builder = builder.LeftJoin(fmt.Sprintf("%s ON %s", joinTableSQL, onClause))
@@ -607,8 +609,7 @@ func buildRuntimeSQLBuilder(
 					return builder, fmt.Errorf("failed to get adapter for JSON building: %w", err)
 				}
 
-				jsonBuild := fmt.Sprintf("COALESCE(%s, NULL) AS %s",
-					adapter.BuildJSONObject(joinProjections), j.Alias)
+				jsonBuild := fmt.Sprintf("COALESCE(%s, NULL) AS %s", adapter.BuildJSONObject(joinProjections), j.Alias)
 				builder = builder.Column(jsonBuild)
 
 				// (เพิ่มเข้า GroupBy สำหรับ Nesting Mode)
@@ -620,14 +621,24 @@ func buildRuntimeSQLBuilder(
 			}
 		} else if j.Relation == "one_to_many" {
 			// (Join 1:N ทำงาน *เฉพาะ* Nesting Mode)
+			// สำคัญ: ไม่เพิ่ม alias เข้า aliasManager เพราะตาราง child จะอยู่ใน subquery เท่านั้น
 			if !isAggregateQuery {
+				// สร้าง alias ชั่วคราวสำหรับใช้ใน subquery เท่านั้น
+				tempAlias := fmt.Sprintf("t%d", am.counter)
+				am.counter++ // เพิ่ม counter แต่ไม่เพิ่มเข้า aliasMap
+
+				onClause, err := buildOnClause(j.Condition, fromAlias, tempAlias)
+				if err != nil {
+					return builder, fmt.Errorf("failed to build ON clause for join '%s': %w", j.Alias, err)
+				}
+
 				var joinProjections []string
 				for _, p := range j.Projections {
 					if !joinViewCols[p.Column] {
 						continue
 					}
 					jsonKey := fmt.Sprintf("'%s'", p.Alias)
-					jsonValue := fmt.Sprintf("%s.%s", toAlias, p.Column)
+					jsonValue := fmt.Sprintf("%s.%s", tempAlias, p.Column)
 					joinProjections = append(joinProjections, jsonKey, jsonValue)
 				}
 				if len(joinProjections) == 0 {
@@ -641,7 +652,7 @@ func buildRuntimeSQLBuilder(
 				}
 
 				jsonObjectSQL := adapter.BuildJSONObject(joinProjections)
-				subQuery := adapter.BuildJSONArrayAgg(jsonObjectSQL, j.TableTo, toAlias, onClause, j.Alias)
+				subQuery := adapter.BuildJSONArrayAgg(jsonObjectSQL, j.TableTo, tempAlias, onClause, j.Alias)
 				builder = builder.Column(subQuery)
 			}
 			// (ถ้าเป็น Aggregate Mode, เราจะ *ข้าม* 1:N Join ทั้งหมด)
@@ -1014,6 +1025,7 @@ func (p *psqlDataRepository) ExecuteQuery(
 	if err != nil {
 		return nil, fmt.Errorf("failed to build final query: %w", err)
 	}
+	fmt.Println("Final Query SQL:", querySQL)
 
 	// 4. Execute และ Scan
 	rows, err := client.GetClient().QueryxContext(ctx, querySQL, queryArgs...)
