@@ -1163,7 +1163,7 @@ func (p *psqlDatasetRepository) FetchSourceList(ctx context.Context, paginator *
 func (p *psqlDatasetRepository) FetchDatasetVersionByID(ctx context.Context, datasetID string, version string) (*entity.DatasetVersion, error) {
 	query := `
 		SELECT
-			dataset_id, version, status, schema_json, access_policies, policies, source_id
+			dataset_id, version, status, schema_json, access_policies, policies, source_id, created_at, updated_at
 		FROM dataset_versions
 		WHERE dataset_id = $1 AND version = $2
 	`
@@ -1179,6 +1179,8 @@ func (p *psqlDatasetRepository) FetchDatasetVersionByID(ctx context.Context, dat
 		&accessPoliciesJSON,
 		&policiesJSON,
 		&data.SourceID,
+		&data.CreatedAt,
+		&data.UpdatedAt,
 	)
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -1243,7 +1245,7 @@ func (p *psqlDatasetRepository) FetchDatasetVersionsList(ctx context.Context, da
 		valArgs = append(valArgs, paginator.GetLimit(), paginator.GetOffset())
 	}
 	query := fmt.Sprintf(`
-		SELECT dataset_id, version, status, schema_json, access_policies, policies, source_id
+		SELECT dataset_id, version, status, schema_json, access_policies, policies, source_id, created_at, updated_at
 		FROM dataset_versions
 		%s
 		ORDER BY version DESC %s
@@ -1274,6 +1276,8 @@ func (p *psqlDatasetRepository) FetchDatasetVersionsList(ctx context.Context, da
 			&accessPoliciesJSON,
 			&policiesJSON,
 			&data.SourceID,
+			&data.CreatedAt,
+			&data.UpdatedAt,
 		); err != nil {
 			return nil, err
 		}

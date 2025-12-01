@@ -349,6 +349,25 @@ func (d *dataUsecase) UpsertDatasetVersion(ctx context.Context, datasetVersion *
 	if !exists {
 		return errs.NewNotFoundError(constants.ERR_DATASET_NOT_FOUND)
 	}
+
+	// auto add admin access policy
+	allowViews := []string{}
+	if datasetVersion.Policies.Views != nil {
+		for viewName := range datasetVersion.Policies.Views {
+			allowViews = append(allowViews, viewName)
+		}
+	}
+
+	adminPolicy := entity.AccessPolicies{
+		Role:      constants.ROLE_ADMIN,
+		Scope:     "*",
+		CanView:   true,
+		CanEdit:   true,
+		CanDelete: true,
+		AllowView: allowViews,
+	}
+	datasetVersion.AccessPolicies = append(datasetVersion.AccessPolicies, adminPolicy)
+
 	now := helperModel.NewTimestampFromNow()
 	datasetVersion.CreatedAt = &now
 	datasetVersion.UpdatedAt = &now
