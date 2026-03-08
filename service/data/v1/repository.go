@@ -25,6 +25,7 @@ type PsqlDataRepository interface {
 		policies *entity.Policies,
 		key interface{},
 		viewName string,
+		ownerFilter *entity.OwnerFilter,
 	) (map[string]interface{}, error)
 
 	ExecuteQuery(
@@ -38,12 +39,13 @@ type PsqlDataRepository interface {
 		viewName string,
 		sortBy string,
 		sortOrder string,
+		ownerFilter *entity.OwnerFilter,
 	) ([]map[string]interface{}, error)
 
 	// Data modification functions
-	ExecuteCreate(ctx context.Context, sourceID *uuid.UUID, schema entity.Schema, writePolicy *entity.WritePolicy, data map[string]interface{}) (map[string]interface{}, error)
-	ExecuteUpdate(ctx context.Context, sourceID *uuid.UUID, schema entity.Schema, writePolicy *entity.WritePolicy, key interface{}, data map[string]interface{}) (map[string]interface{}, error)
-	ExecuteDelete(ctx context.Context, sourceID *uuid.UUID, deletePolicy *entity.DeletePolicy, key interface{}) (sql.Result, error)
+	ExecuteCreate(ctx context.Context, sourceID *uuid.UUID, schema entity.Schema, writePolicy *entity.WritePolicy, data map[string]interface{}, ownerFilter *entity.OwnerFilter) (map[string]interface{}, error)
+	ExecuteUpdate(ctx context.Context, sourceID *uuid.UUID, schema entity.Schema, writePolicy *entity.WritePolicy, key interface{}, data map[string]interface{}, ownerFilter *entity.OwnerFilter) (map[string]interface{}, error)
+	ExecuteDelete(ctx context.Context, sourceID *uuid.UUID, deletePolicy *entity.DeletePolicy, key interface{}, ownerFilter *entity.OwnerFilter) (sql.Result, error)
 	ExecuteBatchCreate(ctx context.Context, sourceID *uuid.UUID, schema entity.Schema, writePolicy *entity.WritePolicy, batchData []map[string]interface{}) (int64, error)
 
 	// Table Data CRUD (direct table access)

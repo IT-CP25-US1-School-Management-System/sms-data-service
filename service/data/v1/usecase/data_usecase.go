@@ -564,6 +564,35 @@ func (d *dataUsecase) checkViewPermission(datasetVersion *entity.DatasetVersion,
 	return errs.NewForbiddenError(constants.ERR_PERMISSION_DENIED)
 }
 
+// resolveOwnerFilter สร้าง OwnerFilter จาก owner_column/token_claim ใน policy กับ JWT claims
+// ถ้า policy ไม่ได้กำหนด owner_column → คืน nil (ไม่บังคับ filter)
+// ถ้ากำหนดแต่ claims ไม่มี → คืน error (ไม่มีสิทธิ์)
+func resolveOwnerFilter(ownerCol *entity.OwnerColumn, tokenClaim string, claims map[string]interface{}) (*entity.OwnerFilter, error) {
+	if ownerCol == nil || tokenClaim == "" {
+		return nil, nil // ไม่มี owner_column → ทำงานเหมือนเดิม
+	}
+
+	if claims == nil {
+		return nil, errs.NewForbiddenError(constants.ERR_OWNER_CLAIM_MISSING)
+	}
+
+	claimVal, ok := claims[tokenClaim]
+	if !ok {
+		return nil, errs.NewForbiddenError(constants.ERR_OWNER_CLAIM_MISSING)
+	}
+
+	valStr := fmt.Sprintf("%v", claimVal)
+	if valStr == "" {
+		return nil, errs.NewForbiddenError(constants.ERR_OWNER_CLAIM_EMPTY)
+	}
+
+	return &entity.OwnerFilter{
+		TableName: ownerCol.TableName,
+		Column:    ownerCol.Column,
+		Value:     valStr,
+	}, nil
+}
+
 func (d *dataUsecase) ServingDatasetVersionData(
 	ctx context.Context,
 	datasetID string,
@@ -575,6 +604,7 @@ func (d *dataUsecase) ServingDatasetVersionData(
 	sortBy string,
 	sortOrder string,
 	roles []string,
+	claims map[string]interface{},
 ) ([]map[string]interface{}, error) {
 	if err := d.validateDatasetID(datasetID); err != nil {
 		return nil, err
@@ -601,6 +631,16 @@ func (d *dataUsecase) ServingDatasetVersionData(
 		return nil, err
 	}
 
+	// Resolve owner-based filtering
+	ownerFilter, err := resolveOwnerFilter(
+		datasetVersion.Policies.Runtime.OwnerColumn,
+		datasetVersion.Policies.Runtime.TokenClaim,
+		claims,
+	)
+	if err != nil {
+		return nil, err
+	}
+
 	results, err := d.dataRepo.ExecuteQuery(
 		ctx,
 		datasetVersion.SourceID,
@@ -612,6 +652,7 @@ func (d *dataUsecase) ServingDatasetVersionData(
 		viewName,
 		sortBy,
 		sortOrder,
+		ownerFilter,
 	)
 	if err != nil {
 		return nil, err
@@ -621,7 +662,7 @@ func (d *dataUsecase) ServingDatasetVersionData(
 }
 
 // ServingDatasetVersionDataByKey implements data.DataUsecase.
-func (d *dataUsecase) ServingDatasetVersionDataByKey(ctx context.Context, datasetID, version, key, viewName string, roles []string) (map[string]interface{}, error) {
+func (d *dataUsecase) ServingDatasetVersionDataByKey(ctx context.Context, datasetID, version, key, viewName string, roles []string, claims map[string]interface{}) (map[string]interface{}, error) {
 	if err := d.validateDatasetID(datasetID); err != nil {
 		return nil, err
 	}
@@ -653,7 +694,17 @@ func (d *dataUsecase) ServingDatasetVersionDataByKey(ctx context.Context, datase
 		return nil, errs.NewConflictError("runtime policy is not configured for this dataset version")
 	}
 
-	results, err := d.dataRepo.ExecuteQueryByKey(ctx, datasetVersion.SourceID, &datasetVersion.Schema, &datasetVersion.Policies, key, viewName)
+	// Resolve owner-based filtering
+	ownerFilter, err := resolveOwnerFilter(
+		datasetVersion.Policies.Runtime.OwnerColumn,
+		datasetVersion.Policies.Runtime.TokenClaim,
+		claims,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	results, err := d.dataRepo.ExecuteQueryByKey(ctx, datasetVersion.SourceID, &datasetVersion.Schema, &datasetVersion.Policies, key, viewName, ownerFilter)
 	if err != nil {
 		return nil, err
 	}
@@ -662,7 +713,7 @@ func (d *dataUsecase) ServingDatasetVersionDataByKey(ctx context.Context, datase
 }
 
 // CreateDatasetVersionData implements data.DataUsecase.
-func (d *dataUsecase) CreateDatasetVersionData(ctx context.Context, datasetID string, version string, data map[string]interface{}, roles []string) (map[string]interface{}, error) {
+func (d *dataUsecase) CreateDatasetVersionData(ctx context.Context, datasetID string, version string, data map[string]interface{}, roles []string, claims map[string]interface{}) (map[string]interface{}, error) {
 	if err := d.validateDatasetID(datasetID); err != nil {
 		return nil, err
 	}
@@ -694,7 +745,17 @@ func (d *dataUsecase) CreateDatasetVersionData(ctx context.Context, datasetID st
 		return nil, errs.NewBadRequestError("data cannot be null or empty")
 	}
 
-	result, err := d.dataRepo.ExecuteCreate(ctx, datasetVersion.SourceID, datasetVersion.Schema, datasetVersion.Policies.Write, data)
+	// Resolve owner-based filtering for write
+	ownerFilter, err := resolveOwnerFilter(
+		datasetVersion.Policies.Write.OwnerColumn,
+		datasetVersion.Policies.Write.TokenClaim,
+		claims,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	result, err := d.dataRepo.ExecuteCreate(ctx, datasetVersion.SourceID, datasetVersion.Schema, datasetVersion.Policies.Write, data, ownerFilter)
 	if err != nil {
 		return nil, err
 	}
@@ -703,7 +764,7 @@ func (d *dataUsecase) CreateDatasetVersionData(ctx context.Context, datasetID st
 }
 
 // UpdateDatasetVersionDataByKey implements data.DataUsecase.
-func (d *dataUsecase) UpdateDatasetVersionDataByKey(ctx context.Context, datasetID string, version string, key string, data map[string]interface{}, roles []string) (map[string]interface{}, error) {
+func (d *dataUsecase) UpdateDatasetVersionDataByKey(ctx context.Context, datasetID string, version string, key string, data map[string]interface{}, roles []string, claims map[string]interface{}) (map[string]interface{}, error) {
 	if err := d.validateDatasetID(datasetID); err != nil {
 		return nil, err
 	}
@@ -735,7 +796,17 @@ func (d *dataUsecase) UpdateDatasetVersionDataByKey(ctx context.Context, dataset
 		return nil, errs.NewBadRequestError("data cannot be null or empty")
 	}
 
-	result, err := d.dataRepo.ExecuteUpdate(ctx, datasetVersion.SourceID, datasetVersion.Schema, datasetVersion.Policies.Write, key, data)
+	// Resolve owner-based filtering for write/update
+	ownerFilter, err := resolveOwnerFilter(
+		datasetVersion.Policies.Write.OwnerColumn,
+		datasetVersion.Policies.Write.TokenClaim,
+		claims,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	result, err := d.dataRepo.ExecuteUpdate(ctx, datasetVersion.SourceID, datasetVersion.Schema, datasetVersion.Policies.Write, key, data, ownerFilter)
 	if err != nil {
 		return nil, err
 	}
@@ -747,7 +818,7 @@ func (d *dataUsecase) UpdateDatasetVersionDataByKey(ctx context.Context, dataset
 }
 
 // DeleteDatasetVersionDataByKey implements data.DataUsecase.
-func (d *dataUsecase) DeleteDatasetVersionDataByKey(ctx context.Context, datasetID string, version string, key string, roles []string) error {
+func (d *dataUsecase) DeleteDatasetVersionDataByKey(ctx context.Context, datasetID string, version string, key string, roles []string, claims map[string]interface{}) error {
 	if err := d.validateDatasetID(datasetID); err != nil {
 		return err
 	}
@@ -771,7 +842,17 @@ func (d *dataUsecase) DeleteDatasetVersionDataByKey(ctx context.Context, dataset
 		return errs.NewConflictError("DeletePolicy is not configured for data deletion")
 	}
 
-	sqlResult, err := d.dataRepo.ExecuteDelete(ctx, datasetVersion.SourceID, datasetVersion.Policies.Delete, key)
+	// Resolve owner-based filtering for delete
+	ownerFilter, err := resolveOwnerFilter(
+		datasetVersion.Policies.Delete.OwnerColumn,
+		datasetVersion.Policies.Delete.TokenClaim,
+		claims,
+	)
+	if err != nil {
+		return err
+	}
+
+	sqlResult, err := d.dataRepo.ExecuteDelete(ctx, datasetVersion.SourceID, datasetVersion.Policies.Delete, key, ownerFilter)
 	if err != nil {
 		return err
 	}
@@ -1168,7 +1249,7 @@ func (d *dataUsecase) generateReportingTemplateExportFile(ctx context.Context, J
 	var fileData []byte
 	if datasetVersion != nil && datasetVersion.Policies.Runtime != nil && datasetVersion.Policies.Views != nil {
 		// Fetch data using the key (internal usage, bypass permission check with empty roles)
-		data, err := d.ServingDatasetVersionDataByKey(ctx, template.DatasetID, template.Version, key, template.View, []string{})
+		data, err := d.ServingDatasetVersionDataByKey(ctx, template.DatasetID, template.Version, key, template.View, []string{}, nil)
 		if err != nil {
 			return nil, err
 		}
@@ -1418,7 +1499,7 @@ func (d *dataUsecase) exportDatasetExcel(ctx context.Context, exportJob *entity.
 		paginator.PerPage = 100
 
 		// Fetch data for this page (internal usage, bypass permission check with empty roles)
-		datas, err := d.ServingDatasetVersionData(ctx, exportJob.DatasetId, exportJob.Version, &paginator, exportJob.View, nil, "", "", "", []string{})
+		datas, err := d.ServingDatasetVersionData(ctx, exportJob.DatasetId, exportJob.Version, &paginator, exportJob.View, nil, "", "", "", []string{}, nil)
 		if err != nil {
 			return nil, err
 		}
@@ -1516,7 +1597,7 @@ func (d *dataUsecase) exportDatasetCSV(ctx context.Context, exportJob *entity.Ex
 		paginator.PerPage = 100
 
 		// Fetch data for this page (internal usage, bypass permission check with empty roles)
-		datas, err := d.ServingDatasetVersionData(ctx, exportJob.DatasetId, exportJob.Version, &paginator, exportJob.View, nil, "", "", "", []string{})
+		datas, err := d.ServingDatasetVersionData(ctx, exportJob.DatasetId, exportJob.Version, &paginator, exportJob.View, nil, "", "", "", []string{}, nil)
 		if err != nil {
 			return nil, err
 		}

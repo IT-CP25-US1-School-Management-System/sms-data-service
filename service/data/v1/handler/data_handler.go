@@ -17,8 +17,24 @@ import (
 	"github.com/IT-CP25-US1-School-Management-System/sms-data-service/models/filter"
 	"github.com/IT-CP25-US1-School-Management-System/sms-data-service/service/data/v1"
 	"github.com/gofrs/uuid"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/labstack/echo/v4"
 )
+
+// extractClaims ดึง JWT claims จาก echo.Context เป็น map[string]interface{}
+func extractClaims(c echo.Context) map[string]interface{} {
+	val := c.Get(constants.CONTEXT_CLAIMS_KEY)
+	if val == nil {
+		return nil
+	}
+	if claims, ok := val.(jwt.MapClaims); ok {
+		return map[string]interface{}(claims)
+	}
+	if claims, ok := val.(map[string]interface{}); ok {
+		return claims
+	}
+	return nil
+}
 
 type dataHandler struct {
 	dataUs data.DataUsecase
@@ -638,7 +654,10 @@ func (d *dataHandler) ServingDatasetVersionData(c echo.Context) error {
 	// Get roles from context
 	roles, _ := c.Get(constants.CONTEXT_ROLES_KEY).([]string)
 
-	data, err := d.dataUs.ServingDatasetVersionData(ctx, datasetID, version, &paginator, servingFilter.View, filterGroups, logicalOperator, servingFilter.SortBy, sortOrder, roles)
+	// Get claims from context for owner-based filtering
+	claims := extractClaims(c)
+
+	data, err := d.dataUs.ServingDatasetVersionData(ctx, datasetID, version, &paginator, servingFilter.View, filterGroups, logicalOperator, servingFilter.SortBy, sortOrder, roles, claims)
 	if err != nil {
 		return err
 	}
@@ -678,7 +697,10 @@ func (d *dataHandler) ServingDatasetVersionDataByKey(c echo.Context) error {
 	// Get roles from context
 	roles, _ := c.Get(constants.CONTEXT_ROLES_KEY).([]string)
 
-	data, err := d.dataUs.ServingDatasetVersionDataByKey(ctx, datasetID, version, key, viewName, roles)
+	// Get claims from context for owner-based filtering
+	claims := extractClaims(c)
+
+	data, err := d.dataUs.ServingDatasetVersionDataByKey(ctx, datasetID, version, key, viewName, roles, claims)
 	if err != nil {
 		return err
 	}
@@ -713,7 +735,10 @@ func (d *dataHandler) CreateDatasetVersionData(c echo.Context) error {
 	// Get roles from context
 	roles, _ := c.Get(constants.CONTEXT_ROLES_KEY).([]string)
 
-	result, err := d.dataUs.CreateDatasetVersionData(ctx, datasetID, version, data, roles)
+	// Get claims from context for owner-based filtering
+	claims := extractClaims(c)
+
+	result, err := d.dataUs.CreateDatasetVersionData(ctx, datasetID, version, data, roles, claims)
 	if err != nil {
 		return err
 	}
@@ -750,7 +775,10 @@ func (d *dataHandler) UpdateDatasetVersionDataByKey(c echo.Context) error {
 	// Get roles from context
 	roles, _ := c.Get(constants.CONTEXT_ROLES_KEY).([]string)
 
-	result, err := d.dataUs.UpdateDatasetVersionDataByKey(ctx, datasetID, version, key, data, roles)
+	// Get claims from context for owner-based filtering
+	claims := extractClaims(c)
+
+	result, err := d.dataUs.UpdateDatasetVersionDataByKey(ctx, datasetID, version, key, data, roles, claims)
 	if err != nil {
 		return err
 	}
@@ -782,7 +810,10 @@ func (d *dataHandler) DeleteDatasetVersionDataByKey(c echo.Context) error {
 	// Get roles from context
 	roles, _ := c.Get(constants.CONTEXT_ROLES_KEY).([]string)
 
-	err := d.dataUs.DeleteDatasetVersionDataByKey(ctx, datasetID, version, key, roles)
+	// Get claims from context for owner-based filtering
+	claims := extractClaims(c)
+
+	err := d.dataUs.DeleteDatasetVersionDataByKey(ctx, datasetID, version, key, roles, claims)
 	if err != nil {
 		return err
 	}

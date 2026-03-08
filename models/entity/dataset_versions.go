@@ -8,6 +8,13 @@ import (
 	"github.com/gofrs/uuid"
 )
 
+// OwnerFilter ใช้ส่งเข้า repository เพื่อบังคับ WHERE owner_column = value
+type OwnerFilter struct {
+	TableName string // ชื่อตาราง (ใช้หา alias)
+	Column    string // ชื่อคอลัมน์จริง
+	Value     string // ค่า claim จาก JWT
+}
+
 type DatasetVersion struct {
 	DatasetID      string                 `json:"dataset_id" db:"dataset_id"`
 	Version        string                 `json:"version" db:"version"`
@@ -55,10 +62,19 @@ type View struct {
 	Columns   []string `json:"columns"`
 }
 
+// OwnerColumn ระบุคอลัมน์ที่ใช้เป็น owner filter (บังคับ WHERE owner_column = token_claim_value)
+type OwnerColumn struct {
+	TableName string `json:"table_name"`
+	Column    string `json:"column"`
+	Alias     string `json:"alias"`
+}
+
 type RuntimePolicy struct {
-	DefaultView string    `json:"default_view"`
-	KeyField    string    `json:"key_field,omitempty"`
-	Query       QueryPlan `json:"query" jsonb:"query"`
+	DefaultView string       `json:"default_view"`
+	KeyField    string       `json:"key_field,omitempty"`
+	Query       QueryPlan    `json:"query" jsonb:"query"`
+	OwnerColumn *OwnerColumn `json:"owner_column,omitempty"`
+	TokenClaim  string       `json:"token_claim,omitempty"`
 }
 
 type QueryPlan struct {
@@ -117,14 +133,18 @@ type GroupBy struct {
 }
 
 type WritePolicy struct {
-	KeyField  string    `json:"key_field"`
-	AllowEdit []string  `json:"allow_edit"`
-	Query     QueryPlan `json:"query"`
+	KeyField    string       `json:"key_field"`
+	AllowEdit   []string     `json:"allow_edit"`
+	Query       QueryPlan    `json:"query"`
+	OwnerColumn *OwnerColumn `json:"owner_column,omitempty"`
+	TokenClaim  string       `json:"token_claim,omitempty"`
 }
 
 type DeletePolicy struct {
-	KeyField string    `json:"key_field"`
-	Query    QueryPlan `json:"query"`
+	KeyField    string       `json:"key_field"`
+	Query       QueryPlan    `json:"query"`
+	OwnerColumn *OwnerColumn `json:"owner_column,omitempty"`
+	TokenClaim  string       `json:"token_claim,omitempty"`
 }
 
 // Custom UnmarshalJSON for Policies to handle both formats of Views

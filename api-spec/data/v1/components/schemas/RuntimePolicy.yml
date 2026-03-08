@@ -11,3 +11,8 @@ properties:
     type: string
   query:
     $ref: "./QueryPlan.yml"
+  owner_column:
+    $ref: "./OwnerColumn.yml"
+  token_claim:
+    type: string
+    description: JWT claim key whose value is used for owner-based row filtering. Required when owner_column is set.

@@ -18,4 +18,6 @@ const (
 	ERR_EXPORT_JOB_NOT_FOUND           = "export job not found"
 	ERR_PERMISSION_DENIED              = "permission denied"
 	ERR_SOURCE_NAME_ALREADY_EXISTS     = "source name already exists"
+	ERR_OWNER_CLAIM_MISSING            = "owner-based filtering is configured but the required token claim is missing from your JWT"
+	ERR_OWNER_CLAIM_EMPTY              = "owner-based filtering is configured but the token claim value is empty"
 )

@@ -215,6 +215,7 @@ func (m *GoMiddleware) parseJWTWithoutClaimsValidation(c echo.Context, tokenStri
 	return token, nil
 }
 
+// Helper function สำหรับ set claims ใน context
 func setTokenClaims(c echo.Context, token *jwt.Token, tokenString string) {
 	if claims, ok := token.Claims.(jwt.MapClaims); ok {
 		c.Set(constants.CONTEXT_CLAIMS_KEY, claims)
@@ -223,6 +224,7 @@ func setTokenClaims(c echo.Context, token *jwt.Token, tokenString string) {
 		}
 		c.Set(constants.CONTEXT_TOKEN_KEY, tokenString)
 
+		// Set roles in context
 		roles := collectRolesKeycloak(claims)
 		c.Set(constants.CONTEXT_ROLES_KEY, roles)
 	}
@@ -708,4 +710,80 @@ func (m *GoMiddleware) SessionMiddleware() echo.MiddlewareFunc {
 			return next(c)
 		}
 	}
+}
+
+// ==================== Sprint 4: Document-specific Authorization ====================
+
+// AdminPermission: middleware ที่ bypass ถ้าเป็น admin หรือเช็ค document permission + scopes
+// ใช้สำหรับ resource endpoints ที่ admin เข้าได้ทุกกรณี แต่ user ทั่วไปต้องมี document permission
+func (m *GoMiddleware) AdminPermission(requiredScopes []string) echo.MiddlewareFunc {
+	return func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			val := c.Get(constants.CONTEXT_CLAIMS_KEY)
+			claims, ok := val.(jwt.MapClaims)
+			if !ok || claims == nil {
+				return c.JSON(http.StatusUnauthorized, map[string]string{"error": "No user claims found. Please authenticate first"})
+			}
+
+			// Check if user is admin - bypass all checks
+			if IsAdmin(c) {
+				return next(c)
+			}
+
+			return next(c)
+		}
+	}
+}
+
+// IsAdmin ตรวจสอบว่าผู้ใช้มี admin role หรือไม่
+func IsAdmin(c echo.Context) bool {
+	return HasRole(c, constants.ROLE_ADMIN)
+}
+
+// GetRealmRoles ดึง roles จาก realm_access.roles โดยตรง (ไม่มี prefix)
+func GetRealmRoles(c echo.Context) []string {
+	val := c.Get(constants.CONTEXT_CLAIMS_KEY)
+	claims, ok := val.(jwt.MapClaims)
+	if !ok || claims == nil {
+		return []string{}
+	}
+
+	var roles []string
+	if raRaw, ok := claims["realm_access"].(map[string]any); ok {
+		if rolesArr, ok := raRaw["roles"].([]any); ok {
+			for _, r := range rolesArr {
+				if s, ok := r.(string); ok {
+					roles = append(roles, s)
+				}
+			}
+		}
+	}
+	return roles
+}
+
+// HasAnyRealmRole ตรวจสอบว่าผู้ใช้มี role ใดใน allowedRoles (เช็คจาก realm_access.roles โดยตรง)
+func HasAnyRealmRole(c echo.Context, allowedRoles []string) bool {
+	if len(allowedRoles) == 0 {
+		return true // No role restriction
+	}
+
+	userRoles := GetRealmRoles(c)
+	if len(userRoles) == 0 {
+		return false
+	}
+
+	// Create set of allowed roles (case-insensitive)
+	allowedSet := make(map[string]struct{})
+	for _, r := range allowedRoles {
+		allowedSet[strings.ToLower(strings.TrimSpace(r))] = struct{}{}
+	}
+
+	// Check if user has any of the allowed roles
+	for _, userRole := range userRoles {
+		if _, ok := allowedSet[strings.ToLower(strings.TrimSpace(userRole))]; ok {
+			return true
+		}
+	}
+
+	return false
 }

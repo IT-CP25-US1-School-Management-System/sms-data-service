@@ -47,17 +47,19 @@ type DataUsecase interface {
 		sortBy string,
 		sortOrder string,
 		roles []string,
+		claims map[string]interface{},
 	) ([]map[string]interface{}, error)
 	ServingDatasetVersionDataByKey(
 		ctx context.Context,
 		datasetID, version, key, viewName string,
 		roles []string,
+		claims map[string]interface{},
 	) (map[string]interface{}, error)
 
 	// Data Modification methods (requires write policies)
-	CreateDatasetVersionData(ctx context.Context, datasetID, version string, data map[string]interface{}, roles []string) (map[string]interface{}, error)
-	UpdateDatasetVersionDataByKey(ctx context.Context, datasetID, version, key string, data map[string]interface{}, roles []string) (map[string]interface{}, error)
-	DeleteDatasetVersionDataByKey(ctx context.Context, datasetID, version, key string, roles []string) error
+	CreateDatasetVersionData(ctx context.Context, datasetID, version string, data map[string]interface{}, roles []string, claims map[string]interface{}) (map[string]interface{}, error)
+	UpdateDatasetVersionDataByKey(ctx context.Context, datasetID, version, key string, data map[string]interface{}, roles []string, claims map[string]interface{}) (map[string]interface{}, error)
+	DeleteDatasetVersionDataByKey(ctx context.Context, datasetID, version, key string, roles []string, claims map[string]interface{}) error
 
 	// Table Data CRUD (direct source access)
 	FetchTableData(ctx context.Context, sourceID *uuid.UUID, schemaName, tableName string, filterGroups [][]entity.FilterInput, logicalOperator string, paginator *helperModel.Paginator, sortBy, sortOrder string) ([]map[string]interface{}, error)

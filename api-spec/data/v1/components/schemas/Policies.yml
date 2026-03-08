@@ -11,6 +11,11 @@ properties:
         description: Primary key field
       query:
         $ref: "QueryPlan.yml"
+      owner_column:
+        $ref: "OwnerColumn.yml"
+      token_claim:
+        type: string
+        description: JWT claim key whose value is used for owner filtering (e.g. "sub", "preferred_username"). Required when owner_column is set.
     required:
       - default_view
       - key_field
@@ -54,6 +59,11 @@ properties:
         description: Editable fields
       query:
         $ref: "QueryPlan.yml"
+      owner_column:
+        $ref: "OwnerColumn.yml"
+      token_claim:
+        type: string
+        description: JWT claim key whose value is used for owner filtering on write. Required when owner_column is set.
     required:
       - key_field
       - allow_edit
@@ -67,6 +77,11 @@ properties:
         description: Key field for delete operations
       query:
         $ref: "QueryPlan.yml"
+      owner_column:
+        $ref: "OwnerColumn.yml"
+      token_claim:
+        type: string
+        description: JWT claim key whose value is used for owner filtering on delete. Required when owner_column is set.
     required:
       - key_field
       - query

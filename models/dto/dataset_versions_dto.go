@@ -66,10 +66,18 @@ type ViewDTO struct {
 	Columns   []string `json:"columns" validate:"required,min=1"`
 }
 
+type OwnerColumnDTO struct {
+	TableName string `json:"table_name" validate:"required"`
+	Column    string `json:"column" validate:"required"`
+	Alias     string `json:"alias" validate:"required"`
+}
+
 type RuntimePolicyDTO struct {
-	DefaultView string       `json:"default_view" validate:"required"`
-	KeyField    string       `json:"key_field" validate:"required"`
-	Query       QueryPlanDTO `json:"query" validate:"required"`
+	DefaultView string          `json:"default_view" validate:"required"`
+	KeyField    string          `json:"key_field" validate:"required"`
+	Query       QueryPlanDTO    `json:"query" validate:"required"`
+	OwnerColumn *OwnerColumnDTO `json:"owner_column" validate:"omitempty"`
+	TokenClaim  string          `json:"token_claim" validate:"required_with=OwnerColumn"`
 }
 
 type QueryPlanDTO struct {
@@ -127,14 +135,18 @@ type GroupByDTO struct {
 }
 
 type WritePolicyDTO struct {
-	KeyField  string       `json:"key_field" validate:"required"`
-	AllowEdit []string     `json:"allow_edit" validate:"required,min=1"`
-	Query     QueryPlanDTO `json:"query" validate:"required"`
+	KeyField    string          `json:"key_field" validate:"required"`
+	AllowEdit   []string        `json:"allow_edit" validate:"required,min=1"`
+	Query       QueryPlanDTO    `json:"query" validate:"required"`
+	OwnerColumn *OwnerColumnDTO `json:"owner_column" validate:"omitempty"`
+	TokenClaim  string          `json:"token_claim" validate:"required_with=OwnerColumn"`
 }
 
 type DeletePolicyDTO struct {
-	KeyField string       `json:"key_field" validate:"required"`
-	Query    QueryPlanDTO `json:"query" validate:"required"`
+	KeyField    string          `json:"key_field" validate:"required"`
+	Query       QueryPlanDTO    `json:"query" validate:"required"`
+	OwnerColumn *OwnerColumnDTO `json:"owner_column" validate:"omitempty"`
+	TokenClaim  string          `json:"token_claim" validate:"required_with=OwnerColumn"`
 }
 
 func (dto *InsertDatasetVersionDTO) InsertDatasetVersionDTOToEntity() (*entity.DatasetVersion, error) {

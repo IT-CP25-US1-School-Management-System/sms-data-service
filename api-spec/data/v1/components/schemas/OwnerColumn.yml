@@ -1,0 +1,16 @@
+type: object
+description: Column used for owner-based row filtering. When set, queries are forced to include WHERE {owner_column} = {token_claim_value}.
+required:
+  - table_name
+  - column
+  - alias
+properties:
+  table_name:
+    type: string
+    description: The table that contains the owner column
+  column:
+    type: string
+    description: The column name in the table
+  alias:
+    type: string
+    description: Alias for the column (must match a projection alias)

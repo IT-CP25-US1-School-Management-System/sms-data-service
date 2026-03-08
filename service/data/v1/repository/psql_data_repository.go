@@ -538,6 +538,7 @@ func buildRuntimeSQLBuilder(
 	sortBy string,
 	sortOrder string,
 	viewMap map[string]map[string]bool,
+	ownerFilter *entity.OwnerFilter,
 ) (squirrel.SelectBuilder, error) {
 
 	// --- Alias Management & Mode Detection ---
@@ -803,6 +804,16 @@ func buildRuntimeSQLBuilder(
 		builder = builder.Where(masterWhereClause)
 	}
 
+	// --- Owner-Based Filter (บังคับ WHERE owner_column = value) ---
+	if ownerFilter != nil {
+		ownerAlias, ok := am.Get(ownerFilter.TableName)
+		if !ok {
+			return builder, fmt.Errorf("owner_column table '%s' not found in query plan aliases", ownerFilter.TableName)
+		}
+		ownerField := fmt.Sprintf("%s.%s", ownerAlias, ownerFilter.Column)
+		builder = builder.Where(squirrel.Eq{ownerField: ownerFilter.Value})
+	}
+
 	// --- 4. Group By ---
 	if isAggregateQuery {
 		// (AGGREGATE MODE)
@@ -852,6 +863,7 @@ func buildCountSQLBuilder(
 	queryPlan *entity.QueryPlan,
 	filterGroups [][]entity.FilterInput,
 	logicalOperator string,
+	ownerFilter *entity.OwnerFilter,
 ) (squirrel.SelectBuilder, error) {
 
 	// --- 0. Alias Management ---
@@ -958,6 +970,17 @@ func buildCountSQLBuilder(
 		builder = builder.Where(masterWhereClause)
 	}
 
+	// --- Owner-Based Filter (บังคับ WHERE owner_column = value สำหรับ count) ---
+	if ownerFilter != nil {
+		ownerAlias, ok := am.Get(ownerFilter.TableName)
+		if !ok {
+			// ถ้า owner table เป็น from table ก็ใช้ from alias
+			ownerAlias = am.fromAlias
+		}
+		ownerField := fmt.Sprintf("%s.%s", ownerAlias, ownerFilter.Column)
+		builder = builder.Where(squirrel.Eq{ownerField: ownerFilter.Value})
+	}
+
 	return builder, nil
 }
 
@@ -972,6 +995,7 @@ func (p *psqlDataRepository) ExecuteQuery(
 	viewName string,
 	sortBy string,
 	sortOrder string,
+	ownerFilter *entity.OwnerFilter,
 ) ([]map[string]interface{}, error) {
 	client, err := p.dbConnectionManager.GetConnection(ctx, *sourceID)
 	if err != nil {
@@ -1000,13 +1024,13 @@ func (p *psqlDataRepository) ExecuteQuery(
 	dbType := p.getDBType(*sourceID)
 
 	// 1. สร้าง Base Query Builder
-	baseBuilder, err := buildRuntimeSQLBuilder(ctx, dbType, schemaMap, &runtime.Query, filterGroups, logicalOperator, paginator, sortBy, sortOrder, viewMap)
+	baseBuilder, err := buildRuntimeSQLBuilder(ctx, dbType, schemaMap, &runtime.Query, filterGroups, logicalOperator, paginator, sortBy, sortOrder, viewMap, ownerFilter)
 	if err != nil {
 		return nil, fmt.Errorf("failed to build base query: %w", err)
 	}
 
 	// 2. สร้าง Count Query Builder
-	countBuilder, err := buildCountSQLBuilder(ctx, dbType, schemaMap, &runtime.Query, filterGroups, logicalOperator)
+	countBuilder, err := buildCountSQLBuilder(ctx, dbType, schemaMap, &runtime.Query, filterGroups, logicalOperator, ownerFilter)
 	if err != nil {
 		return nil, fmt.Errorf("failed to build count query: %w", err)
 	}
@@ -1084,6 +1108,7 @@ func (p *psqlDataRepository) ExecuteQueryByKey(
 	policies *entity.Policies,
 	key interface{},
 	viewName string,
+	ownerFilter *entity.OwnerFilter,
 ) (map[string]interface{}, error) {
 
 	runtime := policies.Runtime
@@ -1125,7 +1150,7 @@ func (p *psqlDataRepository) ExecuteQueryByKey(
 	dbType := p.getDBType(*sourceID)
 
 	// 1. สร้าง Base Query Builder
-	builder, err := buildRuntimeSQLBuilder(ctx, dbType, schemaMap, &runtime.Query, filterGroups, "AND", nil, "", "", viewMap)
+	builder, err := buildRuntimeSQLBuilder(ctx, dbType, schemaMap, &runtime.Query, filterGroups, "AND", nil, "", "", viewMap, ownerFilter)
 	if err != nil {
 		return nil, fmt.Errorf("failed to build key query: %w", err)
 	}
@@ -1203,12 +1228,18 @@ func (p *psqlDataRepository) ExecuteCreate(
 	schema entity.Schema,
 	writePolicy *entity.WritePolicy,
 	data map[string]interface{},
+	ownerFilter *entity.OwnerFilter,
 ) (map[string]interface{}, error) {
 
 	// 1. Validate และ Prepare ข้อมูลก่อน
 	validatedData, err := p.validateAndPrepareData(schema, writePolicy, data)
 	if err != nil {
 		return nil, errs.NewBadRequestError(fmt.Sprintf("create validation failed: %v", err))
+	}
+
+	// Owner filter: บังคับใส่ค่า owner_column ลงใน data ที่จะ INSERT
+	if ownerFilter != nil {
+		validatedData[ownerFilter.Column] = ownerFilter.Value
 	}
 
 	// (ถ้า validatedData ไม่มี field เลย ก็ไม่ควร Insert)
@@ -1292,6 +1323,7 @@ func (p *psqlDataRepository) ExecuteUpdate(
 	writePolicy *entity.WritePolicy,
 	key interface{},
 	data map[string]interface{},
+	ownerFilter *entity.OwnerFilter,
 ) (map[string]interface{}, error) {
 
 	// 1. Validate และ Prepare ข้อมูลก่อน
@@ -1322,6 +1354,11 @@ func (p *psqlDataRepository) ExecuteUpdate(
 	// 4. สร้าง whereConditions map จาก key
 	whereConditions := map[string]interface{}{
 		writePolicy.KeyField: key,
+	}
+
+	// Owner filter: เพิ่ม WHERE owner_column = value
+	if ownerFilter != nil {
+		whereConditions[ownerFilter.Column] = ownerFilter.Value
 	}
 
 	// 5. สร้าง SQL query
@@ -1382,6 +1419,7 @@ func (p *psqlDataRepository) ExecuteDelete(
 	sourceID *uuid.UUID,
 	deletePolicy *entity.DeletePolicy,
 	key interface{},
+	ownerFilter *entity.OwnerFilter,
 ) (sql.Result, error) {
 	// ตรวจสอบว่ามี KeyField ใน Policy
 	if deletePolicy.KeyField == "" {
@@ -1400,6 +1438,11 @@ func (p *psqlDataRepository) ExecuteDelete(
 	// สร้าง whereConditions map จาก key ที่รับเข้ามา
 	whereConditions := map[string]interface{}{
 		deletePolicy.KeyField: key,
+	}
+
+	// Owner filter: เพิ่ม WHERE owner_column = value
+	if ownerFilter != nil {
+		whereConditions[ownerFilter.Column] = ownerFilter.Value
 	}
 
 	// สร้าง SQL query
