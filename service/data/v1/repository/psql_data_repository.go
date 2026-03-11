@@ -704,6 +704,14 @@ func buildRuntimeSQLBuilder(
 				continue // ข้าม (อาจจะ Join ไม่ได้เลือก)
 			}
 
+			// (ข้ามคอลัมน์จากตาราง JOIN ที่ถูก handle เป็น nested JSON object แล้ว
+			// เพื่อป้องกัน alias ซ้ำกัน เช่น person_data.id, prefixes.id, roles.id ทั้งหมดเป็น "id")
+			if !isAggregateQuery && tableName != am.fromTable {
+				if _, isJoined := joinedTables[tableName]; isJoined {
+					continue
+				}
+			}
+
 			// (เช็ค ViewMap)
 			viewCols, ok := viewMap[tableName]
 			if !ok || !viewCols[p.Column] {
