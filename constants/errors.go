@@ -20,4 +20,6 @@ const (
 	ERR_SOURCE_NAME_ALREADY_EXISTS     = "source name already exists"
 	ERR_OWNER_CLAIM_MISSING            = "owner-based filtering is configured but the required token claim is missing from your JWT"
 	ERR_OWNER_CLAIM_EMPTY              = "owner-based filtering is configured but the token claim value is empty"
+	ERR_WRITE_POLICY_TABLE_NOT_FOUND   = "write policy allow_edit requires a valid table in query.from but the table was not found in source"
+	ERR_WRITE_POLICY_TABLE_REQUIRED    = "write policy allow_edit requires query.from.table to be specified"
 )

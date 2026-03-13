@@ -214,6 +214,121 @@ func (d *dataUsecase) UpdateSource(ctx context.Context, sourceID *uuid.UUID, sou
 	return d.datasetRepo.UpsertSource(ctx, oldSource)
 }
 
+// validateSourceAndWritePolicy checks:
+//  1. If sourceID is non-nil, verifies the source exists in the DB.
+//  2. If Policies.Write is set and has AllowEdit columns, fetches the physical
+//     column list for WritePolicy.Query.From.Table (first, as a schema check)
+//     and then validates every AllowEdit column name exists in that table.
+//
+// AllowEdit can only reference columns from a single table (Write.Query.From.Table).
+func (d *dataUsecase) validateSourceAndWritePolicy(ctx context.Context, sourceID *uuid.UUID, policies *entity.Policies) error {
+	if sourceID == nil {
+		return nil
+	}
+
+	// Step 1 – verify source exists
+	exists, err := d.datasetRepo.ExistSourceByID(ctx, sourceID)
+	if err != nil {
+		return err
+	}
+	if !exists {
+		return errs.NewNotFoundError(constants.ERR_SOURCE_NOT_FOUND)
+	}
+
+	// Step 2 – if WritePolicy has AllowEdit, validate columns against physical schema
+	if policies == nil || policies.Write == nil || len(policies.Write.AllowEdit) == 0 {
+		return nil
+	}
+
+	writePolicy := policies.Write
+
+	// AllowEdit must target a concrete table (views have no physical columns to validate)
+	if writePolicy.Query.From == nil || writePolicy.Query.From.Table == "" {
+		return errs.NewBadRequestError(constants.ERR_WRITE_POLICY_TABLE_REQUIRED)
+	}
+	tableName := writePolicy.Query.From.Table
+
+	// Fetch all columns for that table from physical_columns (schema check)
+	dbColumns, err := d.datasetRepo.FetchColumnsBySourceIDAndTable(ctx, sourceID, tableName)
+	if err != nil {
+		return err
+	}
+	if len(dbColumns) == 0 {
+		return errs.NewNotFoundError(constants.ERR_WRITE_POLICY_TABLE_NOT_FOUND)
+	}
+
+	// Build a set of physical column names
+	columnSet := make(map[string]struct{}, len(dbColumns))
+	for _, col := range dbColumns {
+		columnSet[col.ColumnsName] = struct{}{}
+	}
+
+	// Validate every AllowEdit entry exists in that table
+	for _, colName := range writePolicy.AllowEdit {
+		if _, ok := columnSet[colName]; !ok {
+			return errs.NewBadRequestError(
+				fmt.Sprintf("allow_edit column '%s' not found in table '%s' for the given source", colName, tableName),
+			)
+		}
+	}
+
+	return nil
+}
+
+// validateSchemaColumns verifies that every column declared in DatasetVersion.Schema
+// actually exists in physical_columns for the given source.
+//
+// Logic:
+//  1. Group Schema.Columns by TableName.
+//  2. For each unique table, fetch its physical columns via FetchColumnsBySourceIDAndTable.
+//     - If the table has no physical entries it is treated as a view (not in physical_columns)
+//     and its columns are skipped (views are validated by the DB at query-time).
+//  3. For tables that do have physical columns, every column in the schema must be present.
+func (d *dataUsecase) validateSchemaColumns(ctx context.Context, sourceID *uuid.UUID, schema *entity.Schema) error {
+	if sourceID == nil || schema == nil || len(schema.Columns) == 0 {
+		return nil
+	}
+
+	// Group schema column names by their TableName
+	tableToColumns := make(map[string][]string)
+	for _, col := range schema.Columns {
+		if col.TableName == "" {
+			continue // no table name – skip (expression column etc.)
+		}
+		tableToColumns[col.TableName] = append(tableToColumns[col.TableName], col.Name)
+	}
+
+	for tableName, colNames := range tableToColumns {
+		// Fetch physical columns for this table
+		dbColumns, err := d.datasetRepo.FetchColumnsBySourceIDAndTable(ctx, sourceID, tableName)
+		if err != nil {
+			return err
+		}
+
+		// No rows → table is likely a view; skip physical validation
+		if len(dbColumns) == 0 {
+			continue
+		}
+
+		// Build a set from physical column names
+		columnSet := make(map[string]struct{}, len(dbColumns))
+		for _, dbCol := range dbColumns {
+			columnSet[dbCol.ColumnsName] = struct{}{}
+		}
+
+		// Every schema column must exist in the physical set
+		for _, colName := range colNames {
+			if _, ok := columnSet[colName]; !ok {
+				return errs.NewBadRequestError(
+					fmt.Sprintf("schema column '%s' in table '%s' not found in source", colName, tableName),
+				)
+			}
+		}
+	}
+
+	return nil
+}
+
 // validateDatasetID validates the dataset ID format
 func (d *dataUsecase) validateDatasetID(id string) error {
 	if id == "" {
@@ -350,6 +465,16 @@ func (d *dataUsecase) UpsertDatasetVersion(ctx context.Context, datasetVersion *
 		return errs.NewNotFoundError(constants.ERR_DATASET_NOT_FOUND)
 	}
 
+	// Validate SourceID exists and AllowEdit columns are present in physical schema
+	if err := d.validateSourceAndWritePolicy(ctx, datasetVersion.SourceID, &datasetVersion.Policies); err != nil {
+		return err
+	}
+
+	// Validate every Schema.Column exists in physical_columns for this source
+	if err := d.validateSchemaColumns(ctx, datasetVersion.SourceID, &datasetVersion.Schema); err != nil {
+		return err
+	}
+
 	// auto add admin access policy
 	allowViews := []string{}
 	if datasetVersion.Policies.Views != nil {
@@ -395,6 +520,16 @@ func (d *dataUsecase) InsertDatasetVersion(ctx context.Context, datasetVersion *
 	}
 	if exists {
 		return errs.NewConflictError(constants.ERR_DATASET_VERSION_ALREADY_EXISTS)
+	}
+
+	// Validate SourceID exists and AllowEdit columns are present in physical schema
+	if err := d.validateSourceAndWritePolicy(ctx, datasetVersion.SourceID, &datasetVersion.Policies); err != nil {
+		return err
+	}
+
+	// Validate every Schema.Column exists in physical_columns for this source
+	if err := d.validateSchemaColumns(ctx, datasetVersion.SourceID, &datasetVersion.Schema); err != nil {
+		return err
 	}
 
 	allowViews := []string{}

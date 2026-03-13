@@ -73,6 +73,9 @@ type PsqlDatasetRepository interface {
 	ExistColumnByName(ctx context.Context, sourceID *uuid.UUID, schemaName, tableName, columnName string) (bool, error)
 	ExistSourceByName(ctx context.Context, sourceName string) (bool, error)
 	ExistSourceByNameAndNotID(ctx context.Context, sourceID *uuid.UUID, sourceName string) (bool, error)
+	// FetchColumnsBySourceIDAndTable fetches all columns for a given source and table (no pagination)
+	// Used for validating AllowEdit columns in WritePolicy against physical schema
+	FetchColumnsBySourceIDAndTable(ctx context.Context, sourceID *uuid.UUID, tableName string) ([]*entity.Columns, error)
 
 	// Dataset
 	FetchDatasetList(ctx context.Context, filter *filter.DatasetsFilter, paginator *models.Paginator) ([]*entity.Datasets, error)

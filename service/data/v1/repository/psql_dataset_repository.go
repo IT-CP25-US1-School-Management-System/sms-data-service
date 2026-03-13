@@ -506,6 +506,43 @@ func (p *psqlDatasetRepository) ExistColumnByName(ctx context.Context, sourceID 
 	return exists, nil
 }
 
+// FetchColumnsBySourceIDAndTable fetches all physical columns for a given source and table name.
+// This is used for validating WritePolicy AllowEdit columns against the actual schema in the DB.
+func (p *psqlDatasetRepository) FetchColumnsBySourceIDAndTable(ctx context.Context, sourceID *uuid.UUID, tableName string) ([]*entity.Columns, error) {
+	query := `
+		SELECT id, source_id, schema, table_name, column_name, data_type, is_nullable, column_default, ordinal_position, created_at
+		FROM physical_columns
+		WHERE source_id = $1 AND table_name = $2
+		ORDER BY ordinal_position ASC
+	`
+	rows, err := p.client.GetClient().QueryxContext(ctx, query, sourceID, tableName)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var columns []*entity.Columns
+	for rows.Next() {
+		var col entity.Columns
+		if err := rows.Scan(
+			&col.ID,
+			&col.SourceID,
+			&col.Schema,
+			&col.TableName,
+			&col.ColumnsName,
+			&col.DataType,
+			&col.IsNullable,
+			&col.ColumnDefault,
+			&col.OrdinalPosition,
+			&col.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		columns = append(columns, &col)
+	}
+	return columns, nil
+}
+
 // ActivateSourceByID implements data.PsqlDatasetRepository.
 func (p *psqlDatasetRepository) ActivateSourceByID(ctx context.Context, sourceID *uuid.UUID) error {
 	query := `
