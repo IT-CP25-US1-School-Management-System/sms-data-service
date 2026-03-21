@@ -666,6 +666,11 @@ func (d *dataUsecase) checkViewPermission(datasetVersion *entity.DatasetVersion,
 		}
 	}
 
+	viewConfigs, ok := datasetVersion.Policies.Views[viewName]
+	if !ok || len(viewConfigs) == 0 {
+		return errs.NewNotFoundError(fmt.Sprintf("view '%s' not found or is empty in policies", viewName))
+	}
+
 	// If no access policies defined, deny access
 	if len(datasetVersion.AccessPolicies) == 0 {
 		return errs.NewForbiddenError(constants.ERR_PERMISSION_DENIED)
