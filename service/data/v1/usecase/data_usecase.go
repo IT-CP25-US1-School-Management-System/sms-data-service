@@ -1611,7 +1611,7 @@ func (d *dataUsecase) FetchExportJobByID(ctx context.Context, jobID *uuid.UUID, 
 	return job, nil
 }
 
-func (d *dataUsecase) exportDatasetExcel(ctx context.Context, exportJob *entity.ExportJob) ([]byte, error) {
+func (d *dataUsecase) exportDatasetExcel(ctx context.Context, exportJob *entity.ExportJob, claims map[string]interface{}) ([]byte, error) {
 	// Create Excel file first
 	f := excelize.NewFile()
 	sheetName := "Sheet1"
@@ -1720,7 +1720,7 @@ func (d *dataUsecase) exportDatasetExcel(ctx context.Context, exportJob *entity.
 	return buffer.Bytes(), nil
 }
 
-func (d *dataUsecase) exportDatasetCSV(ctx context.Context, exportJob *entity.ExportJob) ([]byte, error) {
+func (d *dataUsecase) exportDatasetCSV(ctx context.Context, exportJob *entity.ExportJob, claims map[string]interface{}) ([]byte, error) {
 	// Create buffer for CSV
 	var buf bytes.Buffer
 	writer := csv.NewWriter(&buf)
@@ -1737,7 +1737,7 @@ func (d *dataUsecase) exportDatasetCSV(ctx context.Context, exportJob *entity.Ex
 		paginator.PerPage = 100
 
 		// Fetch data for this page (internal usage, bypass permission check with empty roles)
-		datas, err := d.ServingDatasetVersionData(ctx, exportJob.DatasetId, exportJob.Version, &paginator, exportJob.View, nil, "", "", "", []string{}, nil)
+		datas, err := d.ServingDatasetVersionData(ctx, exportJob.DatasetId, exportJob.Version, &paginator, exportJob.View, nil, "", "", "", []string{}, claims)
 		if err != nil {
 			return nil, err
 		}
@@ -1945,18 +1945,18 @@ func (d *dataUsecase) getUniqueColumnNames(rows []map[string]interface{}) []stri
 	return columns
 }
 
-func (d *dataUsecase) processJob(exportJob *entity.ExportJob) error {
+func (d *dataUsecase) processJob(exportJob *entity.ExportJob, claims map[string]interface{}) error {
 	ctx := context.Background()
 	var fileByte []byte
 	if exportJob.Format == constants.EXPORT_JOB_FORMAT_XLSX {
-		excelByte, err := d.exportDatasetExcel(ctx, exportJob)
+		excelByte, err := d.exportDatasetExcel(ctx, exportJob, claims)
 		if err != nil {
 			err := d.datasetRepo.UpdateStatusFail(ctx, exportJob.JobId, err.Error())
 			return err
 		}
 		fileByte = excelByte
 	} else if exportJob.Format == constants.EXPORT_JOB_FORMAT_CSV {
-		csvByte, err := d.exportDatasetCSV(ctx, exportJob)
+		csvByte, err := d.exportDatasetCSV(ctx, exportJob, claims)
 		if err != nil {
 			err := d.datasetRepo.UpdateStatusFail(ctx, exportJob.JobId, err.Error())
 			return err
@@ -1994,7 +1994,7 @@ func (d *dataUsecase) processJob(exportJob *entity.ExportJob) error {
 }
 
 // ExportJob implements data.DataUsecase.
-func (d *dataUsecase) InsertExportJob(ctx context.Context, exportJob *entity.ExportJob, roles []string) error {
+func (d *dataUsecase) InsertExportJob(ctx context.Context, exportJob *entity.ExportJob, roles []string, claims map[string]interface{}) error {
 	if exportJob == nil {
 		return errs.NewBadRequestError(constants.ERR_INVALID_REQUEST_BODY)
 	}
@@ -2042,7 +2042,7 @@ func (d *dataUsecase) InsertExportJob(ctx context.Context, exportJob *entity.Exp
 		err := d.datasetRepo.UpdateStatusFail(ctx, exportJob.JobId, err.Error())
 		return err
 	}
-	go d.processJob(exportJob)
+	go d.processJob(exportJob, claims)
 	return nil
 }
 

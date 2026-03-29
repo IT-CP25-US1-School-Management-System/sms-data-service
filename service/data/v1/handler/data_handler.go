@@ -1110,7 +1110,9 @@ func (d *dataHandler) ExportJob(c echo.Context) error {
 
 	exportJobEntity := exportJobDTO.ExportJobDTOToEntity()
 	exportJobEntity.GenUUID()
-	if err := d.dataUs.InsertExportJob(ctx, exportJobEntity, roles); err != nil {
+
+	claims := extractClaims(c)
+	if err := d.dataUs.InsertExportJob(ctx, exportJobEntity, roles, claims); err != nil {
 		return err
 	}
 
