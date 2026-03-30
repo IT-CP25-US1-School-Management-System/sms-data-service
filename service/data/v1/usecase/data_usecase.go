@@ -1449,15 +1449,36 @@ func (d *dataUsecase) generatePDFFromTemplate(templateData []byte, template *ent
 	var rs io.ReadSeeker = templateReader
 	tpl := imp.ImportPageFromStream(pdf, &rs, 1, "/MediaBox")
 
+	// Resolve page size from the real template file (/MediaBox)
+	pageW := 210.0 // fallback A4 width (mm)
+	pageH := 297.0 // fallback A4 height (mm)
+	if pageSizes, ok := imp.GetPageSizes()[1]; ok {
+		if mediaBox, ok := pageSizes["/MediaBox"]; ok {
+			if w, ok := mediaBox["w"]; ok && w > 0 {
+				pageW = w
+			}
+			if h, ok := mediaBox["h"]; ok && h > 0 {
+				pageH = h
+			}
+		}
+	}
+
+	orientation := "P"
+	pageSize := gofpdf.SizeType{Wd: pageW, Ht: pageH}
+	if pageW > pageH {
+		orientation = "L"
+		pageSize = gofpdf.SizeType{Wd: pageH, Ht: pageW}
+	}
+
 	// Add a page and use the template
-	pdf.AddPage()
-	imp.UseImportedTemplate(pdf, tpl, 0, 0, 210, 297) // A4 size in mm
+	pdf.AddPageFormat(orientation, pageSize)
+	imp.UseImportedTemplate(pdf, tpl, 0, 0, pageW, pageH)
 
 	// Set font for text
 	pdf.AddUTF8Font("THSarabunNew", "", "./assets/fonts/THSarabunNew/THSarabunNew.ttf")
 	pdf.AddUTF8Font("THSarabunNew Bold", "B", "./assets/fonts/THSarabunNew/THSarabunNew Bold.ttf")
 
-	pdf.SetFont("THSarabunNew", "", 16)
+	pdf.SetFont("THSarabunNew", "", 24)
 	pdf.SetTextColor(0, 0, 0)
 	// Process positions and add text to PDF
 	for _, pos := range template.Positions {
@@ -1483,6 +1504,9 @@ func (d *dataUsecase) generatePDFFromTemplate(templateData []byte, template *ent
 
 		// Set text position and write
 		if value != "" {
+			if value == "<nil>" {
+				value = ""
+			}
 			pdf.SetXY(pos.X, pos.Y)
 			pdf.Cell(0, 0, value)
 		}
@@ -1526,27 +1550,30 @@ func (d *dataUsecase) FetchReportingExportJobByID(ctx context.Context, jobID *uu
 		return nil, err
 	}
 
-	req := proto_models.GetFileByResourceIDRequest{
-		ResourceId: job.ResourceID,
-	}
-	status, response, err := d.documentRepo.GetFileByResourceID(ctx, &req)
-	if err != nil || status != http.StatusOK {
-		if status == http.StatusServiceUnavailable {
-			return nil, errs.NewInternalServerError("document service is unavailable")
-		}
-		return nil, errs.NewInternalServerError("failed to get export file information")
-	}
-	if response == nil {
-		return nil, errs.NewNotFoundError("export file not found")
-	}
 	resp, err := helperModel.ConvertStruct[*entity.ReportingTemplateExportJob, *dto.ReportingExportJobResponseDTO](job)
 	if err != nil {
 		return nil, err
 	}
-	resp.Url = response.Url
-	resp.OriginalFilename = response.OriginalFilename
-	resp.FileSize = response.Size
-	resp.ContentType = response.ContentType
+	if job.Status == constants.EXPORT_JOB_STATUS_SUCCEEDED {
+		req := proto_models.GetFileByResourceIDRequest{
+			ResourceId: job.ResourceID,
+		}
+		status, response, err := d.documentRepo.GetFileByResourceID(ctx, &req)
+		if err != nil || status != http.StatusOK {
+			if status == http.StatusServiceUnavailable {
+				return nil, errs.NewInternalServerError("document service is unavailable")
+			}
+			return nil, errs.NewInternalServerError("failed to get export file information")
+		}
+		if response == nil {
+			return nil, errs.NewNotFoundError("export file not found")
+		}
+		resp.Url = response.Url
+		resp.OriginalFilename = response.OriginalFilename
+		resp.FileSize = response.Size
+		resp.ContentType = response.ContentType
+	}
+
 	return resp, nil
 }
 
@@ -1592,22 +1619,25 @@ func (d *dataUsecase) FetchExportJobByID(ctx context.Context, jobID *uuid.UUID, 
 		return nil, err
 	}
 
-	req := proto_models.GetFileByResourceIDRequest{
-		ResourceId: job.DestinationUri,
-	}
-	status, response, err := d.documentRepo.GetFileByResourceID(ctx, &req)
-	if err != nil || status != http.StatusOK {
-		if status == http.StatusServiceUnavailable {
-			return nil, errs.NewInternalServerError("document service is unavailable")
+	if job.Status == constants.EXPORT_JOB_STATUS_SUCCEEDED {
+		req := proto_models.GetFileByResourceIDRequest{
+			ResourceId: job.DestinationUri,
 		}
-		return nil, errs.NewInternalServerError("failed to get export file information")
+		status, response, err := d.documentRepo.GetFileByResourceID(ctx, &req)
+		if err != nil || status != http.StatusOK {
+			fmt.Printf("Error fetching file by resource ID: %v, status: %d\n", err, status)
+			if status == http.StatusServiceUnavailable {
+				return nil, errs.NewInternalServerError("document service is unavailable")
+			}
+			return nil, errs.NewInternalServerError("failed to get export file information")
+		}
+		if response == nil {
+			return nil, errs.NewNotFoundError("export file not found")
+		}
+		job.DestinationUri = response.Url
+		job.OriginalFilename = response.OriginalFilename
+		job.FileSize = response.Size
 	}
-	if response == nil {
-		return nil, errs.NewNotFoundError("export file not found")
-	}
-	job.DestinationUri = response.Url
-	job.OriginalFilename = response.OriginalFilename
-	job.FileSize = response.Size
 	return job, nil
 }
 
