@@ -872,6 +872,7 @@ func buildCountSQLBuilder(
 	filterGroups [][]entity.FilterInput,
 	logicalOperator string,
 	ownerFilter *entity.OwnerFilter,
+	keyField string,
 ) (squirrel.SelectBuilder, error) {
 
 	// --- 0. Alias Management ---
@@ -879,7 +880,13 @@ func buildCountSQLBuilder(
 		return squirrel.SelectBuilder{}, fmt.Errorf("QueryPlan.From.Table is required")
 	}
 	am := newAliasManager(queryPlan.From.Table)
-	countCol := fmt.Sprintf("COUNT(DISTINCT %s.id)", am.fromAlias)
+
+	// Use the provided keyField (primary key) instead of hardcoding "id"
+	countKey := "id"
+	if keyField != "" {
+		countKey = keyField
+	}
+	countCol := fmt.Sprintf("COUNT(DISTINCT %s.%s)", am.fromAlias, countKey)
 	sqlbuilder := getStatementBuilder(dbType)
 	builder := sqlbuilder.Select(countCol).From(fmt.Sprintf("%s AS %s", am.fromTable, am.fromAlias))
 
@@ -1038,7 +1045,7 @@ func (p *psqlDataRepository) ExecuteQuery(
 	}
 
 	// 2. สร้าง Count Query Builder
-	countBuilder, err := buildCountSQLBuilder(ctx, dbType, schemaMap, &runtime.Query, filterGroups, logicalOperator, ownerFilter)
+	countBuilder, err := buildCountSQLBuilder(ctx, dbType, schemaMap, &runtime.Query, filterGroups, logicalOperator, ownerFilter, runtime.KeyField)
 	if err != nil {
 		return nil, fmt.Errorf("failed to build count query: %w", err)
 	}
