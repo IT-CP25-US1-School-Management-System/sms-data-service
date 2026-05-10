@@ -1478,7 +1478,7 @@ func (d *dataUsecase) generatePDFFromTemplate(templateData []byte, template *ent
 	pdf.AddUTF8Font("THSarabunNew", "", "./assets/fonts/THSarabunNew/THSarabunNew.ttf")
 	pdf.AddUTF8Font("THSarabunNew Bold", "B", "./assets/fonts/THSarabunNew/THSarabunNew Bold.ttf")
 
-	pdf.SetFont("THSarabunNew", "", 24)
+	pdf.SetFont("THSarabunNew", "", 32)
 	pdf.SetTextColor(0, 0, 0)
 	// Process positions and add text to PDF
 	for _, pos := range template.Positions {
