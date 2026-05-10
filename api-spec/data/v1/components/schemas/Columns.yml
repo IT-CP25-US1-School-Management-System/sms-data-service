@@ -1,43 +1,43 @@
-type: object
+﻿type: object
 properties:
   id:
     type: string
     format: uuid
     nullable: true
-    description: Column ID
+    description: "EN: Column ID / TH: รหัสคอลัมน์"
   sources_id:
     type: string
     format: uuid
     nullable: true
-    description: Source ID
+    description: "EN: Source ID / TH: รหัสแหล่งข้อมูล"
   schema:
     type: string
-    description: Schema name
+    description: "EN: Schema name / TH: ชื่อ schema"
   table_name:
     type: string
-    description: Table name
+    description: "EN: Table name / TH: ชื่อตาราง"
   column_name:
     type: string
-    description: Column name
+    description: "EN: Column name / TH: ชื่อคอลัมน์"
   data_type:
     type: string
-    description: Data type
+    description: "EN: Data type / TH: ชนิดข้อมูล"
   is_nullable:
     type: boolean
-    description: Whether the column is nullable
+    description: "EN: Whether the column is nullable / TH: ระบุว่าคอลัมน์เป็น null ได้หรือไม่"
   column_default:
     type: string
     nullable: true
-    description: Default value
+    description: "EN: Default value / TH: ค่า default"
   ordinal_position:
     type: integer
     nullable: true
-    description: Column position in table
+    description: "EN: Column position in table / TH: ลำดับคอลัมน์ในตาราง"
   created_at:
     type: string
     format: date-time
     nullable: true
-    description: Creation timestamp
+    description: "EN: Creation timestamp / TH: เวลาที่สร้างข้อมูล"
 required:
   - schema
   - table_name

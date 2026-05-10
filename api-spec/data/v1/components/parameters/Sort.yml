@@ -2,4 +2,4 @@ name: sort_by
 in: query
 schema: 
   type: string
-  description: "field or -field"
+  description: "EN: Field name or -field for descending sort / TH: ชื่อ field หรือ -field เพื่อเรียงจากมากไปน้อย"

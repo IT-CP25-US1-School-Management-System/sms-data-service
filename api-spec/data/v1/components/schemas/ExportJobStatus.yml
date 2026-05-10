@@ -1,15 +1,31 @@
-type: object
+﻿type: object
 properties:
   status:
     type: string
     enum: [pending, in_progress, completed, failed]
+  dataset_id:
+    type: string
+  view:
+    type: string
+  original_filename:
+    type: string
+  file_size:
+    type: integer
+    format: int64
+  format:
+    type: string
+    enum: [csv, xlsx]
+  version:
+    type: string
+  destination_uri:
+    type: string
   created_at:
     type: string
     format: date-time
   completed_at:
     type: string
     format: date-time
-  destination_uri:
-    type: string
+    nullable: true
   error_message:
     type: string
+    nullable: true

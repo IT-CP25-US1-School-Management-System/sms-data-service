@@ -1,0 +1,64 @@
+# /reporting/templates/upload
+post:
+  tags: [Reporting]
+  summary: "EN: Upload a PDF reporting template / TH: อัปโหลด template PDF สำหรับรายงาน"
+  requestBody:
+    required: true
+    content:
+      multipart/form-data:
+        schema:
+          type: object
+          properties:
+            file:
+              type: string
+              format: binary
+              description: "EN: PDF template file / TH: ไฟล์ PDF template"
+            params:
+              type: object
+              description: "EN: Template metadata. Send as params[...] form fields if using multipart. / TH: ข้อมูล template ส่งเป็น params[...] ใน multipart ได้"
+              properties:
+                dataset_id:
+                  type: string
+                  description: "EN: Dataset ID / TH: รหัส dataset"
+                name:
+                  type: string
+                  description: "EN: Template name / TH: ชื่อ template"
+                view:
+                  type: string
+                  description: "EN: Dataset view / TH: view ของ dataset"
+                version:
+                  type: string
+                  description: "EN: Dataset version / TH: version ของ dataset"
+                positions:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      table_name: { type: string }
+                      column_name: { type: string }
+                      alias: { type: string }
+                      x: { type: number }
+                      y: { type: number }
+              required: [dataset_id, name, view, version, positions]
+          required: [file, params]
+  responses:
+    "200":
+      description: "EN: Template uploaded successfully / TH: อัปโหลด template สำเร็จ"
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                description: "EN: Reporting template ID / TH: รหัส reporting template"
+              message:
+                type: string
+                example: success
+    "400":
+      description: "EN: Missing params/file or invalid PDF / TH: ไม่มี params/file หรือไฟล์ PDF ไม่ถูกต้อง"
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yml"

@@ -2,46 +2,46 @@ type: object
 properties:
   name:
     type: string
-    description: Source name (optional)
+    description: "EN: Source name (optional) / TH: ชื่อแหล่งข้อมูล (ไม่บังคับ)"
   description:
     type: string
     nullable: true
-    description: Source description (optional)
+    description: "EN: Source description (optional) / TH: รายละเอียดแหล่งข้อมูล (ไม่บังคับ)"
   type:
     type: string
     enum: [jdbc]
-    description: Source type (optional)
+    description: "EN: Source type (optional) / TH: ประเภทแหล่งข้อมูล (ไม่บังคับ)"
   is_active:
     type: boolean
-    description: Whether the source is active (optional)
+    description: "EN: Whether the source is active (optional) / TH: ระบุว่าแหล่งข้อมูลเปิดใช้งานอยู่หรือไม่ (ไม่บังคับ)"
   sensitivity:
     type: string
     enum: [public, internal, confidential, restricted]
-    description: Data sensitivity level (optional)
+    description: "EN: Data sensitivity level (optional) / TH: ระดับความอ่อนไหวของข้อมูล (ไม่บังคับ)"
   db_type:
     type: string
     enum: [postgres, mysql]
-    description: Database type (optional)
+    description: "EN: Database type (optional) / TH: ประเภทฐานข้อมูล (ไม่บังคับ)"
   host:
     type: string
-    description: Database host (optional)
+    description: "EN: Database host (optional) / TH: host ของฐานข้อมูล (ไม่บังคับ)"
   port:
     type: integer
     minimum: 1
-    description: Database port (optional)
+    description: "EN: Database port (optional) / TH: port ของฐานข้อมูล (ไม่บังคับ)"
   username:
     type: string
-    description: Database username (optional)
+    description: "EN: Database username (optional) / TH: username ของฐานข้อมูล (ไม่บังคับ)"
   database_name:
     type: string
-    description: Database name (optional)
+    description: "EN: Database name (optional) / TH: ชื่อฐานข้อมูล (ไม่บังคับ)"
   params:
     type: string
     nullable: true
-    description: Additional connection parameters (optional)
+    description: "EN: Additional connection parameters (optional) / TH: parameter เพิ่มเติมสำหรับการเชื่อมต่อ (ไม่บังคับ)"
   is_update_password:
     type: boolean
-    description: Whether to update the password (optional)
+    description: "EN: Whether to update the password (optional) / TH: ระบุว่าต้องการอัปเดต password หรือไม่ (ไม่บังคับ)"
   password:
     type: string
-    description: Database password (optional, required if is_update_password is true)
+    description: "EN: Database password (optional, required if is_update_password is true) / TH: password ของฐานข้อมูล (ไม่บังคับ แต่จำเป็นเมื่อ is_update_password เป็น true)"

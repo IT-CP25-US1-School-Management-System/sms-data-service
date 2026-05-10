@@ -1,5 +1,5 @@
-type: object
-description: Column used for owner-based row filtering. When set, queries are forced to include WHERE {owner_column} = {token_claim_value}.
+﻿type: object
+description: "EN: Column used for owner-based row filtering. When set, queries include WHERE {owner_column} = {token_claim_value}. / TH: คอลัมน์ที่ใช้กรองข้อมูลตาม owner โดย query จะบังคับเงื่อนไข WHERE {owner_column} = {token_claim_value}"
 required:
   - table_name
   - column
@@ -7,10 +7,10 @@ required:
 properties:
   table_name:
     type: string
-    description: The table that contains the owner column
+    description: "EN: The table that contains the owner column / TH: ตารางที่มีคอลัมน์ owner"
   column:
     type: string
-    description: The column name in the table
+    description: "EN: The column name in the table / TH: ชื่อคอลัมน์ในตาราง"
   alias:
     type: string
-    description: Alias for the column (must match a projection alias)
+    description: "EN: Alias for the column (must match a projection alias) / TH: alias ของคอลัมน์ (ต้องตรงกับ projection alias)"

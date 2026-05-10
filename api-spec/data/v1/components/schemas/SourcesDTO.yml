@@ -2,46 +2,46 @@ type: object
 properties:
   name:
     type: string
-    description: Source name
+    description: "EN: Source name / TH: ชื่อแหล่งข้อมูล"
   description:
     type: string
     nullable: true
-    description: Source description (optional)
+    description: "EN: Source description (optional) / TH: รายละเอียดแหล่งข้อมูล (ไม่บังคับ)"
   type:
     type: string
     enum: [jdbc]
-    description: Source type
+    description: "EN: Source type / TH: ประเภทแหล่งข้อมูล"
   is_active:
     type: boolean
-    description: Whether the source is active
+    description: "EN: Whether the source is active / TH: ระบุว่าแหล่งข้อมูลเปิดใช้งานอยู่หรือไม่"
   sensitivity:
     type: string
     enum: [public, internal, confidential, restricted]
-    description: Data sensitivity level
+    description: "EN: Data sensitivity level / TH: ระดับความอ่อนไหวของข้อมูล"
   db_type:
     type: string
     enum: [postgres, mysql]
-    description: Database type
+    description: "EN: Database type / TH: ประเภทฐานข้อมูล"
   host:
     type: string
-    description: Database host
+    description: "EN: Database host / TH: host ของฐานข้อมูล"
   port:
     type: integer
     minimum: 1
-    description: Database port
+    description: "EN: Database port / TH: port ของฐานข้อมูล"
   username:
     type: string
-    description: Database username
+    description: "EN: Database username / TH: username ของฐานข้อมูล"
   password:
     type: string
-    description: Database password
+    description: "EN: Database password / TH: password ของฐานข้อมูล"
   database_name:
     type: string
-    description: Database name
+    description: "EN: Database name / TH: ชื่อฐานข้อมูล"
   params:
     type: string
     nullable: true
-    description: Additional connection parameters (optional)
+    description: "EN: Additional connection parameters (optional) / TH: parameter เพิ่มเติมสำหรับการเชื่อมต่อ (ไม่บังคับ)"
 required:
   - name
   - type

@@ -1,5 +1,5 @@
-type: object
-description: Runtime serving configuration (query plan only).
+﻿type: object
+description: "EN: Runtime serving configuration (query plan only) / TH: configuration สำหรับ serving ตอน runtime (เฉพาะ query plan)"
 required:
   - key
   - default_view
@@ -15,4 +15,4 @@ properties:
     $ref: "./OwnerColumn.yml"
   token_claim:
     type: string
-    description: JWT claim key whose value is used for owner-based row filtering. Required when owner_column is set.
+    description: "EN: JWT claim key whose value is used for owner-based row filtering. Required when owner_column is set. / TH: key ของ JWT claim ที่ใช้กรองข้อมูลตาม owner และจำเป็นเมื่อกำหนด owner_column"

@@ -1,60 +1,60 @@
 # /datasets/{id}:
 get:
   tags: [Catalog]
-  summary: Get dataset detail
+  summary: "EN: Get dataset detail / TH: ดูรายละเอียด dataset"
   parameters:
     - $ref: "../../components/parameters/DatasetId.yml"
   responses:
     "200":
-      description: Dataset
+      description: "EN: Dataset detail / TH: รายละเอียด dataset"
       content:
         application/json:
           schema:
             $ref: "../../components/schemas/DatasetDetail.yml"
     "401":
-      description: Unauthorized
+      description: "EN: Unauthorized / TH: ไม่ได้รับอนุญาต"
       content:
         application/json:
           schema:
             $ref: "../../components/schemas/ErrorResponse.yml"
     "404":
-      description: Not Found
+      description: "EN: Not found / TH: ไม่พบข้อมูล"
       content:
         application/json:
           schema:
             $ref: "../../components/schemas/ErrorResponse.yml"
     "500":
-      description: Internal Server Error
+      description: "EN: Internal server error / TH: ระบบเกิดข้อผิดพลาด"
       content:
         application/json:
           schema:
             $ref: "../../components/schemas/ErrorResponse.yml"
 delete:
   tags: [Catalog]
-  summary: Delete dataset by id
+  summary: "EN: Delete dataset by ID / TH: ลบ dataset ตาม ID"
   parameters:
     - $ref: "../../components/parameters/DatasetId.yml"
   responses:
     "200":
-      description: Dataset
+      description: "EN: Dataset deleted successfully / TH: ลบ dataset สำเร็จ"
       content:
         application/json:
           schema:
             $ref: "../../components/schemas/Success.yml"
     "401":
-      description: Unauthorized
+      description: "EN: Unauthorized / TH: ไม่ได้รับอนุญาต"
       content:
         application/json:
           schema:
             $ref: "../../components/schemas/ErrorResponse.yml"
     "404":
-      description: Not Found
+      description: "EN: Not found / TH: ไม่พบข้อมูล"
       content:
         application/json:
           schema:
             $ref: "../../components/schemas/ErrorResponse.yml"
     "500":
-      description: Internal Server Error
+      description: "EN: Internal server error / TH: ระบบเกิดข้อผิดพลาด"
       content:
         application/json:
           schema:

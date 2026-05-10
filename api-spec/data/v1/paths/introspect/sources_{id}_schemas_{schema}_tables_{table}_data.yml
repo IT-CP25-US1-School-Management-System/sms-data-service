@@ -1,0 +1,125 @@
+# /introspect/sources/{id}/schemas/{schema}/tables/{table}/data
+get:
+  tags: [Introspection]
+  summary: "EN: List rows from a physical table / TH: ดึงรายการข้อมูลจากตารางจริง"
+  parameters:
+    - name: id
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+      description: "EN: Source ID / TH: รหัสแหล่งข้อมูล"
+    - name: schema
+      in: path
+      required: true
+      schema: { type: string }
+      description: "EN: Schema name / TH: ชื่อ schema"
+    - name: table
+      in: path
+      required: true
+      schema: { type: string }
+      description: "EN: Table name / TH: ชื่อตาราง"
+    - name: page
+      in: query
+      schema: { type: integer, minimum: 1, default: 1 }
+      description: "EN: Page number / TH: เลขหน้า"
+    - name: per_page
+      in: query
+      schema: { type: integer, minimum: 1, maximum: 100, default: 10 }
+      description: "EN: Items per page / TH: จำนวนรายการต่อหน้า"
+    - name: where
+      in: query
+      schema: { type: string }
+      description: "EN: JSON filter groups / TH: เงื่อนไขกรองแบบ JSON"
+    - name: where_logical_operator
+      in: query
+      schema:
+        type: string
+        enum: [AND, OR, and, or]
+      description: "EN: Logical operator between filter groups / TH: ตัวเชื่อมเงื่อนไขระหว่างกลุ่ม"
+    - name: sort_by
+      in: query
+      schema: { type: string }
+      description: "EN: Column to sort by / TH: คอลัมน์ที่ใช้เรียงลำดับ"
+    - name: sort_order
+      in: query
+      schema:
+        type: string
+        enum: [ASC, DESC, asc, desc]
+      description: "EN: Sort order / TH: ทิศทางการเรียงลำดับ"
+  responses:
+    "200":
+      description: "EN: Table rows with pagination / TH: ข้อมูลตารางพร้อม pagination"
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              data:
+                type: array
+                items:
+                  type: object
+                  additionalProperties: true
+              page: { type: integer }
+              per_page: { type: integer }
+              total_pages: { type: integer }
+              total_rows: { type: integer }
+    "400":
+      description: "EN: Bad request / TH: คำขอไม่ถูกต้อง"
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yml"
+    "404":
+      description: "EN: Source, schema, or table not found / TH: ไม่พบแหล่งข้อมูล, schema, หรือตาราง"
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yml"
+
+post:
+  tags: [Introspection]
+  summary: "EN: Create a row in a physical table / TH: เพิ่มข้อมูลในตารางจริง"
+  parameters:
+    - name: id
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+      description: "EN: Source ID / TH: รหัสแหล่งข้อมูล"
+    - name: schema
+      in: path
+      required: true
+      schema: { type: string }
+      description: "EN: Schema name / TH: ชื่อ schema"
+    - name: table
+      in: path
+      required: true
+      schema: { type: string }
+      description: "EN: Table name / TH: ชื่อตาราง"
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          additionalProperties: true
+          description: "EN: Row data / TH: ข้อมูลแถวที่ต้องการเพิ่ม"
+  responses:
+    "201":
+      description: "EN: Row created successfully / TH: เพิ่มข้อมูลสำเร็จ"
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+                example: success
+              data:
+                type: object
+                additionalProperties: true
+    "400":
+      description: "EN: Bad request / TH: คำขอไม่ถูกต้อง"
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yml"

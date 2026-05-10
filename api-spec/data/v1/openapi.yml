@@ -1,15 +1,19 @@
 openapi: 3.0.3
 info:
-  title: Data Management Service (DMS) API — v1 (query-only)
-  version: "1 .0.0"
+  title: Data Management Service (DMS) API - v1
+  version: "1.0.0"
   description: |
-    Central DMS focused on Catalog, Introspection, Contracts
-    Serving (dynamic datasets + CRUD/Query/Export).
+    EN: Central DMS API for source introspection, dataset catalog, dataset version contracts,
+    serving dynamic dataset data, direct table data CRUD, and reporting import/export jobs.
+
+    TH: API กลางของ DMS สำหรับตรวจสอบแหล่งข้อมูล, จัดการ catalog ของ dataset,
+    จัดการ contract/version ของ dataset, ให้บริการข้อมูลแบบ dynamic, CRUD ข้อมูลตารางโดยตรง,
+    และงาน import/export report.
 servers:
   - url: https://dms.company.com/api/v1
-    description: Production
+    description: "EN: Production / TH: สภาพแวดล้อม production"
   - url: http://localhost:3200/api/v1
-    description: Local Dev
+    description: "EN: Local Dev / TH: สภาพแวดล้อมพัฒนาในเครื่อง"
 security:
   - bearerAuth: []
 tags:
@@ -20,24 +24,41 @@ tags:
   - name: Serving
   - name: Reporting
 paths:
-  /health:
+  /health-check:
     get:
       tags: [Health]
-      summary: Health probe
+      summary: "EN: Health probe / TH: ตรวจสอบสถานะระบบ"
       responses:
-        "200": { description: OK }
+        "200":
+          description: "EN: OK / TH: ระบบพร้อมใช้งาน"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
 
   # -------------------- Introspection (physical metadata) --------------------
   /introspect/sources:
     $ref: paths/introspect/sources.yml
   /introspect/sources/{id}:
     $ref: paths/introspect/sources_{id}.yml
+  /introspect/sources/{id}/activate:
+    $ref: paths/introspect/sources_{id}_activate.yml
+  /introspect/sources/{id}/deactivate:
+    $ref: paths/introspect/sources_{id}_deactivate.yml
   /introspect/schemas:
     $ref: paths/introspect/schemas.yml
   /introspect/tables:
     $ref: paths/introspect/tables.yml
   /introspect/columns:
     $ref: paths/introspect/columns.yml
+  /introspect/sources/{id}/schemas/{schema}/tables/{table}/data:
+    $ref: paths/introspect/sources_{id}_schemas_{schema}_tables_{table}_data.yml
+  /introspect/sources/{id}/schemas/{schema}/tables/{table}/data/key/{key}:
+    $ref: paths/introspect/sources_{id}_schemas_{schema}_tables_{table}_data_key_{key}.yml
 
   # -------------------- Catalog --------------------
   /datasets:
@@ -51,36 +72,29 @@ paths:
   /datasets/{id}/versions/{version}:
     $ref: paths/contracts/datasets_{id}_versions_{version}.yml
 
-  # -------------------- Serving (dynamic + CRUD/Query/Export) --------------------
+  # -------------------- Serving (dynamic dataset data + CRUD) --------------------
   /datasets/{id}/versions/{version}/data:
     $ref: paths/serving/datasets_{id}_versions_{version}_data.yml
   /datasets/{id}/versions/{version}/data/key/{key}:
     $ref: paths/serving/datasets_{id}_versions_{version}_data_key_{key}.yml
 
-  # -------------------- Reporting (export, import, reporting) --------------------
+  # -------------------- Reporting (export, import, templates) --------------------
   /reporting/export/job:
     $ref: paths/reporting/reporting_export_job.yml
-  /reporting/export/job/{job_id}/status:
-    $ref: paths/reporting/reporting_export_job_{job_id}_status.yml
-  /reporting/export/job/{job_id}/result:
-    $ref: paths/reporting/reporting_export_job_{job_id}_result.yml
+  /reporting/export/job/{job_id}:
+    $ref: paths/reporting/reporting_export_job_{job_id}.yml
+  /reporting/import/template:
+    $ref: paths/reporting/reporting_import_template.yml
   /reporting/import/job:
     $ref: paths/reporting/reporting_import_job.yml
-  /reporting/import/job/{job_id}/status:
-    $ref: paths/reporting/reporting_import_job_{job_id}_status.yml
-  /reporting/import/job/{job_id}/result:
-    $ref: paths/reporting/reporting_import_job_{job_id}_result.yml
-
-  /reporting/import/pdf/template:
-    $ref: paths/reporting/reporting_import_pdf_template.yml
-  /reporting/import/pdf/template/{template_id}:
-    $ref: paths/reporting/reporting_import_pdf_template_{template_id}.yml
-  /reporting/export/pdf/template/job:
-    $ref: paths/reporting/reporting_export_pdf_template_job.yml
-  /reporting/export/pdf/template/job/{job_id}/status:
-    $ref: paths/reporting/reporting_export_pdf_template_job_{job_id}_status.yml
-  /reporting/export/pdf/template/job/{job_id}/result:
-    $ref: paths/reporting/reporting_export_pdf_template_job_{job_id}_result.yml
+  /reporting/import/job/{job_id}:
+    $ref: paths/reporting/reporting_import_job_{job_id}.yml
+  /reporting/templates/upload:
+    $ref: paths/reporting/reporting_templates_upload.yml
+  /reporting/templates/{reporting_template_id}/export/key/{key}:
+    $ref: paths/reporting/reporting_templates_{reporting_template_id}_export_key_{key}.yml
+  /reporting/templates/export/job/{job_id}:
+    $ref: paths/reporting/reporting_templates_export_job_{job_id}.yml
 
 components:
   securitySchemes:

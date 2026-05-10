@@ -1,5 +1,5 @@
-type: object
-description: Boolean expression for joins/where (eq/and/or only)
+﻿type: object
+description: "EN: Boolean expression for joins/where (eq/and/or only) / TH: expression แบบ boolean สำหรับ join/where (รองรับเฉพาะ eq/and/or)"
 properties:
   eq:
     type: array

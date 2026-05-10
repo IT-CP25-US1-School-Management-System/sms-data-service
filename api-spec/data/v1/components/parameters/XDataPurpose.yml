@@ -1,6 +1,6 @@
 name: X-Data-Purpose
 in: header
-description: Purpose binding for personal data (optional in this profile)
+description: "EN: Purpose binding for personal data (optional in this profile) / TH: วัตถุประสงค์ในการใช้ข้อมูลส่วนบุคคล (ไม่บังคับใน profile นี้)"
 required: false
 schema:  
   type: string

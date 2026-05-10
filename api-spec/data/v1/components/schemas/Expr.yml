@@ -1,9 +1,9 @@
-type: object
-description: Column reference or function call
+﻿type: object
+description: "EN: Column reference or function call / TH: การอ้างอิงคอลัมน์หรือการเรียก function"
 properties:
   col:
     type: string
-    description: alias.column
+    description: "EN: alias.column / TH: รูปแบบ alias.column"
   func:
     type: string
     enum:

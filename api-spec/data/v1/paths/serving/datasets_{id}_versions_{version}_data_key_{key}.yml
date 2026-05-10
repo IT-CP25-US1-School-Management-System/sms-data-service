@@ -1,34 +1,34 @@
 # /datasets/{id}/versions/{version}/data/key/{key}
 get:
   tags: [Serving]
-  summary: Get a row by key from dataset version (policy-aware)
+  summary: "EN: Get a row by key from dataset version (policy-aware) / TH: ดึงข้อมูลแถวด้วย key จาก version ของ dataset ตาม policy"
   parameters:
     - name: id
       in: path
       required: true
       schema:
         type: string
-      description: Dataset ID
+      description: "EN: Dataset ID / TH: รหัส dataset"
     - name: version
       in: path
       required: true
       schema:
         type: string
-      description: Dataset version
+      description: "EN: Dataset version / TH: version ของ dataset"
     - name: key
       in: path
       required: true
       schema:
         type: string
-      description: Row key
+      description: "EN: Row key / TH: key ของแถวข้อมูล"
     - name: view
       in: query
       schema:
         type: string
-      description: View name to use for data access
+      description: "EN: View name to use for data access / TH: ชื่อ view ที่ใช้เข้าถึงข้อมูล"
   responses:
     "200":
-      description: Row data
+      description: "EN: Row data / TH: ข้อมูลแถว"
       content:
         application/json:
           schema:
@@ -38,25 +38,25 @@ get:
                 type: object
                 additionalProperties: true
     "400":
-      description: Bad Request
+      description: "EN: Bad request / TH: คำขอไม่ถูกต้อง"
       content:
         application/json:
           schema:
             $ref: "../../components/schemas/ErrorResponse.yml"
     "401":
-      description: Unauthorized
+      description: "EN: Unauthorized / TH: ไม่ได้รับอนุญาต"
       content:
         application/json:
           schema:
             $ref: "../../components/schemas/ErrorResponse.yml"
     "403":
-      description: Forbidden
+      description: "EN: Forbidden / TH: ไม่มีสิทธิ์เข้าถึง"
       content:
         application/json:
           schema:
             $ref: "../../components/schemas/ErrorResponse.yml"
     "404":
-      description: Row, dataset, or version not found
+      description: "EN: Row, dataset, or version not found / TH: ไม่พบข้อมูลแถว dataset หรือ version"
       content:
         application/json:
           schema:
@@ -64,26 +64,26 @@ get:
 
 put:
   tags: [Serving]
-  summary: Update a row by key (replace all fields)
+  summary: "EN: Update a row by key (replace all fields) / TH: แก้ไขข้อมูลแถวด้วย key"
   parameters:
     - name: id
       in: path
       required: true
       schema:
         type: string
-      description: Dataset ID
+      description: "EN: Dataset ID / TH: รหัส dataset"
     - name: version
       in: path
       required: true
       schema:
         type: string
-      description: Dataset version
+      description: "EN: Dataset version / TH: version ของ dataset"
     - name: key
       in: path
       required: true
       schema:
         type: string
-      description: Row key
+      description: "EN: Row key / TH: key ของแถวข้อมูล"
   requestBody:
     required: true
     content:
@@ -91,10 +91,10 @@ put:
         schema:
           type: object
           additionalProperties: true
-          description: Complete row data for replacement
+          description: "EN: Complete row data for replacement / TH: ข้อมูลแถวทั้งหมดสำหรับแทนที่"
   responses:
     "200":
-      description: Row updated successfully
+      description: "EN: Row updated successfully / TH: แก้ไขข้อมูลสำเร็จ"
       content:
         application/json:
           schema:
@@ -107,25 +107,25 @@ put:
                 type: object
                 additionalProperties: true
     "400":
-      description: Bad Request
+      description: "EN: Bad request / TH: คำขอไม่ถูกต้อง"
       content:
         application/json:
           schema:
             $ref: "../../components/schemas/ErrorResponse.yml"
     "401":
-      description: Unauthorized
+      description: "EN: Unauthorized / TH: ไม่ได้รับอนุญาต"
       content:
         application/json:
           schema:
             $ref: "../../components/schemas/ErrorResponse.yml"
     "403":
-      description: Forbidden
+      description: "EN: Forbidden / TH: ไม่มีสิทธิ์เข้าถึง"
       content:
         application/json:
           schema:
             $ref: "../../components/schemas/ErrorResponse.yml"
     "404":
-      description: Row, dataset, or version not found
+      description: "EN: Row, dataset, or version not found / TH: ไม่พบข้อมูลแถว dataset หรือ version"
       content:
         application/json:
           schema:
@@ -133,29 +133,29 @@ put:
 
 delete:
   tags: [Serving]
-  summary: Delete a row by key (soft delete)
+  summary: "EN: Delete a row by key (soft delete) / TH: ลบข้อมูลแถวด้วย key"
   parameters:
     - name: id
       in: path
       required: true
       schema:
         type: string
-      description: Dataset ID
+      description: "EN: Dataset ID / TH: รหัส dataset"
     - name: version
       in: path
       required: true
       schema:
         type: string
-      description: Dataset version
+      description: "EN: Dataset version / TH: version ของ dataset"
     - name: key
       in: path
       required: true
       schema:
         type: string
-      description: Row key
+      description: "EN: Row key / TH: key ของแถวข้อมูล"
   responses:
     "200":
-      description: Row deleted successfully
+      description: "EN: Row deleted successfully / TH: ลบข้อมูลสำเร็จ"
       content:
         application/json:
           schema:
@@ -165,25 +165,25 @@ delete:
                 type: string
                 example: "success"
     "400":
-      description: Bad Request
+      description: "EN: Bad request / TH: คำขอไม่ถูกต้อง"
       content:
         application/json:
           schema:
             $ref: "../../components/schemas/ErrorResponse.yml"
     "401":
-      description: Unauthorized
+      description: "EN: Unauthorized / TH: ไม่ได้รับอนุญาต"
       content:
         application/json:
           schema:
             $ref: "../../components/schemas/ErrorResponse.yml"
     "403":
-      description: Forbidden
+      description: "EN: Forbidden / TH: ไม่มีสิทธิ์เข้าถึง"
       content:
         application/json:
           schema:
             $ref: "../../components/schemas/ErrorResponse.yml"
     "404":
-      description: Row, dataset, or version not found
+      description: "EN: Row, dataset, or version not found / TH: ไม่พบข้อมูลแถว dataset หรือ version"
       content:
         application/json:
           schema:

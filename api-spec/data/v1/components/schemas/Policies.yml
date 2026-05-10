@@ -1,21 +1,21 @@
-type: object
+﻿type: object
 properties:
   runtime:
     type: object
     properties:
       default_view:
         type: string
-        description: Default view name
+        description: "EN: Default view name / TH: ชื่อ view เริ่มต้น"
       key_field:
         type: string
-        description: Primary key field
+        description: "EN: Primary key field / TH: field ที่เป็น primary key"
       query:
         $ref: "QueryPlan.yml"
       owner_column:
         $ref: "OwnerColumn.yml"
       token_claim:
         type: string
-        description: JWT claim key whose value is used for owner filtering (e.g. "sub", "preferred_username"). Required when owner_column is set.
+        description: "EN: JWT claim key whose value is used for owner filtering (e.g. sub, preferred_username). Required when owner_column is set. / TH: key ของ JWT claim ที่ใช้กรองข้อมูลตาม owner เช่น sub หรือ preferred_username และจำเป็นเมื่อกำหนด owner_column"
     required:
       - default_view
       - key_field
@@ -29,62 +29,62 @@ properties:
         properties:
           table_name:
             type: string
-            description: Table name
+            description: "EN: Table name / TH: ชื่อตาราง"
           columns:
             type: array
             items:
               type: string
             minItems: 1
-            description: Column names
+            description: "EN: Column names / TH: ชื่อคอลัมน์"
         required:
           - table_name
           - columns
-    description: View definitions
+    description: "EN: View definitions / TH: รายละเอียด view"
   filters:
     type: array
     items:
       type: string
-    description: Available filters (optional)
+    description: "EN: Available filters (optional) / TH: filter ที่ใช้งานได้ (ไม่บังคับ)"
   write:
     type: object
     properties:
       key_field:
         type: string
-        description: Key field for write operations
+        description: "EN: Key field for write operations / TH: field key สำหรับการเขียนข้อมูล"
       allow_edit:
         type: array
         items:
           type: string
         minItems: 1
-        description: Editable fields
+        description: "EN: Editable fields / TH: field ที่แก้ไขได้"
       query:
         $ref: "QueryPlan.yml"
       owner_column:
         $ref: "OwnerColumn.yml"
       token_claim:
         type: string
-        description: JWT claim key whose value is used for owner filtering on write. Required when owner_column is set.
+        description: "EN: JWT claim key whose value is used for owner filtering on write. Required when owner_column is set. / TH: key ของ JWT claim ที่ใช้กรอง owner ตอนเขียนข้อมูล และจำเป็นเมื่อกำหนด owner_column"
     required:
       - key_field
       - allow_edit
       - query
-    description: Write policy (optional)
+    description: "EN: Write policy (optional) / TH: policy สำหรับเขียนข้อมูล (ไม่บังคับ)"
   delete:
     type: object
     properties:
       key_field:
         type: string
-        description: Key field for delete operations
+        description: "EN: Key field for delete operations / TH: field key สำหรับการลบข้อมูล"
       query:
         $ref: "QueryPlan.yml"
       owner_column:
         $ref: "OwnerColumn.yml"
       token_claim:
         type: string
-        description: JWT claim key whose value is used for owner filtering on delete. Required when owner_column is set.
+        description: "EN: JWT claim key whose value is used for owner filtering on delete. Required when owner_column is set. / TH: key ของ JWT claim ที่ใช้กรอง owner ตอนลบข้อมูล และจำเป็นเมื่อกำหนด owner_column"
     required:
       - key_field
       - query
-    description: Delete policy (optional)
+    description: "EN: Delete policy (optional) / TH: policy สำหรับลบข้อมูล (ไม่บังคับ)"
 required:
   - views

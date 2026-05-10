@@ -1,8 +1,8 @@
-type: object
+﻿type: object
 properties:
   status:
     type: string
     enum: [active, preview, deprecated]
-    description: New status for the dataset version
+    description: "EN: New status for the dataset version / TH: สถานะใหม่ของ version dataset"
 required:
   - status

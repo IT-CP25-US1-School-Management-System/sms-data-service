@@ -1,13 +1,13 @@
-type: object
+﻿type: object
 properties:
   source_id:
     type: string
     format: uuid
-    description: Source ID (UUID)
+    description: "EN: Source ID (UUID) / TH: รหัสแหล่งข้อมูล (UUID)"
   status:
     type: string
     enum: [active, preview, deprecated]
-    description: Version status
+    description: "EN: Version status / TH: สถานะของ version"
   schema:
     $ref: "Schema.yml"
   access_policies:
@@ -15,7 +15,7 @@ properties:
     items:
       $ref: "AccessPolicy.yml"
     minItems: 1
-    description: Access policies for this version
+    description: "EN: Access policies for this version / TH: policy การเข้าถึงสำหรับ version นี้"
   policies:
     $ref: "Policies.yml"
 required:

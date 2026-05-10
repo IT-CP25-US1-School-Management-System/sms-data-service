@@ -3,18 +3,19 @@ properties:
   job_id:
     type: string
     format: uuid
-  dataset_id:
+  reporting_template_id:
     type: string
-  version:
+    format: uuid
+  resource_id:
     type: string
-  format:
-    type: string
-    enum: [csv, xlsx]
   status:
     type: string
     enum: [pending, in_progress, completed, failed]
-  resource_id:
+  original_filename:
     type: string
+  file_size:
+    type: integer
+    format: int64
   created_at:
     type: string
     format: date-time

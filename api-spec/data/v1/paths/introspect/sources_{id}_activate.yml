@@ -1,0 +1,35 @@
+# /introspect/sources/{id}/activate
+patch:
+  tags: [Introspection]
+  summary: "EN: Activate a data source / TH: เปิดใช้งานแหล่งข้อมูล"
+  parameters:
+    - name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: "EN: Source ID / TH: รหัสแหล่งข้อมูล"
+  responses:
+    "200":
+      description: "EN: Source activated successfully / TH: เปิดใช้งานแหล่งข้อมูลสำเร็จ"
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+                example: success
+    "400":
+      description: "EN: Invalid source ID / TH: รหัสแหล่งข้อมูลไม่ถูกต้อง"
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yml"
+    "404":
+      description: "EN: Source not found / TH: ไม่พบแหล่งข้อมูล"
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yml"

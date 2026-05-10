@@ -1,26 +1,26 @@
-type: object
+﻿type: object
 properties:
   id:
     type: string
     format: uuid
     nullable: true
-    description: Table ID
+    description: "EN: Table ID / TH: รหัสตาราง"
   sources_id:
     type: string
     format: uuid
     nullable: true
-    description: Source ID
+    description: "EN: Source ID / TH: รหัสแหล่งข้อมูล"
   schema:
     type: string
-    description: Schema name
+    description: "EN: Schema name / TH: ชื่อ schema"
   table_name:
     type: string
-    description: Table name
+    description: "EN: Table name / TH: ชื่อตาราง"
   created_at:
     type: string
     format: date-time
     nullable: true
-    description: Creation timestamp
+    description: "EN: Creation timestamp / TH: เวลาที่สร้างข้อมูล"
 required:
   - schema
   - table_name

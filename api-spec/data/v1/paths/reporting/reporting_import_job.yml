@@ -1,7 +1,9 @@
+# /reporting/import/job
 post:
   tags: [Reporting]
-  summary: Import a report
+  summary: "EN: Create dataset import job / TH: สร้างงาน import dataset"
   requestBody:
+    required: true
     content:
       multipart/form-data:
         schema:
@@ -10,16 +12,21 @@ post:
             file:
               type: string
               format: binary
-              description: The report file to be imported (e.g., CSV, Excel)
+              description: "EN: CSV/XLSX file to import / TH: ไฟล์ CSV/XLSX ที่ต้องการ import"
             dataset_id:
               type: string
-              description: The ID of the dataset to import the report into
-          required:
-            - file
-            - dataset_id
+              description: "EN: Dataset ID / TH: รหัส dataset"
+            version:
+              type: string
+              description: "EN: Dataset version / TH: version ของ dataset"
+            format:
+              type: string
+              enum: [csv, xlsx]
+              description: "EN: File format / TH: รูปแบบไฟล์"
+          required: [file, dataset_id, version, format]
   responses:
-    "202":
-      description: Report import job accepted
+    "200":
+      description: "EN: Import job created / TH: สร้างงาน import สำเร็จ"
       content:
         application/json:
           schema:
@@ -27,9 +34,10 @@ post:
             properties:
               job_id:
                 type: string
-                description: The ID of the import job
+                format: uuid
+                description: "EN: Import job ID / TH: รหัสงาน import"
     "400":
-      description: Bad request (e.g., missing parameters, invalid file format)
+      description: "EN: Bad request / TH: คำขอไม่ถูกต้อง"
       content:
         application/json:
           schema:

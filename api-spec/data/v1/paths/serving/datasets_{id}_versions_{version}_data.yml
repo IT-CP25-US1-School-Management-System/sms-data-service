@@ -1,27 +1,27 @@
 # /datasets/{id}/versions/{version}/data
 get:
   tags: [Serving]
-  summary: List rows from a dataset version (policy-aware, dynamic)
+  summary: "EN: List rows from a dataset version (policy-aware, dynamic) / TH: ดูรายการข้อมูลจาก version ของ dataset ตาม policy"
   parameters:
     - name: id
       in: path
       required: true
       schema:
         type: string
-      description: Dataset ID
+      description: "EN: Dataset ID / TH: รหัส dataset"
     - name: version
       in: path
       required: true
       schema:
         type: string
-      description: Dataset version
+      description: "EN: Dataset version / TH: version ของ dataset"
     - name: page
       in: query
       schema:
         type: integer
         minimum: 1
         default: 1
-      description: Page number for pagination
+      description: "EN: Page number for pagination / TH: เลขหน้าสำหรับแบ่งหน้า"
     - name: per_page
       in: query
       schema:
@@ -29,39 +29,46 @@ get:
         minimum: 1
         maximum: 100
         default: 10
-      description: Number of items per page
+      description: "EN: Number of items per page / TH: จำนวนรายการต่อหน้า"
     - name: view
       in: query
       schema:
         type: string
-      description: View name to use for data access
+      description: "EN: View name to use for data access / TH: ชื่อ view ที่ใช้เข้าถึงข้อมูล"
     - name: where
       in: query
       schema:
         type: string
-      description: JSON string for filter conditions (array of filter groups)
+      description: "EN: JSON string for filter conditions (array of filter groups) / TH: เงื่อนไขกรองรูปแบบ JSON เป็นกลุ่ม filter"
+      examples:
+        single_condition:
+          summary: "EN: Filter by one field / TH: กรองด้วย field เดียว"
+          value: '[[{"table_name":"students","field":"status","operator":"=","value":"active"}]]'
+        multiple_groups:
+          summary: "EN: Multiple filter groups / TH: filter หลายกลุ่ม"
+          value: '[[{"table_name":"students","field":"grade","operator":"IN","value":["M1","M2"]}],[{"table_name":"students","field":"name","operator":"LIKE","value":"%somchai%"}]]'
     - name: where_logical_operator
       in: query
       schema:
         type: string
         enum: [AND, OR, and, or]
         default: AND
-      description: Logical operator between filter groups
+      description: "EN: Logical operator between filter groups / TH: ตัวเชื่อมเงื่อนไขระหว่างกลุ่ม filter"
     - name: sort_by
       in: query
       schema:
         type: string
-      description: Column name to sort by
+      description: "EN: Column name to sort by / TH: ชื่อคอลัมน์ที่ใช้เรียงลำดับ"
     - name: sort_order
       in: query
       schema:
         type: string
         enum: [ASC, DESC, asc, desc]
         default: ASC
-      description: Sort order
+      description: "EN: Sort order / TH: ทิศทางการเรียงลำดับ"
   responses:
     "200":
-      description: Dataset rows with pagination
+      description: "EN: Dataset rows with pagination / TH: ข้อมูล dataset พร้อม pagination"
       content:
         application/json:
           schema:
@@ -81,25 +88,25 @@ get:
               total_rows:
                 type: integer
     "400":
-      description: Bad Request
+      description: "EN: Bad request / TH: คำขอไม่ถูกต้อง"
       content:
         application/json:
           schema:
             $ref: "../../components/schemas/ErrorResponse.yml"
     "401":
-      description: Unauthorized
+      description: "EN: Unauthorized / TH: ไม่ได้รับอนุญาต"
       content:
         application/json:
           schema:
             $ref: "../../components/schemas/ErrorResponse.yml"
     "403":
-      description: Forbidden
+      description: "EN: Forbidden / TH: ไม่มีสิทธิ์เข้าถึง"
       content:
         application/json:
           schema:
             $ref: "../../components/schemas/ErrorResponse.yml"
     "404":
-      description: Dataset or version not found
+      description: "EN: Dataset or version not found / TH: ไม่พบ dataset หรือ version"
       content:
         application/json:
           schema:
@@ -107,20 +114,20 @@ get:
 
 post:
   tags: [Serving]
-  summary: Create a new row in dataset version
+  summary: "EN: Create a new row in dataset version / TH: เพิ่มข้อมูลใหม่ใน version ของ dataset"
   parameters:
     - name: id
       in: path
       required: true
       schema:
         type: string
-      description: Dataset ID
+      description: "EN: Dataset ID / TH: รหัส dataset"
     - name: version
       in: path
       required: true
       schema:
         type: string
-      description: Dataset version
+      description: "EN: Dataset version / TH: version ของ dataset"
   requestBody:
     required: true
     content:
@@ -128,10 +135,10 @@ post:
         schema:
           type: object
           additionalProperties: true
-          description: Row data to be created
+          description: "EN: Row data to be created / TH: ข้อมูลแถวที่ต้องการเพิ่ม"
   responses:
     "201":
-      description: Row created successfully
+      description: "EN: Row created successfully / TH: เพิ่มข้อมูลสำเร็จ"
       content:
         application/json:
           schema:
@@ -144,31 +151,31 @@ post:
                 type: object
                 additionalProperties: true
     "400":
-      description: Bad Request
+      description: "EN: Bad request / TH: คำขอไม่ถูกต้อง"
       content:
         application/json:
           schema:
             $ref: "../../components/schemas/ErrorResponse.yml"
     "401":
-      description: Unauthorized
+      description: "EN: Unauthorized / TH: ไม่ได้รับอนุญาต"
       content:
         application/json:
           schema:
             $ref: "../../components/schemas/ErrorResponse.yml"
     "403":
-      description: Forbidden
+      description: "EN: Forbidden / TH: ไม่มีสิทธิ์เข้าถึง"
       content:
         application/json:
           schema:
             $ref: "../../components/schemas/ErrorResponse.yml"
     "404":
-      description: Dataset or version not found
+      description: "EN: Dataset or version not found / TH: ไม่พบ dataset หรือ version"
       content:
         application/json:
           schema:
             $ref: "../../components/schemas/ErrorResponse.yml"
     "409":
-      description: Conflict - duplicate key or constraint violation
+      description: "EN: Conflict - duplicate key or constraint violation / TH: ข้อมูลซ้ำหรือผิด constraint"
       content:
         application/json:
           schema:

@@ -5,4 +5,4 @@ schema:
   enum:
     - asc
     - desc
-  description: "Sort order: 'asc' for ascending, 'desc' for descending"
+  description: "EN: Sort order: 'asc' for ascending, 'desc' for descending / TH: ทิศทางการเรียงลำดับ: 'asc' จากน้อยไปมาก, 'desc' จากมากไปน้อย"

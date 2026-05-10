@@ -1,7 +1,7 @@
 # /datasets:
 get:
   tags: [Catalog]
-  summary: Search datasets
+  summary: "EN: Search datasets / TH: ค้นหา dataset"
   parameters:
     - $ref: "../../components/parameters/SearchWord.yml"
     - $ref: "../../components/parameters/Domain.yml"
@@ -14,7 +14,7 @@ get:
     - $ref: "../../components/parameters/SortOrder.yml"
   responses:
     "200":
-      description: List of datasets
+      description: "EN: List of datasets / TH: รายการ dataset"
       content:
         application/json:
           schema:
@@ -33,13 +33,13 @@ get:
               total_rows:
                 type: integer
     "400":
-      description: BadRequest,
+      description: "EN: Bad request / TH: คำขอไม่ถูกต้อง"
       content:
         application/json:
           schema:
             $ref: "../../components/schemas/ErrorResponse.yml"
     "500":
-      description: InternalServerError,
+      description: "EN: Internal server error / TH: ระบบเกิดข้อผิดพลาด"
       content:
         application/json:
           schema:
@@ -47,29 +47,29 @@ get:
 
 post:
   tags: [Catalog]
-  summary: New dataset and Update dataset
+  summary: "EN: Create or update a dataset / TH: สร้างหรือแก้ไข dataset"
   requestBody:
     required: true
-    description: dataset id must contain only lowercase english letters, underscore, and hyphen without spaces
+    description: "EN: Dataset ID must contain only lowercase English letters, underscore, and hyphen without spaces / TH: รหัส dataset ต้องมีเฉพาะตัวอักษรอังกฤษพิมพ์เล็ก underscore และ hyphen โดยไม่มีช่องว่าง"
     content:
       application/json:
         schema:
           $ref: "../../components/schemas/DatasetUpsert.yml"
   responses:
     "200":
-      description: Created
+      description: "EN: Created or updated successfully / TH: สร้างหรือแก้ไขสำเร็จ"
       content:
         application/json:
           schema:
             $ref: "../../components/schemas/Success.yml"
     "400":
-      description: BadRequest,
+      description: "EN: Bad request / TH: คำขอไม่ถูกต้อง"
       content:
         application/json:
           schema:
             $ref: "../../components/schemas/ErrorResponse.yml"
     "500":
-      description: InternalServerError,
+      description: "EN: Internal server error / TH: ระบบเกิดข้อผิดพลาด"
       content:
         application/json:
           schema:

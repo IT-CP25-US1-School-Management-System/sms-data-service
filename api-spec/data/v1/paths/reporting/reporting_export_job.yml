@@ -1,14 +1,16 @@
+# /reporting/export/job
 post:
   tags: [Reporting]
-  summary: Export a dataset to object storage (csv/xlxs)
+  summary: "EN: Create dataset export job / TH: สร้างงาน export dataset"
   requestBody:
     required: true
     content:
       application/json:
-        schema: { $ref: "../../components/schemas/ExportJobCreate.yml" }
+        schema:
+          $ref: "../../components/schemas/ExportJobCreate.yml"
   responses:
-    "202":
-      description: Accepted
+    "200":
+      description: "EN: Export job created / TH: สร้างงาน export สำเร็จ"
       content:
         application/json:
           schema:
@@ -16,4 +18,11 @@ post:
             properties:
               job_id:
                 type: string
-                description: The ID of the export job
+                format: uuid
+                description: "EN: Export job ID / TH: รหัสงาน export"
+    "400":
+      description: "EN: Validation error / TH: ข้อมูลไม่ถูกต้อง"
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yml"

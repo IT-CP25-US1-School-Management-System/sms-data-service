@@ -1,17 +1,17 @@
-type: object
+﻿type: object
 properties:
   error:
     type: object
     properties:
       code:
         type: string
-        description: Error code
+        description: "EN: Error code / TH: รหัสข้อผิดพลาด"
       message:
         type: string
-        description: Error message
+        description: "EN: Error message / TH: ข้อความข้อผิดพลาด"
       details:
         type: object
         additionalProperties: true
-        description: Additional error details
+        description: "EN: Additional error details / TH: รายละเอียดข้อผิดพลาดเพิ่มเติม"
 required:
   - error

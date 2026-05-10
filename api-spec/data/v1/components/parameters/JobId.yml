@@ -1,7 +1,7 @@
 name: job_id
 in: path
 required: true
-description: The ID of the export job
+description: "EN: Job ID / TH: รหัสงาน"
 schema:
   type: string
   format: uuid

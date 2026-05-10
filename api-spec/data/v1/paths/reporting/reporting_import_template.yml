@@ -1,0 +1,39 @@
+# /reporting/import/template
+post:
+  tags: [Reporting]
+  summary: "EN: Create dataset import template URL / TH: สร้าง URL template สำหรับ import dataset"
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            dataset_id:
+              type: string
+              description: "EN: Dataset ID / TH: รหัส dataset"
+            version:
+              type: string
+              description: "EN: Dataset version / TH: version ของ dataset"
+            format:
+              type: string
+              enum: [csv, xlsx]
+              description: "EN: Template format / TH: รูปแบบ template"
+          required: [dataset_id, version, format]
+  responses:
+    "200":
+      description: "EN: Template URL created / TH: สร้าง URL template สำเร็จ"
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              url:
+                type: string
+                description: "EN: Download URL / TH: URL สำหรับดาวน์โหลด"
+    "400":
+      description: "EN: Validation error / TH: ข้อมูลไม่ถูกต้อง"
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yml"

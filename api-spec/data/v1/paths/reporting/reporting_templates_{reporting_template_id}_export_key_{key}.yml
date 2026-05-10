@@ -1,0 +1,42 @@
+# /reporting/templates/{reporting_template_id}/export/key/{key}
+post:
+  tags: [Reporting]
+  summary: "EN: Create PDF export job from reporting template / TH: สร้างงาน export PDF จาก reporting template"
+  parameters:
+    - name: reporting_template_id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: "EN: Reporting template ID / TH: รหัส reporting template"
+    - name: key
+      in: path
+      required: true
+      schema:
+        type: string
+      description: "EN: Dataset row key / TH: key ของข้อมูลที่ต้องการออก report"
+  responses:
+    "200":
+      description: "EN: PDF export job created / TH: สร้างงาน export PDF สำเร็จ"
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              job_id:
+                type: string
+                format: uuid
+                description: "EN: Reporting export job ID / TH: รหัสงาน export report"
+    "400":
+      description: "EN: Invalid template ID or key / TH: template ID หรือ key ไม่ถูกต้อง"
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yml"
+    "404":
+      description: "EN: Template or data not found / TH: ไม่พบ template หรือข้อมูล"
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yml"

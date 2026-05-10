@@ -1,7 +1,7 @@
 # /introspect/sources
 get:
   tags: [Introspection]
-  summary: List registered physical sources
+  summary: "EN: List registered physical sources / TH: ดูรายการแหล่งข้อมูลที่ลงทะเบียน"
   parameters:
     - name: page
       in: query
@@ -9,7 +9,7 @@ get:
         type: integer
         minimum: 1
         default: 1
-      description: Page number for pagination
+      description: "EN: Page number for pagination / TH: เลขหน้าสำหรับแบ่งหน้า"
     - name: per_page
       in: query
       schema:
@@ -17,10 +17,10 @@ get:
         minimum: 1
         maximum: 100
         default: 10
-      description: Number of items per page
+      description: "EN: Number of items per page / TH: จำนวนรายการต่อหน้า"
   responses:
     "200":
-      description: List of sources with pagination
+      description: "EN: List of sources with pagination / TH: รายการแหล่งข้อมูลพร้อม pagination"
       content:
         application/json:
           schema:
@@ -39,13 +39,13 @@ get:
               total_rows:
                 type: integer
     "400":
-      description: Bad Request
+      description: "EN: Bad request / TH: คำขอไม่ถูกต้อง"
       content:
         application/json:
           schema:
             $ref: "../../components/schemas/ErrorResponse.yml"
     "500":
-      description: Internal Server Error
+      description: "EN: Internal server error / TH: ระบบเกิดข้อผิดพลาด"
       content:
         application/json:
           schema:
@@ -53,7 +53,7 @@ get:
 
 post:
   tags: [Introspection]
-  summary: Create a new data source
+  summary: "EN: Create a new data source / TH: สร้างแหล่งข้อมูลใหม่"
   requestBody:
     required: true
     content:
@@ -62,7 +62,7 @@ post:
           $ref: "../../components/schemas/SourcesDTO.yml"
   responses:
     "200":
-      description: Source created successfully
+      description: "EN: Source created successfully / TH: สร้างแหล่งข้อมูลสำเร็จ"
       content:
         application/json:
           schema:
@@ -74,21 +74,21 @@ post:
               id:
                 type: string
                 format: uuid
-                description: Created source ID
+                description: "EN: Created source ID / TH: รหัสแหล่งข้อมูลที่สร้าง"
     "400":
-      description: Bad Request - validation error
+      description: "EN: Bad request - validation error / TH: คำขอไม่ถูกต้อง - ข้อมูลไม่ผ่าน validation"
       content:
         application/json:
           schema:
             $ref: "../../components/schemas/ErrorResponse.yml"
     "409":
-      description: Conflict - source already exists
+      description: "EN: Conflict - source already exists / TH: ข้อมูลซ้ำ - มีแหล่งข้อมูลนี้อยู่แล้ว"
       content:
         application/json:
           schema:
             $ref: "../../components/schemas/ErrorResponse.yml"
     "500":
-      description: Internal Server Error
+      description: "EN: Internal server error / TH: ระบบเกิดข้อผิดพลาด"
       content:
         application/json:
           schema:

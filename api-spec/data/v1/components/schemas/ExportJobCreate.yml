@@ -2,17 +2,18 @@ type: object
 properties:
   dataset_id:
     type: string
-  columns:
-    type: array
-    items:
-      type: string
-  filter:
+    description: "EN: Dataset ID / TH: รหัส dataset"
+  view:
     type: string
+    description: "EN: Optional dataset view / TH: view ของ dataset (ไม่บังคับ)"
   format:
     type: string
-    enum:
-      - parquet
-      - csv
-    default: parquet
-  destination_uri:
+    enum: [csv, xlsx]
+    description: "EN: Export file format / TH: รูปแบบไฟล์ export"
+  version:
     type: string
+    description: "EN: Dataset version / TH: version ของ dataset"
+required:
+  - dataset_id
+  - format
+  - version

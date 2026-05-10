@@ -1,7 +1,7 @@
 # /introspect/sources/{id}
-put:
+get:
   tags: [Introspection]
-  summary: Update a data source
+  summary: "EN: Get a data source by ID / TH: ดูรายละเอียดแหล่งข้อมูลตาม ID"
   parameters:
     - name: id
       in: path
@@ -9,7 +9,41 @@ put:
       schema:
         type: string
         format: uuid
-      description: Source ID
+      description: "EN: Source ID / TH: รหัสแหล่งข้อมูล"
+  responses:
+    "200":
+      description: "EN: Source detail / TH: รายละเอียดแหล่งข้อมูล"
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              data:
+                $ref: "../../components/schemas/SourcesResponseDTO.yml"
+    "400":
+      description: "EN: Invalid source ID / TH: รหัสแหล่งข้อมูลไม่ถูกต้อง"
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yml"
+    "404":
+      description: "EN: Source not found / TH: ไม่พบแหล่งข้อมูล"
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yml"
+
+put:
+  tags: [Introspection]
+  summary: "EN: Update a data source / TH: แก้ไขแหล่งข้อมูล"
+  parameters:
+    - name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: "EN: Source ID / TH: รหัสแหล่งข้อมูล"
   requestBody:
     required: true
     content:
@@ -18,7 +52,7 @@ put:
           $ref: "../../components/schemas/UpdateSourcesDTO.yml"
   responses:
     "200":
-      description: Source updated successfully
+      description: "EN: Source updated successfully / TH: แก้ไขแหล่งข้อมูลสำเร็จ"
       content:
         application/json:
           schema:
@@ -26,25 +60,18 @@ put:
             properties:
               message:
                 type: string
-                example: "success"
+                example: success
               id:
                 type: string
                 format: uuid
-                description: Updated source ID
     "400":
-      description: Bad Request - validation error
+      description: "EN: Validation error / TH: ข้อมูลไม่ถูกต้อง"
       content:
         application/json:
           schema:
             $ref: "../../components/schemas/ErrorResponse.yml"
     "404":
-      description: Source not found
-      content:
-        application/json:
-          schema:
-            $ref: "../../components/schemas/ErrorResponse.yml"
-    "500":
-      description: Internal Server Error
+      description: "EN: Source not found / TH: ไม่พบแหล่งข้อมูล"
       content:
         application/json:
           schema:
@@ -52,7 +79,7 @@ put:
 
 delete:
   tags: [Introspection]
-  summary: Delete a data source
+  summary: "EN: Delete a data source / TH: ลบแหล่งข้อมูล"
   parameters:
     - name: id
       in: path
@@ -60,10 +87,10 @@ delete:
       schema:
         type: string
         format: uuid
-      description: Source ID
+      description: "EN: Source ID / TH: รหัสแหล่งข้อมูล"
   responses:
     "200":
-      description: Source deleted successfully
+      description: "EN: Source deleted successfully / TH: ลบแหล่งข้อมูลสำเร็จ"
       content:
         application/json:
           schema:
@@ -71,74 +98,15 @@ delete:
             properties:
               message:
                 type: string
-                example: "success"
+                example: success
     "400":
-      description: Bad Request - invalid ID
+      description: "EN: Invalid source ID / TH: รหัสแหล่งข้อมูลไม่ถูกต้อง"
       content:
         application/json:
           schema:
             $ref: "../../components/schemas/ErrorResponse.yml"
     "404":
-      description: Source not found
-      content:
-        application/json:
-          schema:
-            $ref: "../../components/schemas/ErrorResponse.yml"
-    "500":
-      description: Internal Server Error
-      content:
-        application/json:
-          schema:
-            $ref: "../../components/schemas/ErrorResponse.yml"
-
-patch:
-  tags: [Introspection]
-  summary: Activate or deactivate a data source
-  parameters:
-    - name: id
-      in: path
-      required: true
-      schema:
-        type: string
-        format: uuid
-      description: Source ID
-  requestBody:
-    required: true
-    content:
-      application/json:
-        schema:
-          type: object
-          properties:
-            is_active:
-              type: boolean
-              description: Set to true to activate, false to deactivate
-          required:
-            - is_active
-  responses:
-    "200":
-      description: Source status updated successfully
-      content:
-        application/json:
-          schema:
-            type: object
-            properties:
-              message:
-                type: string
-                example: "success"
-    "400":
-      description: Bad Request - invalid ID or request body
-      content:
-        application/json:
-          schema:
-            $ref: "../../components/schemas/ErrorResponse.yml"
-    "404":
-      description: Source not found
-      content:
-        application/json:
-          schema:
-            $ref: "../../components/schemas/ErrorResponse.yml"
-    "500":
-      description: Internal Server Error
+      description: "EN: Source not found / TH: ไม่พบแหล่งข้อมูล"
       content:
         application/json:
           schema:

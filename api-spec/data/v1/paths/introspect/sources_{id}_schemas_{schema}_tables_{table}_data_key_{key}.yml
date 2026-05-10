@@ -1,0 +1,166 @@
+# /introspect/sources/{id}/schemas/{schema}/tables/{table}/data/key/{key}
+get:
+  tags: [Introspection]
+  summary: "EN: Get a physical table row by key / TH: ดึงข้อมูลแถวจากตารางจริงด้วย key"
+  parameters:
+    - name: id
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+      description: "EN: Source ID / TH: รหัสแหล่งข้อมูล"
+    - name: schema
+      in: path
+      required: true
+      schema: { type: string }
+      description: "EN: Schema name / TH: ชื่อ schema"
+    - name: table
+      in: path
+      required: true
+      schema: { type: string }
+      description: "EN: Table name / TH: ชื่อตาราง"
+    - name: key
+      in: path
+      required: true
+      schema: { type: string }
+      description: "EN: Row key value / TH: ค่า key ของแถว"
+    - name: key_field
+      in: query
+      schema: { type: string, default: id }
+      description: "EN: Column used as key / TH: คอลัมน์ที่ใช้เป็น key"
+  responses:
+    "200":
+      description: "EN: Row data / TH: ข้อมูลแถว"
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              data:
+                type: object
+                additionalProperties: true
+    "400":
+      description: "EN: Bad request / TH: คำขอไม่ถูกต้อง"
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yml"
+    "404":
+      description: "EN: Row not found / TH: ไม่พบข้อมูล"
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yml"
+
+put:
+  tags: [Introspection]
+  summary: "EN: Update a physical table row by key / TH: แก้ไขข้อมูลแถวในตารางจริงด้วย key"
+  parameters:
+    - name: id
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+      description: "EN: Source ID / TH: รหัสแหล่งข้อมูล"
+    - name: schema
+      in: path
+      required: true
+      schema: { type: string }
+      description: "EN: Schema name / TH: ชื่อ schema"
+    - name: table
+      in: path
+      required: true
+      schema: { type: string }
+      description: "EN: Table name / TH: ชื่อตาราง"
+    - name: key
+      in: path
+      required: true
+      schema: { type: string }
+      description: "EN: Row key value / TH: ค่า key ของแถว"
+    - name: key_field
+      in: query
+      schema: { type: string, default: id }
+      description: "EN: Column used as key / TH: คอลัมน์ที่ใช้เป็น key"
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          additionalProperties: true
+  responses:
+    "200":
+      description: "EN: Row updated successfully / TH: แก้ไขข้อมูลสำเร็จ"
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+                example: success
+              data:
+                type: object
+                additionalProperties: true
+    "400":
+      description: "EN: Bad request / TH: คำขอไม่ถูกต้อง"
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yml"
+    "404":
+      description: "EN: Row not found / TH: ไม่พบข้อมูล"
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yml"
+
+delete:
+  tags: [Introspection]
+  summary: "EN: Delete a physical table row by key / TH: ลบข้อมูลแถวในตารางจริงด้วย key"
+  parameters:
+    - name: id
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+      description: "EN: Source ID / TH: รหัสแหล่งข้อมูล"
+    - name: schema
+      in: path
+      required: true
+      schema: { type: string }
+      description: "EN: Schema name / TH: ชื่อ schema"
+    - name: table
+      in: path
+      required: true
+      schema: { type: string }
+      description: "EN: Table name / TH: ชื่อตาราง"
+    - name: key
+      in: path
+      required: true
+      schema: { type: string }
+      description: "EN: Row key value / TH: ค่า key ของแถว"
+    - name: key_field
+      in: query
+      schema: { type: string, default: id }
+      description: "EN: Column used as key / TH: คอลัมน์ที่ใช้เป็น key"
+  responses:
+    "200":
+      description: "EN: Row deleted successfully / TH: ลบข้อมูลสำเร็จ"
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+                example: success
+    "400":
+      description: "EN: Bad request / TH: คำขอไม่ถูกต้อง"
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yml"
+    "404":
+      description: "EN: Row not found / TH: ไม่พบข้อมูล"
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yml"

@@ -1,15 +1,19 @@
 openapi: 3.0.3
 info:
-  title: Data Management Service (DMS) API — v1 (query-only)
-  version: 1 .0.0
+  title: Data Management Service (DMS) API - v1
+  version: 1.0.0
   description: |
-    Central DMS focused on Catalog, Introspection, Contracts
-    Serving (dynamic datasets + CRUD/Query/Export).
+    EN: Central DMS API for source introspection, dataset catalog, dataset version contracts,
+    serving dynamic dataset data, direct table data CRUD, and reporting import/export jobs.
+
+    TH: API กลางของ DMS สำหรับตรวจสอบแหล่งข้อมูล, จัดการ catalog ของ dataset,
+    จัดการ contract/version ของ dataset, ให้บริการข้อมูลแบบ dynamic, CRUD ข้อมูลตารางโดยตรง,
+    และงาน import/export report.
 servers:
   - url: https://dms.company.com/api/v1
-    description: Production
+    description: 'EN: Production / TH: สภาพแวดล้อม production'
   - url: http://localhost:3200/api/v1
-    description: Local Dev
+    description: 'EN: Local Dev / TH: สภาพแวดล้อมพัฒนาในเครื่อง'
 security:
   - bearerAuth: []
 tags:
@@ -20,19 +24,27 @@ tags:
   - name: Serving
   - name: Reporting
 paths:
-  /health:
+  /health-check:
     get:
       tags:
         - Health
-      summary: Health probe
+      summary: 'EN: Health probe / TH: ตรวจสอบสถานะระบบ'
       responses:
         '200':
-          description: OK
+          description: 'EN: OK / TH: ระบบพร้อมใช้งาน'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
   /introspect/sources:
     get:
       tags:
         - Introspection
-      summary: List registered physical sources
+      summary: 'EN: List registered physical sources / TH: ดูรายการแหล่งข้อมูลที่ลงทะเบียน'
       parameters:
         - name: page
           in: query
@@ -40,7 +52,7 @@ paths:
             type: integer
             minimum: 1
             default: 1
-          description: Page number for pagination
+          description: 'EN: Page number for pagination / TH: เลขหน้าสำหรับแบ่งหน้า'
         - name: per_page
           in: query
           schema:
@@ -48,10 +60,10 @@ paths:
             minimum: 1
             maximum: 100
             default: 10
-          description: Number of items per page
+          description: 'EN: Number of items per page / TH: จำนวนรายการต่อหน้า'
       responses:
         '200':
-          description: List of sources with pagination
+          description: 'EN: List of sources with pagination / TH: รายการแหล่งข้อมูลพร้อม pagination'
           content:
             application/json:
               schema:
@@ -70,13 +82,13 @@ paths:
                   total_rows:
                     type: integer
         '400':
-          description: Bad Request
+          description: 'EN: Bad request / TH: คำขอไม่ถูกต้อง'
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '500':
-          description: Internal Server Error
+          description: 'EN: Internal server error / TH: ระบบเกิดข้อผิดพลาด'
           content:
             application/json:
               schema:
@@ -84,7 +96,7 @@ paths:
     post:
       tags:
         - Introspection
-      summary: Create a new data source
+      summary: 'EN: Create a new data source / TH: สร้างแหล่งข้อมูลใหม่'
       requestBody:
         required: true
         content:
@@ -93,7 +105,7 @@ paths:
               $ref: '#/components/schemas/SourcesDTO'
       responses:
         '200':
-          description: Source created successfully
+          description: 'EN: Source created successfully / TH: สร้างแหล่งข้อมูลสำเร็จ'
           content:
             application/json:
               schema:
@@ -105,30 +117,30 @@ paths:
                   id:
                     type: string
                     format: uuid
-                    description: Created source ID
+                    description: 'EN: Created source ID / TH: รหัสแหล่งข้อมูลที่สร้าง'
         '400':
-          description: Bad Request - validation error
+          description: 'EN: Bad request - validation error / TH: คำขอไม่ถูกต้อง - ข้อมูลไม่ผ่าน validation'
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '409':
-          description: Conflict - source already exists
+          description: 'EN: Conflict - source already exists / TH: ข้อมูลซ้ำ - มีแหล่งข้อมูลนี้อยู่แล้ว'
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '500':
-          description: Internal Server Error
+          description: 'EN: Internal server error / TH: ระบบเกิดข้อผิดพลาด'
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
   /introspect/sources/{id}:
-    put:
+    get:
       tags:
         - Introspection
-      summary: Update a data source
+      summary: 'EN: Get a data source by ID / TH: ดูรายละเอียดแหล่งข้อมูลตาม ID'
       parameters:
         - name: id
           in: path
@@ -136,7 +148,41 @@ paths:
           schema:
             type: string
             format: uuid
-          description: Source ID
+          description: 'EN: Source ID / TH: รหัสแหล่งข้อมูล'
+      responses:
+        '200':
+          description: 'EN: Source detail / TH: รายละเอียดแหล่งข้อมูล'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/SourcesResponseDTO'
+        '400':
+          description: 'EN: Invalid source ID / TH: รหัสแหล่งข้อมูลไม่ถูกต้อง'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: 'EN: Source not found / TH: ไม่พบแหล่งข้อมูล'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    put:
+      tags:
+        - Introspection
+      summary: 'EN: Update a data source / TH: แก้ไขแหล่งข้อมูล'
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: 'EN: Source ID / TH: รหัสแหล่งข้อมูล'
       requestBody:
         required: true
         content:
@@ -145,7 +191,7 @@ paths:
               $ref: '#/components/schemas/UpdateSourcesDTO'
       responses:
         '200':
-          description: Source updated successfully
+          description: 'EN: Source updated successfully / TH: แก้ไขแหล่งข้อมูลสำเร็จ'
           content:
             application/json:
               schema:
@@ -157,21 +203,14 @@ paths:
                   id:
                     type: string
                     format: uuid
-                    description: Updated source ID
         '400':
-          description: Bad Request - validation error
+          description: 'EN: Validation error / TH: ข้อมูลไม่ถูกต้อง'
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '404':
-          description: Source not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '500':
-          description: Internal Server Error
+          description: 'EN: Source not found / TH: ไม่พบแหล่งข้อมูล'
           content:
             application/json:
               schema:
@@ -179,7 +218,7 @@ paths:
     delete:
       tags:
         - Introspection
-      summary: Delete a data source
+      summary: 'EN: Delete a data source / TH: ลบแหล่งข้อมูล'
       parameters:
         - name: id
           in: path
@@ -187,10 +226,10 @@ paths:
           schema:
             type: string
             format: uuid
-          description: Source ID
+          description: 'EN: Source ID / TH: รหัสแหล่งข้อมูล'
       responses:
         '200':
-          description: Source deleted successfully
+          description: 'EN: Source deleted successfully / TH: ลบแหล่งข้อมูลสำเร็จ'
           content:
             application/json:
               schema:
@@ -200,27 +239,22 @@ paths:
                     type: string
                     example: success
         '400':
-          description: Bad Request - invalid ID
+          description: 'EN: Invalid source ID / TH: รหัสแหล่งข้อมูลไม่ถูกต้อง'
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '404':
-          description: Source not found
+          description: 'EN: Source not found / TH: ไม่พบแหล่งข้อมูล'
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-        '500':
-          description: Internal Server Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
+  /introspect/sources/{id}/activate:
     patch:
       tags:
         - Introspection
-      summary: Activate or deactivate a data source
+      summary: 'EN: Activate a data source / TH: เปิดใช้งานแหล่งข้อมูล'
       parameters:
         - name: id
           in: path
@@ -228,22 +262,10 @@ paths:
           schema:
             type: string
             format: uuid
-          description: Source ID
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                is_active:
-                  type: boolean
-                  description: Set to true to activate, false to deactivate
-              required:
-                - is_active
+          description: 'EN: Source ID / TH: รหัสแหล่งข้อมูล'
       responses:
         '200':
-          description: Source status updated successfully
+          description: 'EN: Source activated successfully / TH: เปิดใช้งานแหล่งข้อมูลสำเร็จ'
           content:
             application/json:
               schema:
@@ -253,19 +275,49 @@ paths:
                     type: string
                     example: success
         '400':
-          description: Bad Request - invalid ID or request body
+          description: 'EN: Invalid source ID / TH: รหัสแหล่งข้อมูลไม่ถูกต้อง'
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '404':
-          description: Source not found
+          description: 'EN: Source not found / TH: ไม่พบแหล่งข้อมูล'
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-        '500':
-          description: Internal Server Error
+  /introspect/sources/{id}/deactivate:
+    patch:
+      tags:
+        - Introspection
+      summary: 'EN: Deactivate a data source / TH: ปิดใช้งานแหล่งข้อมูล'
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: 'EN: Source ID / TH: รหัสแหล่งข้อมูล'
+      responses:
+        '200':
+          description: 'EN: Source deactivated successfully / TH: ปิดใช้งานแหล่งข้อมูลสำเร็จ'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: success
+        '400':
+          description: 'EN: Invalid source ID / TH: รหัสแหล่งข้อมูลไม่ถูกต้อง'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: 'EN: Source not found / TH: ไม่พบแหล่งข้อมูล'
           content:
             application/json:
               schema:
@@ -274,21 +326,21 @@ paths:
     get:
       tags:
         - Introspection
-      summary: List schemas in a source
+      summary: 'EN: List schemas in a source / TH: ดูรายการ schema ในแหล่งข้อมูล'
       parameters:
         - name: source_id
           in: query
           schema:
             type: string
             format: uuid
-          description: Filter by source ID
+          description: 'EN: Filter by source ID / TH: กรองด้วยรหัสแหล่งข้อมูล'
         - name: page
           in: query
           schema:
             type: integer
             minimum: 1
             default: 1
-          description: Page number for pagination
+          description: 'EN: Page number for pagination / TH: เลขหน้าสำหรับแบ่งหน้า'
         - name: per_page
           in: query
           schema:
@@ -296,10 +348,10 @@ paths:
             minimum: 1
             maximum: 100
             default: 10
-          description: Number of items per page
+          description: 'EN: Number of items per page / TH: จำนวนรายการต่อหน้า'
       responses:
         '200':
-          description: List of schemas with pagination
+          description: 'EN: List of schemas with pagination / TH: รายการ schema พร้อม pagination'
           content:
             application/json:
               schema:
@@ -318,13 +370,13 @@ paths:
                   total_rows:
                     type: integer
         '400':
-          description: Bad Request
+          description: 'EN: Bad request / TH: คำขอไม่ถูกต้อง'
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '500':
-          description: Internal Server Error
+          description: 'EN: Internal server error / TH: ระบบเกิดข้อผิดพลาด'
           content:
             application/json:
               schema:
@@ -333,26 +385,26 @@ paths:
     get:
       tags:
         - Introspection
-      summary: List tables in a schema
+      summary: 'EN: List tables in a schema / TH: ดูรายการตารางใน schema'
       parameters:
         - name: source_id
           in: query
           schema:
             type: string
             format: uuid
-          description: Filter by source ID
+          description: 'EN: Filter by source ID / TH: กรองด้วยรหัสแหล่งข้อมูล'
         - name: schema
           in: query
           schema:
             type: string
-          description: Filter by schema name
+          description: 'EN: Filter by schema name / TH: กรองด้วยชื่อ schema'
         - name: page
           in: query
           schema:
             type: integer
             minimum: 1
             default: 1
-          description: Page number for pagination
+          description: 'EN: Page number for pagination / TH: เลขหน้าสำหรับแบ่งหน้า'
         - name: per_page
           in: query
           schema:
@@ -360,10 +412,10 @@ paths:
             minimum: 1
             maximum: 100
             default: 10
-          description: Number of items per page
+          description: 'EN: Number of items per page / TH: จำนวนรายการต่อหน้า'
       responses:
         '200':
-          description: List of tables with pagination
+          description: 'EN: List of tables with pagination / TH: รายการตารางพร้อม pagination'
           content:
             application/json:
               schema:
@@ -382,13 +434,13 @@ paths:
                   total_rows:
                     type: integer
         '400':
-          description: Bad Request
+          description: 'EN: Bad request / TH: คำขอไม่ถูกต้อง'
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '500':
-          description: Internal Server Error
+          description: 'EN: Internal server error / TH: ระบบเกิดข้อผิดพลาด'
           content:
             application/json:
               schema:
@@ -397,31 +449,31 @@ paths:
     get:
       tags:
         - Introspection
-      summary: List columns for a table
+      summary: 'EN: List columns for a table / TH: ดูรายการคอลัมน์ของตาราง'
       parameters:
         - name: source_id
           in: query
           schema:
             type: string
             format: uuid
-          description: Filter by source ID
+          description: 'EN: Filter by source ID / TH: กรองด้วยรหัสแหล่งข้อมูล'
         - name: schema
           in: query
           schema:
             type: string
-          description: Filter by schema name
+          description: 'EN: Filter by schema name / TH: กรองด้วยชื่อ schema'
         - name: table
           in: query
           schema:
             type: string
-          description: Filter by table name
+          description: 'EN: Filter by table name / TH: กรองด้วยชื่อตาราง'
         - name: page
           in: query
           schema:
             type: integer
             minimum: 1
             default: 1
-          description: Page number for pagination
+          description: 'EN: Page number for pagination / TH: เลขหน้าสำหรับแบ่งหน้า'
         - name: per_page
           in: query
           schema:
@@ -429,10 +481,10 @@ paths:
             minimum: 1
             maximum: 100
             default: 10
-          description: Number of items per page
+          description: 'EN: Number of items per page / TH: จำนวนรายการต่อหน้า'
       responses:
         '200':
-          description: List of columns with pagination
+          description: 'EN: List of columns with pagination / TH: รายการคอลัมน์พร้อม pagination'
           content:
             application/json:
               schema:
@@ -451,439 +503,49 @@ paths:
                   total_rows:
                     type: integer
         '400':
-          description: Bad Request
+          description: 'EN: Bad request / TH: คำขอไม่ถูกต้อง'
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '500':
-          description: Internal Server Error
+          description: 'EN: Internal server error / TH: ระบบเกิดข้อผิดพลาด'
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-  /datasets:
+  /introspect/sources/{id}/schemas/{schema}/tables/{table}/data:
     get:
       tags:
-        - Catalog
-      summary: Search datasets
-      parameters:
-        - $ref: '#/components/parameters/SearchWord'
-        - $ref: '#/components/parameters/Domain'
-        - $ref: '#/components/parameters/Tag'
-        - $ref: '#/components/parameters/HasPII'
-        - $ref: '#/components/parameters/Owner'
-        - $ref: '#/components/parameters/Page'
-        - $ref: '#/components/parameters/PageSize'
-        - $ref: '#/components/parameters/Sort'
-        - $ref: '#/components/parameters/SortOrder'
-      responses:
-        '200':
-          description: List of datasets
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  data:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/Dataset'
-                  page:
-                    type: integer
-                  per_page:
-                    type: integer
-                  total_pages:
-                    type: integer
-                  total_rows:
-                    type: integer
-        '400':
-          description: BadRequest,
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '500':
-          description: InternalServerError,
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-    post:
-      tags:
-        - Catalog
-      summary: New dataset and Update dataset
-      requestBody:
-        required: true
-        description: dataset id must contain only lowercase english letters, underscore, and hyphen without spaces
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/DatasetUpsert'
-      responses:
-        '200':
-          description: Created
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Success'
-        '400':
-          description: BadRequest,
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '500':
-          description: InternalServerError,
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-  /datasets/{id}:
-    get:
-      tags:
-        - Catalog
-      summary: Get dataset detail
-      parameters:
-        - $ref: '#/components/parameters/DatasetId'
-      responses:
-        '200':
-          description: Dataset
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/DatasetDetail'
-        '401':
-          description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '404':
-          description: Not Found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '500':
-          description: Internal Server Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-    delete:
-      tags:
-        - Catalog
-      summary: Delete dataset by id
-      parameters:
-        - $ref: '#/components/parameters/DatasetId'
-      responses:
-        '200':
-          description: Dataset
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Success'
-        '401':
-          description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '404':
-          description: Not Found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '500':
-          description: Internal Server Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-  /datasets/{id}/versions:
-    get:
-      tags:
-        - Contracts
-      summary: Get list of dataset versions (contracts)
+        - Introspection
+      summary: 'EN: List rows from a physical table / TH: ดึงรายการข้อมูลจากตารางจริง'
       parameters:
         - name: id
           in: path
           required: true
-          schema:
-            type: string
-          description: Dataset ID
-        - name: page
-          in: query
-          schema:
-            type: integer
-            minimum: 1
-            default: 1
-          description: Page number for pagination
-        - name: per_page
-          in: query
-          schema:
-            type: integer
-            minimum: 1
-            maximum: 100
-            default: 10
-          description: Number of items per page
-        - name: source_id
-          in: query
           schema:
             type: string
             format: uuid
-          description: Filter by source ID
-        - name: search_word
-          in: query
-          schema:
-            type: string
-          description: Search term
-        - name: status
-          in: query
-          schema:
-            type: string
-            enum:
-              - active
-              - preview
-              - deprecated
-          description: Filter by status
-      responses:
-        '200':
-          description: List of dataset versions with pagination
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  data:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/DatasetVersion'
-                  page:
-                    type: integer
-                  per_page:
-                    type: integer
-                  total_pages:
-                    type: integer
-                  total_rows:
-                    type: integer
-        '400':
-          description: Bad Request
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '404':
-          description: Dataset not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-    post:
-      tags:
-        - Contracts
-      summary: Create a new dataset version (contract)
-      parameters:
-        - name: id
+          description: 'EN: Source ID / TH: รหัสแหล่งข้อมูล'
+        - name: schema
           in: path
           required: true
           schema:
             type: string
-          description: Dataset ID
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/InsertDatasetVersionDTO'
-      responses:
-        '200':
-          description: Dataset version created successfully
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  message:
-                    type: string
-                    example: success
-        '400':
-          description: Bad Request - validation error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '404':
-          description: Dataset not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '409':
-          description: Version already exists
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-  /datasets/{id}/versions/{version}:
-    get:
-      tags:
-        - Contracts
-      summary: Get dataset version by ID (contract details)
-      parameters:
-        - name: id
+          description: 'EN: Schema name / TH: ชื่อ schema'
+        - name: table
           in: path
           required: true
           schema:
             type: string
-          description: Dataset ID
-        - name: version
-          in: path
-          required: true
-          schema:
-            type: string
-          description: Version name/number
-      responses:
-        '200':
-          description: Dataset version details
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  data:
-                    $ref: '#/components/schemas/DatasetVersion'
-        '400':
-          description: Bad Request
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '404':
-          description: Dataset or version not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-    put:
-      tags:
-        - Contracts
-      summary: Update dataset version (contract)
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-          description: Dataset ID
-        - name: version
-          in: path
-          required: true
-          schema:
-            type: string
-          description: Version name/number
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/UpdateDatasetVersionDTO'
-      responses:
-        '200':
-          description: Dataset version updated successfully
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  message:
-                    type: string
-                    example: success
-        '400':
-          description: Bad Request - validation error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '404':
-          description: Dataset or version not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-    patch:
-      tags:
-        - Contracts
-      summary: Update dataset version status
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-          description: Dataset ID
-        - name: version
-          in: path
-          required: true
-          schema:
-            type: string
-          description: Version name/number
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/UpdateDatasetVersionStatusDTO'
-      responses:
-        '200':
-          description: Dataset version status updated successfully
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  message:
-                    type: string
-                    example: success
-        '400':
-          description: Bad Request - validation error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '404':
-          description: Dataset or version not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-  /datasets/{id}/versions/{version}/data:
-    get:
-      tags:
-        - Serving
-      summary: List rows from a dataset version (policy-aware, dynamic)
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-          description: Dataset ID
-        - name: version
-          in: path
-          required: true
-          schema:
-            type: string
-          description: Dataset version
+          description: 'EN: Table name / TH: ชื่อตาราง'
         - name: page
           in: query
           schema:
             type: integer
             minimum: 1
             default: 1
-          description: Page number for pagination
+          description: 'EN: Page number / TH: เลขหน้า'
         - name: per_page
           in: query
           schema:
@@ -891,17 +553,12 @@ paths:
             minimum: 1
             maximum: 100
             default: 10
-          description: Number of items per page
-        - name: view
-          in: query
-          schema:
-            type: string
-          description: View name to use for data access
+          description: 'EN: Items per page / TH: จำนวนรายการต่อหน้า'
         - name: where
           in: query
           schema:
             type: string
-          description: JSON string for filter conditions (array of filter groups)
+          description: 'EN: JSON filter groups / TH: เงื่อนไขกรองแบบ JSON'
         - name: where_logical_operator
           in: query
           schema:
@@ -911,13 +568,12 @@ paths:
               - OR
               - and
               - or
-            default: AND
-          description: Logical operator between filter groups
+          description: 'EN: Logical operator between filter groups / TH: ตัวเชื่อมเงื่อนไขระหว่างกลุ่ม'
         - name: sort_by
           in: query
           schema:
             type: string
-          description: Column name to sort by
+          description: 'EN: Column to sort by / TH: คอลัมน์ที่ใช้เรียงลำดับ'
         - name: sort_order
           in: query
           schema:
@@ -927,11 +583,10 @@ paths:
               - DESC
               - asc
               - desc
-            default: ASC
-          description: Sort order
+          description: 'EN: Sort order / TH: ทิศทางการเรียงลำดับ'
       responses:
         '200':
-          description: Dataset rows with pagination
+          description: 'EN: Table rows with pagination / TH: ข้อมูลตารางพร้อม pagination'
           content:
             application/json:
               schema:
@@ -951,46 +606,41 @@ paths:
                   total_rows:
                     type: integer
         '400':
-          description: Bad Request
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '401':
-          description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '403':
-          description: Forbidden
+          description: 'EN: Bad request / TH: คำขอไม่ถูกต้อง'
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '404':
-          description: Dataset or version not found
+          description: 'EN: Source, schema, or table not found / TH: ไม่พบแหล่งข้อมูล, schema, หรือตาราง'
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
     post:
       tags:
-        - Serving
-      summary: Create a new row in dataset version
+        - Introspection
+      summary: 'EN: Create a row in a physical table / TH: เพิ่มข้อมูลในตารางจริง'
       parameters:
         - name: id
           in: path
           required: true
           schema:
             type: string
-          description: Dataset ID
-        - name: version
+            format: uuid
+          description: 'EN: Source ID / TH: รหัสแหล่งข้อมูล'
+        - name: schema
           in: path
           required: true
           schema:
             type: string
-          description: Dataset version
+          description: 'EN: Schema name / TH: ชื่อ schema'
+        - name: table
+          in: path
+          required: true
+          schema:
+            type: string
+          description: 'EN: Table name / TH: ชื่อตาราง'
       requestBody:
         required: true
         content:
@@ -998,10 +648,10 @@ paths:
             schema:
               type: object
               additionalProperties: true
-              description: Row data to be created
+              description: 'EN: Row data / TH: ข้อมูลแถวที่ต้องการเพิ่ม'
       responses:
         '201':
-          description: Row created successfully
+          description: 'EN: Row created successfully / TH: เพิ่มข้อมูลสำเร็จ'
           content:
             application/json:
               schema:
@@ -1014,31 +664,783 @@ paths:
                     type: object
                     additionalProperties: true
         '400':
-          description: Bad Request
+          description: 'EN: Bad request / TH: คำขอไม่ถูกต้อง'
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-        '401':
-          description: Unauthorized
+  /introspect/sources/{id}/schemas/{schema}/tables/{table}/data/key/{key}:
+    get:
+      tags:
+        - Introspection
+      summary: 'EN: Get a physical table row by key / TH: ดึงข้อมูลแถวจากตารางจริงด้วย key'
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: 'EN: Source ID / TH: รหัสแหล่งข้อมูล'
+        - name: schema
+          in: path
+          required: true
+          schema:
+            type: string
+          description: 'EN: Schema name / TH: ชื่อ schema'
+        - name: table
+          in: path
+          required: true
+          schema:
+            type: string
+          description: 'EN: Table name / TH: ชื่อตาราง'
+        - name: key
+          in: path
+          required: true
+          schema:
+            type: string
+          description: 'EN: Row key value / TH: ค่า key ของแถว'
+        - name: key_field
+          in: query
+          schema:
+            type: string
+            default: id
+          description: 'EN: Column used as key / TH: คอลัมน์ที่ใช้เป็น key'
+      responses:
+        '200':
+          description: 'EN: Row data / TH: ข้อมูลแถว'
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '403':
-          description: Forbidden
+                type: object
+                properties:
+                  data:
+                    type: object
+                    additionalProperties: true
+        '400':
+          description: 'EN: Bad request / TH: คำขอไม่ถูกต้อง'
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '404':
-          description: Dataset or version not found
+          description: 'EN: Row not found / TH: ไม่พบข้อมูล'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    put:
+      tags:
+        - Introspection
+      summary: 'EN: Update a physical table row by key / TH: แก้ไขข้อมูลแถวในตารางจริงด้วย key'
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: 'EN: Source ID / TH: รหัสแหล่งข้อมูล'
+        - name: schema
+          in: path
+          required: true
+          schema:
+            type: string
+          description: 'EN: Schema name / TH: ชื่อ schema'
+        - name: table
+          in: path
+          required: true
+          schema:
+            type: string
+          description: 'EN: Table name / TH: ชื่อตาราง'
+        - name: key
+          in: path
+          required: true
+          schema:
+            type: string
+          description: 'EN: Row key value / TH: ค่า key ของแถว'
+        - name: key_field
+          in: query
+          schema:
+            type: string
+            default: id
+          description: 'EN: Column used as key / TH: คอลัมน์ที่ใช้เป็น key'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        '200':
+          description: 'EN: Row updated successfully / TH: แก้ไขข้อมูลสำเร็จ'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: success
+                  data:
+                    type: object
+                    additionalProperties: true
+        '400':
+          description: 'EN: Bad request / TH: คำขอไม่ถูกต้อง'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: 'EN: Row not found / TH: ไม่พบข้อมูล'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      tags:
+        - Introspection
+      summary: 'EN: Delete a physical table row by key / TH: ลบข้อมูลแถวในตารางจริงด้วย key'
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: 'EN: Source ID / TH: รหัสแหล่งข้อมูล'
+        - name: schema
+          in: path
+          required: true
+          schema:
+            type: string
+          description: 'EN: Schema name / TH: ชื่อ schema'
+        - name: table
+          in: path
+          required: true
+          schema:
+            type: string
+          description: 'EN: Table name / TH: ชื่อตาราง'
+        - name: key
+          in: path
+          required: true
+          schema:
+            type: string
+          description: 'EN: Row key value / TH: ค่า key ของแถว'
+        - name: key_field
+          in: query
+          schema:
+            type: string
+            default: id
+          description: 'EN: Column used as key / TH: คอลัมน์ที่ใช้เป็น key'
+      responses:
+        '200':
+          description: 'EN: Row deleted successfully / TH: ลบข้อมูลสำเร็จ'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: success
+        '400':
+          description: 'EN: Bad request / TH: คำขอไม่ถูกต้อง'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: 'EN: Row not found / TH: ไม่พบข้อมูล'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /datasets:
+    get:
+      tags:
+        - Catalog
+      summary: 'EN: Search datasets / TH: ค้นหา dataset'
+      parameters:
+        - $ref: '#/components/parameters/SearchWord'
+        - $ref: '#/components/parameters/Domain'
+        - $ref: '#/components/parameters/Tag'
+        - $ref: '#/components/parameters/HasPII'
+        - $ref: '#/components/parameters/Owner'
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+        - $ref: '#/components/parameters/Sort'
+        - $ref: '#/components/parameters/SortOrder'
+      responses:
+        '200':
+          description: 'EN: List of datasets / TH: รายการ dataset'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Dataset'
+                  page:
+                    type: integer
+                  per_page:
+                    type: integer
+                  total_pages:
+                    type: integer
+                  total_rows:
+                    type: integer
+        '400':
+          description: 'EN: Bad request / TH: คำขอไม่ถูกต้อง'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: 'EN: Internal server error / TH: ระบบเกิดข้อผิดพลาด'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    post:
+      tags:
+        - Catalog
+      summary: 'EN: Create or update a dataset / TH: สร้างหรือแก้ไข dataset'
+      requestBody:
+        required: true
+        description: 'EN: Dataset ID must contain only lowercase English letters, underscore, and hyphen without spaces / TH: รหัส dataset ต้องมีเฉพาะตัวอักษรอังกฤษพิมพ์เล็ก underscore และ hyphen โดยไม่มีช่องว่าง'
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DatasetUpsert'
+      responses:
+        '200':
+          description: 'EN: Created or updated successfully / TH: สร้างหรือแก้ไขสำเร็จ'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        '400':
+          description: 'EN: Bad request / TH: คำขอไม่ถูกต้อง'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: 'EN: Internal server error / TH: ระบบเกิดข้อผิดพลาด'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /datasets/{id}:
+    get:
+      tags:
+        - Catalog
+      summary: 'EN: Get dataset detail / TH: ดูรายละเอียด dataset'
+      parameters:
+        - $ref: '#/components/parameters/DatasetId'
+      responses:
+        '200':
+          description: 'EN: Dataset detail / TH: รายละเอียด dataset'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DatasetDetail'
+        '401':
+          description: 'EN: Unauthorized / TH: ไม่ได้รับอนุญาต'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: 'EN: Not found / TH: ไม่พบข้อมูล'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: 'EN: Internal server error / TH: ระบบเกิดข้อผิดพลาด'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      tags:
+        - Catalog
+      summary: 'EN: Delete dataset by ID / TH: ลบ dataset ตาม ID'
+      parameters:
+        - $ref: '#/components/parameters/DatasetId'
+      responses:
+        '200':
+          description: 'EN: Dataset deleted successfully / TH: ลบ dataset สำเร็จ'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        '401':
+          description: 'EN: Unauthorized / TH: ไม่ได้รับอนุญาต'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: 'EN: Not found / TH: ไม่พบข้อมูล'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: 'EN: Internal server error / TH: ระบบเกิดข้อผิดพลาด'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /datasets/{id}/versions:
+    get:
+      tags:
+        - Contracts
+      summary: 'EN: Get list of dataset versions (contracts) / TH: ดูรายการ version ของ dataset (contract)'
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: 'EN: Dataset ID / TH: รหัส dataset'
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+          description: 'EN: Page number for pagination / TH: เลขหน้าสำหรับแบ่งหน้า'
+        - name: per_page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 10
+          description: 'EN: Number of items per page / TH: จำนวนรายการต่อหน้า'
+        - name: source_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+          description: 'EN: Filter by source ID / TH: กรองด้วยรหัสแหล่งข้อมูล'
+        - name: search_word
+          in: query
+          schema:
+            type: string
+          description: 'EN: Search term / TH: คำค้นหา'
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum:
+              - active
+              - preview
+              - deprecated
+          description: 'EN: Filter by status / TH: กรองด้วยสถานะ'
+      responses:
+        '200':
+          description: 'EN: List of dataset versions with pagination / TH: รายการ version ของ dataset พร้อม pagination'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/DatasetVersion'
+                  page:
+                    type: integer
+                  per_page:
+                    type: integer
+                  total_pages:
+                    type: integer
+                  total_rows:
+                    type: integer
+        '400':
+          description: 'EN: Bad request / TH: คำขอไม่ถูกต้อง'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: 'EN: Dataset not found / TH: ไม่พบ dataset'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    post:
+      tags:
+        - Contracts
+      summary: 'EN: Create a new dataset version (contract) / TH: สร้าง version ใหม่ของ dataset (contract)'
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: 'EN: Dataset ID / TH: รหัส dataset'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InsertDatasetVersionDTO'
+      responses:
+        '200':
+          description: 'EN: Dataset version created successfully / TH: สร้าง version ของ dataset สำเร็จ'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: success
+        '400':
+          description: 'EN: Bad request - validation error / TH: คำขอไม่ถูกต้อง - ข้อมูลไม่ผ่าน validation'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: 'EN: Dataset not found / TH: ไม่พบ dataset'
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '409':
-          description: Conflict - duplicate key or constraint violation
+          description: 'EN: Version already exists / TH: มี version นี้อยู่แล้ว'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /datasets/{id}/versions/{version}:
+    get:
+      tags:
+        - Contracts
+      summary: 'EN: Get dataset version by ID (contract details) / TH: ดูรายละเอียด version ของ dataset ตาม ID'
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: 'EN: Dataset ID / TH: รหัส dataset'
+        - name: version
+          in: path
+          required: true
+          schema:
+            type: string
+          description: 'EN: Version name/number / TH: ชื่อหรือเลข version'
+      responses:
+        '200':
+          description: 'EN: Dataset version details / TH: รายละเอียด version ของ dataset'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/DatasetVersion'
+        '400':
+          description: 'EN: Bad request / TH: คำขอไม่ถูกต้อง'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: 'EN: Dataset or version not found / TH: ไม่พบ dataset หรือ version'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    put:
+      tags:
+        - Contracts
+      summary: 'EN: Update dataset version (contract) / TH: แก้ไข version ของ dataset (contract)'
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: 'EN: Dataset ID / TH: รหัส dataset'
+        - name: version
+          in: path
+          required: true
+          schema:
+            type: string
+          description: 'EN: Version name/number / TH: ชื่อหรือเลข version'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateDatasetVersionDTO'
+      responses:
+        '200':
+          description: 'EN: Dataset version updated successfully / TH: แก้ไข version ของ dataset สำเร็จ'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: success
+        '400':
+          description: 'EN: Bad request - validation error / TH: คำขอไม่ถูกต้อง - ข้อมูลไม่ผ่าน validation'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: 'EN: Dataset or version not found / TH: ไม่พบ dataset หรือ version'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    patch:
+      tags:
+        - Contracts
+      summary: 'EN: Update dataset version status / TH: แก้ไขสถานะ version ของ dataset'
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: 'EN: Dataset ID / TH: รหัส dataset'
+        - name: version
+          in: path
+          required: true
+          schema:
+            type: string
+          description: 'EN: Version name/number / TH: ชื่อหรือเลข version'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateDatasetVersionStatusDTO'
+      responses:
+        '200':
+          description: 'EN: Dataset version status updated successfully / TH: แก้ไขสถานะ version ของ dataset สำเร็จ'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: success
+        '400':
+          description: 'EN: Bad request - validation error / TH: คำขอไม่ถูกต้อง - ข้อมูลไม่ผ่าน validation'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: 'EN: Dataset or version not found / TH: ไม่พบ dataset หรือ version'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /datasets/{id}/versions/{version}/data:
+    get:
+      tags:
+        - Serving
+      summary: 'EN: List rows from a dataset version (policy-aware, dynamic) / TH: ดูรายการข้อมูลจาก version ของ dataset ตาม policy'
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: 'EN: Dataset ID / TH: รหัส dataset'
+        - name: version
+          in: path
+          required: true
+          schema:
+            type: string
+          description: 'EN: Dataset version / TH: version ของ dataset'
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+          description: 'EN: Page number for pagination / TH: เลขหน้าสำหรับแบ่งหน้า'
+        - name: per_page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 10
+          description: 'EN: Number of items per page / TH: จำนวนรายการต่อหน้า'
+        - name: view
+          in: query
+          schema:
+            type: string
+          description: 'EN: View name to use for data access / TH: ชื่อ view ที่ใช้เข้าถึงข้อมูล'
+        - name: where
+          in: query
+          schema:
+            type: string
+          description: 'EN: JSON string for filter conditions (array of filter groups) / TH: เงื่อนไขกรองรูปแบบ JSON เป็นกลุ่ม filter'
+          examples:
+            single_condition:
+              summary: 'EN: Filter by one field / TH: กรองด้วย field เดียว'
+              value: '[[{"table_name":"students","field":"status","operator":"=","value":"active"}]]'
+            multiple_groups:
+              summary: 'EN: Multiple filter groups / TH: filter หลายกลุ่ม'
+              value: '[[{"table_name":"students","field":"grade","operator":"IN","value":["M1","M2"]}],[{"table_name":"students","field":"name","operator":"LIKE","value":"%somchai%"}]]'
+        - name: where_logical_operator
+          in: query
+          schema:
+            type: string
+            enum:
+              - AND
+              - OR
+              - and
+              - or
+            default: AND
+          description: 'EN: Logical operator between filter groups / TH: ตัวเชื่อมเงื่อนไขระหว่างกลุ่ม filter'
+        - name: sort_by
+          in: query
+          schema:
+            type: string
+          description: 'EN: Column name to sort by / TH: ชื่อคอลัมน์ที่ใช้เรียงลำดับ'
+        - name: sort_order
+          in: query
+          schema:
+            type: string
+            enum:
+              - ASC
+              - DESC
+              - asc
+              - desc
+            default: ASC
+          description: 'EN: Sort order / TH: ทิศทางการเรียงลำดับ'
+      responses:
+        '200':
+          description: 'EN: Dataset rows with pagination / TH: ข้อมูล dataset พร้อม pagination'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      additionalProperties: true
+                  page:
+                    type: integer
+                  per_page:
+                    type: integer
+                  total_pages:
+                    type: integer
+                  total_rows:
+                    type: integer
+        '400':
+          description: 'EN: Bad request / TH: คำขอไม่ถูกต้อง'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: 'EN: Unauthorized / TH: ไม่ได้รับอนุญาต'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: 'EN: Forbidden / TH: ไม่มีสิทธิ์เข้าถึง'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: 'EN: Dataset or version not found / TH: ไม่พบ dataset หรือ version'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    post:
+      tags:
+        - Serving
+      summary: 'EN: Create a new row in dataset version / TH: เพิ่มข้อมูลใหม่ใน version ของ dataset'
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: 'EN: Dataset ID / TH: รหัส dataset'
+        - name: version
+          in: path
+          required: true
+          schema:
+            type: string
+          description: 'EN: Dataset version / TH: version ของ dataset'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+              description: 'EN: Row data to be created / TH: ข้อมูลแถวที่ต้องการเพิ่ม'
+      responses:
+        '201':
+          description: 'EN: Row created successfully / TH: เพิ่มข้อมูลสำเร็จ'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: success
+                  data:
+                    type: object
+                    additionalProperties: true
+        '400':
+          description: 'EN: Bad request / TH: คำขอไม่ถูกต้อง'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: 'EN: Unauthorized / TH: ไม่ได้รับอนุญาต'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: 'EN: Forbidden / TH: ไม่มีสิทธิ์เข้าถึง'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: 'EN: Dataset or version not found / TH: ไม่พบ dataset หรือ version'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: 'EN: Conflict - duplicate key or constraint violation / TH: ข้อมูลซ้ำหรือผิด constraint'
           content:
             application/json:
               schema:
@@ -1047,34 +1449,34 @@ paths:
     get:
       tags:
         - Serving
-      summary: Get a row by key from dataset version (policy-aware)
+      summary: 'EN: Get a row by key from dataset version (policy-aware) / TH: ดึงข้อมูลแถวด้วย key จาก version ของ dataset ตาม policy'
       parameters:
         - name: id
           in: path
           required: true
           schema:
             type: string
-          description: Dataset ID
+          description: 'EN: Dataset ID / TH: รหัส dataset'
         - name: version
           in: path
           required: true
           schema:
             type: string
-          description: Dataset version
+          description: 'EN: Dataset version / TH: version ของ dataset'
         - name: key
           in: path
           required: true
           schema:
             type: string
-          description: Row key
+          description: 'EN: Row key / TH: key ของแถวข้อมูล'
         - name: view
           in: query
           schema:
             type: string
-          description: View name to use for data access
+          description: 'EN: View name to use for data access / TH: ชื่อ view ที่ใช้เข้าถึงข้อมูล'
       responses:
         '200':
-          description: Row data
+          description: 'EN: Row data / TH: ข้อมูลแถว'
           content:
             application/json:
               schema:
@@ -1084,25 +1486,25 @@ paths:
                     type: object
                     additionalProperties: true
         '400':
-          description: Bad Request
+          description: 'EN: Bad request / TH: คำขอไม่ถูกต้อง'
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '401':
-          description: Unauthorized
+          description: 'EN: Unauthorized / TH: ไม่ได้รับอนุญาต'
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '403':
-          description: Forbidden
+          description: 'EN: Forbidden / TH: ไม่มีสิทธิ์เข้าถึง'
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '404':
-          description: Row, dataset, or version not found
+          description: 'EN: Row, dataset, or version not found / TH: ไม่พบข้อมูลแถว dataset หรือ version'
           content:
             application/json:
               schema:
@@ -1110,26 +1512,26 @@ paths:
     put:
       tags:
         - Serving
-      summary: Update a row by key (replace all fields)
+      summary: 'EN: Update a row by key (replace all fields) / TH: แก้ไขข้อมูลแถวด้วย key'
       parameters:
         - name: id
           in: path
           required: true
           schema:
             type: string
-          description: Dataset ID
+          description: 'EN: Dataset ID / TH: รหัส dataset'
         - name: version
           in: path
           required: true
           schema:
             type: string
-          description: Dataset version
+          description: 'EN: Dataset version / TH: version ของ dataset'
         - name: key
           in: path
           required: true
           schema:
             type: string
-          description: Row key
+          description: 'EN: Row key / TH: key ของแถวข้อมูล'
       requestBody:
         required: true
         content:
@@ -1137,10 +1539,10 @@ paths:
             schema:
               type: object
               additionalProperties: true
-              description: Complete row data for replacement
+              description: 'EN: Complete row data for replacement / TH: ข้อมูลแถวทั้งหมดสำหรับแทนที่'
       responses:
         '200':
-          description: Row updated successfully
+          description: 'EN: Row updated successfully / TH: แก้ไขข้อมูลสำเร็จ'
           content:
             application/json:
               schema:
@@ -1153,25 +1555,25 @@ paths:
                     type: object
                     additionalProperties: true
         '400':
-          description: Bad Request
+          description: 'EN: Bad request / TH: คำขอไม่ถูกต้อง'
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '401':
-          description: Unauthorized
+          description: 'EN: Unauthorized / TH: ไม่ได้รับอนุญาต'
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '403':
-          description: Forbidden
+          description: 'EN: Forbidden / TH: ไม่มีสิทธิ์เข้าถึง'
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '404':
-          description: Row, dataset, or version not found
+          description: 'EN: Row, dataset, or version not found / TH: ไม่พบข้อมูลแถว dataset หรือ version'
           content:
             application/json:
               schema:
@@ -1179,29 +1581,29 @@ paths:
     delete:
       tags:
         - Serving
-      summary: Delete a row by key (soft delete)
+      summary: 'EN: Delete a row by key (soft delete) / TH: ลบข้อมูลแถวด้วย key'
       parameters:
         - name: id
           in: path
           required: true
           schema:
             type: string
-          description: Dataset ID
+          description: 'EN: Dataset ID / TH: รหัส dataset'
         - name: version
           in: path
           required: true
           schema:
             type: string
-          description: Dataset version
+          description: 'EN: Dataset version / TH: version ของ dataset'
         - name: key
           in: path
           required: true
           schema:
             type: string
-          description: Row key
+          description: 'EN: Row key / TH: key ของแถวข้อมูล'
       responses:
         '200':
-          description: Row deleted successfully
+          description: 'EN: Row deleted successfully / TH: ลบข้อมูลสำเร็จ'
           content:
             application/json:
               schema:
@@ -1211,25 +1613,25 @@ paths:
                     type: string
                     example: success
         '400':
-          description: Bad Request
+          description: 'EN: Bad request / TH: คำขอไม่ถูกต้อง'
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '401':
-          description: Unauthorized
+          description: 'EN: Unauthorized / TH: ไม่ได้รับอนุญาต'
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '403':
-          description: Forbidden
+          description: 'EN: Forbidden / TH: ไม่มีสิทธิ์เข้าถึง'
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '404':
-          description: Row, dataset, or version not found
+          description: 'EN: Row, dataset, or version not found / TH: ไม่พบข้อมูลแถว dataset หรือ version'
           content:
             application/json:
               schema:
@@ -1238,7 +1640,7 @@ paths:
     post:
       tags:
         - Reporting
-      summary: Export a dataset to object storage (csv/xlxs)
+      summary: 'EN: Create dataset export job / TH: สร้างงาน export dataset'
       requestBody:
         required: true
         content:
@@ -1246,8 +1648,8 @@ paths:
             schema:
               $ref: '#/components/schemas/ExportJobCreate'
       responses:
-        '202':
-          description: Accepted
+        '200':
+          description: 'EN: Export job created / TH: สร้างงาน export สำเร็จ'
           content:
             application/json:
               schema:
@@ -1255,43 +1657,90 @@ paths:
                 properties:
                   job_id:
                     type: string
-                    description: The ID of the export job
-  /reporting/export/job/{job_id}/status:
-    get:
-      tags:
-        - Reporting
-      summary: Get status of an export job
-      parameters:
-        - $ref: '#/components/parameters/JobId'
-      responses:
-        '200':
-          description: Job status
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ExportJobStatus'
-        '404':
-          description: Not Found
+                    format: uuid
+                    description: 'EN: Export job ID / TH: รหัสงาน export'
+        '400':
+          description: 'EN: Validation error / TH: ข้อมูลไม่ถูกต้อง'
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-  /reporting/export/job/{job_id}/result:
+  /reporting/export/job/{job_id}:
     get:
       tags:
         - Reporting
-      summary: Get the result of an export job
+      summary: 'EN: Get dataset export job by ID / TH: ดูข้อมูลงาน export dataset ตาม ID'
       parameters:
-        - $ref: '#/components/parameters/JobId'
+        - name: job_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: 'EN: Export job ID / TH: รหัสงาน export'
       responses:
         '200':
-          description: Job result
+          description: 'EN: Export job detail / TH: รายละเอียดงาน export'
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ExportJobResult'
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/ExportJobStatus'
+        '400':
+          description: 'EN: Invalid job ID / TH: รหัสงานไม่ถูกต้อง'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '404':
-          description: Not Found
+          description: 'EN: Export job not found / TH: ไม่พบงาน export'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /reporting/import/template:
+    post:
+      tags:
+        - Reporting
+      summary: 'EN: Create dataset import template URL / TH: สร้าง URL template สำหรับ import dataset'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                dataset_id:
+                  type: string
+                  description: 'EN: Dataset ID / TH: รหัส dataset'
+                version:
+                  type: string
+                  description: 'EN: Dataset version / TH: version ของ dataset'
+                format:
+                  type: string
+                  enum:
+                    - csv
+                    - xlsx
+                  description: 'EN: Template format / TH: รูปแบบ template'
+              required:
+                - dataset_id
+                - version
+                - format
+      responses:
+        '200':
+          description: 'EN: Template URL created / TH: สร้าง URL template สำเร็จ'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  url:
+                    type: string
+                    description: 'EN: Download URL / TH: URL สำหรับดาวน์โหลด'
+        '400':
+          description: 'EN: Validation error / TH: ข้อมูลไม่ถูกต้อง'
           content:
             application/json:
               schema:
@@ -1300,8 +1749,9 @@ paths:
     post:
       tags:
         - Reporting
-      summary: Import a report
+      summary: 'EN: Create dataset import job / TH: สร้างงาน import dataset'
       requestBody:
+        required: true
         content:
           multipart/form-data:
             schema:
@@ -1310,16 +1760,27 @@ paths:
                 file:
                   type: string
                   format: binary
-                  description: The report file to be imported (e.g., CSV, Excel)
+                  description: 'EN: CSV/XLSX file to import / TH: ไฟล์ CSV/XLSX ที่ต้องการ import'
                 dataset_id:
                   type: string
-                  description: The ID of the dataset to import the report into
+                  description: 'EN: Dataset ID / TH: รหัส dataset'
+                version:
+                  type: string
+                  description: 'EN: Dataset version / TH: version ของ dataset'
+                format:
+                  type: string
+                  enum:
+                    - csv
+                    - xlsx
+                  description: 'EN: File format / TH: รูปแบบไฟล์'
               required:
                 - file
                 - dataset_id
+                - version
+                - format
       responses:
-        '202':
-          description: Report import job accepted
+        '200':
+          description: 'EN: Import job created / TH: สร้างงาน import สำเร็จ'
           content:
             application/json:
               schema:
@@ -1327,59 +1788,56 @@ paths:
                 properties:
                   job_id:
                     type: string
-                    description: The ID of the import job
+                    format: uuid
+                    description: 'EN: Import job ID / TH: รหัสงาน import'
         '400':
-          description: Bad request (e.g., missing parameters, invalid file format)
+          description: 'EN: Bad request / TH: คำขอไม่ถูกต้อง'
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-  /reporting/import/job/{job_id}/status:
+  /reporting/import/job/{job_id}:
     get:
       tags:
         - Reporting
-      summary: Get status of an import job
+      summary: 'EN: Get dataset import job by ID / TH: ดูข้อมูลงาน import dataset ตาม ID'
       parameters:
-        - $ref: '#/components/parameters/JobId'
+        - name: job_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: 'EN: Import job ID / TH: รหัสงาน import'
       responses:
         '200':
-          description: Job status
+          description: 'EN: Import job detail / TH: รายละเอียดงาน import'
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ImportJobStatus'
-        '404':
-          description: Not Found
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/ImportJobStatus'
+        '400':
+          description: 'EN: Invalid job ID / TH: รหัสงานไม่ถูกต้อง'
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-  /reporting/import/job/{job_id}/result:
-    get:
-      tags:
-        - Reporting
-      summary: Get the result of an export job
-      parameters:
-        - $ref: '#/components/parameters/JobId'
-      responses:
-        '200':
-          description: Job result
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ImportJobResult'
         '404':
-          description: Not Found
+          description: 'EN: Import job not found / TH: ไม่พบงาน import'
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-  /reporting/import/pdf/template:
+  /reporting/templates/upload:
     post:
       tags:
         - Reporting
-      summary: Import a PDF template
+      summary: 'EN: Upload a PDF reporting template / TH: อัปโหลด template PDF สำหรับรายงาน'
       requestBody:
+        required: true
         content:
           multipart/form-data:
             schema:
@@ -1388,244 +1846,90 @@ paths:
                 file:
                   type: string
                   format: binary
-                  description: The PDF template file to be imported
-                data:
+                  description: 'EN: PDF template file / TH: ไฟล์ PDF template'
+                params:
                   type: object
-                  description: Metadata about the PDF template
+                  description: 'EN: Template metadata. Send as params[...] form fields if using multipart. / TH: ข้อมูล template ส่งเป็น params[...] ใน multipart ได้'
                   properties:
-                    columns:
-                      type: array
-                      items:
-                        type: string
-                      description: List of column names in the template
-                    position:
+                    dataset_id:
+                      type: string
+                      description: 'EN: Dataset ID / TH: รหัส dataset'
+                    name:
+                      type: string
+                      description: 'EN: Template name / TH: ชื่อ template'
+                    view:
+                      type: string
+                      description: 'EN: Dataset view / TH: view ของ dataset'
+                    version:
+                      type: string
+                      description: 'EN: Dataset version / TH: version ของ dataset'
+                    positions:
                       type: array
                       items:
                         type: object
                         properties:
-                          column:
+                          table_name:
                             type: string
-                            description: Column name
+                          column_name:
+                            type: string
+                          alias:
+                            type: string
                           x:
                             type: number
-                            description: X coordinate
                           'y':
                             type: number
-                            description: Y coordinate
-                      description: List of positions corresponding to the columns
-                      required:
-                        - column
-                        - x
-                        - 'y'
-                    dataset_id:
-                      type: string
-                      description: The ID of the dataset associated with the template
+                  required:
+                    - dataset_id
+                    - name
+                    - view
+                    - version
+                    - positions
               required:
                 - file
-                - data
-      responses:
-        '201':
-          description: PDF template import accepted
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  template_id:
-                    type: string
-                    description: The ID of the imported PDF template
-        '400':
-          description: Bad request (e.g., missing parameters, invalid file format)
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '409':
-          description: Conflict (e.g., template already exists)
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-  /reporting/import/pdf/template/{template_id}:
-    get:
-      tags:
-        - Reporting
-      summary: Get PDF template for Export
-      parameters:
-        - name: template_id
-          in: path
-          required: true
-          schema:
-            type: string
+                - params
       responses:
         '200':
-          description: PDF template retrieved successfully
+          description: 'EN: Template uploaded successfully / TH: อัปโหลด template สำเร็จ'
           content:
             application/json:
               schema:
                 type: object
                 properties:
-                  template_id:
+                  id:
                     type: string
-                    description: The ID of the PDF template
-                  columns:
-                    type: array
-                    items:
-                      type: string
-                    description: List of column names in the template
-                  position:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        column:
-                          type: string
-                          description: Column name
-                        x:
-                          type: number
-                          description: X coordinate
-                        'y':
-                          type: number
-                          description: Y coordinate
-                    description: List of positions corresponding to the columns
-                    required:
-                      - column
-                      - x
-                      - 'y'
-                  dataset_id:
+                    format: uuid
+                    description: 'EN: Reporting template ID / TH: รหัส reporting template'
+                  message:
                     type: string
-                    description: The ID of the dataset associated with the template
-                  created_at:
-                    type: string
-                    format: date-time
-                    description: Timestamp when the template was created
-                  updated_at:
-                    type: string
-                    format: date-time
-                    description: Timestamp when the template was last updated
-        '404':
-          description: PDF template not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-    put:
-      tags:
-        - Reporting
-      summary: Update a PDF template
-      parameters:
-        - name: template_id
-          in: path
-          required: true
-          schema:
-            type: string
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                columns:
-                  type: array
-                  items:
-                    type: string
-                  description: List of column names in the template
-                position:
-                  type: array
-                  items:
-                    type: object
-                    properties:
-                      column:
-                        type: string
-                        description: Column name
-                      x:
-                        type: number
-                        description: X coordinate
-                      'y':
-                        type: number
-                        description: Y coordinate
-                  description: List of positions corresponding to the columns
-                  required:
-                    - column
-                    - x
-                    - 'y'
-                dataset_id:
-                  type: string
-                  description: The ID of the dataset associated with the template
-              required:
-                - columns
-                - position
-                - dataset_id
-      responses:
-        '200':
-          description: PDF template updated successfully
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  template_id:
-                    type: string
-                    description: The ID of the updated PDF template
+                    example: success
         '400':
-          description: Bad request (e.g., missing parameters, invalid data)
+          description: 'EN: Missing params/file or invalid PDF / TH: ไม่มี params/file หรือไฟล์ PDF ไม่ถูกต้อง'
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-        '404':
-          description: PDF template not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-    delete:
-      tags:
-        - Reporting
-      summary: Delete a PDF template
-      parameters:
-        - name: template_id
-          in: path
-          required: true
-          schema:
-            type: string
-      responses:
-        '204':
-          description: PDF template deleted successfully
-        '404':
-          description: PDF template not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-  /reporting/export/pdf/template/job:
+  /reporting/templates/{reporting_template_id}/export/key/{key}:
     post:
       tags:
         - Reporting
-      summary: Export a PDF report based on a template
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                template_id:
-                  type: string
-                  description: The ID of the PDF template to use for the report
-                dataset_id:
-                  type: string
-                  description: The ID of the dataset to generate the report from
-                key:
-                  type: string
-                  description: The key identifying the specific report instance to generate
-              required:
-                - template_id
-                - dataset_id
-                - key
+      summary: 'EN: Create PDF export job from reporting template / TH: สร้างงาน export PDF จาก reporting template'
+      parameters:
+        - name: reporting_template_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: 'EN: Reporting template ID / TH: รหัส reporting template'
+        - name: key
+          in: path
+          required: true
+          schema:
+            type: string
+          description: 'EN: Dataset row key / TH: key ของข้อมูลที่ต้องการออก report'
       responses:
-        '202':
-          description: Accepted
+        '200':
+          description: 'EN: PDF export job created / TH: สร้างงาน export PDF สำเร็จ'
           content:
             application/json:
               schema:
@@ -1633,80 +1937,51 @@ paths:
                 properties:
                   job_id:
                     type: string
-                    description: The ID of the export job
+                    format: uuid
+                    description: 'EN: Reporting export job ID / TH: รหัสงาน export report'
         '400':
-          description: Bad request (e.g., missing parameters, invalid template ID)
+          description: 'EN: Invalid template ID or key / TH: template ID หรือ key ไม่ถูกต้อง'
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '404':
-          description: Not found (e.g., template or dataset not found)
+          description: 'EN: Template or data not found / TH: ไม่พบ template หรือข้อมูล'
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-  /reporting/export/pdf/template/job/{job_id}/status:
+  /reporting/templates/export/job/{job_id}:
     get:
       tags:
         - Reporting
-      summary: Get status of an import job
+      summary: 'EN: Get PDF reporting export job by ID / TH: ดูข้อมูลงาน export PDF report ตาม ID'
       parameters:
-        - $ref: '#/components/parameters/JobId'
+        - name: job_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: 'EN: Reporting export job ID / TH: รหัสงาน export report'
       responses:
         '200':
-          description: Job status
+          description: 'EN: Reporting export job detail / TH: รายละเอียดงาน export report'
           content:
             application/json:
               schema:
                 type: object
                 properties:
-                  status:
-                    type: string
-                    description: The current status of the job (e.g., pending, in_progress, completed, failed)
-        '404':
-          description: Not Found
+                  data:
+                    $ref: '#/components/schemas/ReportingExportJobStatus'
+        '400':
+          description: 'EN: Invalid job ID / TH: รหัสงานไม่ถูกต้อง'
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-  /reporting/export/pdf/template/job/{job_id}/result:
-    get:
-      tags:
-        - Reporting
-      summary: Get status of an import job
-      parameters:
-        - $ref: '#/components/parameters/JobId'
-      responses:
-        '200':
-          description: Job status
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  job_id:
-                    type: string
-                    description: The ID of the PDF template export job
-                  status:
-                    type: string
-                    description: The current status of the job (e.g., pending, in_progress, completed, failed)
-                  download_url:
-                    type: string
-                    description: The URL to download the generated PDF report (present if status is completed)
-                  error_message:
-                    type: string
-                    description: Error message if the job failed
-                  created_at:
-                    type: string
-                    format: date-time
-                    description: The timestamp when the job was created
-                  completed_at:
-                    type: string
-                    format: date-time
-                    description: The timestamp when the job was completed (present if status is completed or failed)
         '404':
-          description: Not Found
+          description: 'EN: Reporting export job not found / TH: ไม่พบงาน export report'
           content:
             application/json:
               schema:
@@ -1725,52 +2000,52 @@ components:
           type: string
           format: uuid
           nullable: true
-          description: Source ID
+          description: 'EN: Source ID / TH: รหัสแหล่งข้อมูล'
         name:
           type: string
-          description: Source name
+          description: 'EN: Source name / TH: ชื่อแหล่งข้อมูล'
         description:
           type: string
           nullable: true
-          description: Source description
+          description: 'EN: Source description / TH: รายละเอียดแหล่งข้อมูล'
         type:
           type: string
-          description: Source type
+          description: 'EN: Source type / TH: ประเภทแหล่งข้อมูล'
         is_active:
           type: boolean
-          description: Whether the source is active
+          description: 'EN: Whether the source is active / TH: ระบุว่าแหล่งข้อมูลเปิดใช้งานอยู่หรือไม่'
         sensitivity:
           type: string
-          description: Data sensitivity level
+          description: 'EN: Data sensitivity level / TH: ระดับความอ่อนไหวของข้อมูล'
         db_type:
           type: string
-          description: Database type
+          description: 'EN: Database type / TH: ประเภทฐานข้อมูล'
         host:
           type: string
-          description: Database host
+          description: 'EN: Database host / TH: host ของฐานข้อมูล'
         port:
           type: integer
-          description: Database port
+          description: 'EN: Database port / TH: port ของฐานข้อมูล'
         username:
           type: string
-          description: Database username
+          description: 'EN: Database username / TH: username ของฐานข้อมูล'
         database_name:
           type: string
-          description: Database name
+          description: 'EN: Database name / TH: ชื่อฐานข้อมูล'
         params:
           type: string
           nullable: true
-          description: Additional connection parameters
+          description: 'EN: Additional connection parameters / TH: parameter เพิ่มเติมสำหรับการเชื่อมต่อ'
         created_at:
           type: string
           format: date-time
           nullable: true
-          description: Creation timestamp
+          description: 'EN: Creation timestamp / TH: เวลาที่สร้างข้อมูล'
         updated_at:
           type: string
           format: date-time
           nullable: true
-          description: Last update timestamp
+          description: 'EN: Last update timestamp / TH: เวลาที่แก้ไขข้อมูลล่าสุด'
       required:
         - name
         - type
@@ -1789,14 +2064,14 @@ components:
           properties:
             code:
               type: string
-              description: Error code
+              description: 'EN: Error code / TH: รหัสข้อผิดพลาด'
             message:
               type: string
-              description: Error message
+              description: 'EN: Error message / TH: ข้อความข้อผิดพลาด'
             details:
               type: object
               additionalProperties: true
-              description: Additional error details
+              description: 'EN: Additional error details / TH: รายละเอียดข้อผิดพลาดเพิ่มเติม'
       required:
         - error
     SourcesDTO:
@@ -1804,19 +2079,19 @@ components:
       properties:
         name:
           type: string
-          description: Source name
+          description: 'EN: Source name / TH: ชื่อแหล่งข้อมูล'
         description:
           type: string
           nullable: true
-          description: Source description (optional)
+          description: 'EN: Source description (optional) / TH: รายละเอียดแหล่งข้อมูล (ไม่บังคับ)'
         type:
           type: string
           enum:
             - jdbc
-          description: Source type
+          description: 'EN: Source type / TH: ประเภทแหล่งข้อมูล'
         is_active:
           type: boolean
-          description: Whether the source is active
+          description: 'EN: Whether the source is active / TH: ระบุว่าแหล่งข้อมูลเปิดใช้งานอยู่หรือไม่'
         sensitivity:
           type: string
           enum:
@@ -1824,33 +2099,33 @@ components:
             - internal
             - confidential
             - restricted
-          description: Data sensitivity level
+          description: 'EN: Data sensitivity level / TH: ระดับความอ่อนไหวของข้อมูล'
         db_type:
           type: string
           enum:
             - postgres
             - mysql
-          description: Database type
+          description: 'EN: Database type / TH: ประเภทฐานข้อมูล'
         host:
           type: string
-          description: Database host
+          description: 'EN: Database host / TH: host ของฐานข้อมูล'
         port:
           type: integer
           minimum: 1
-          description: Database port
+          description: 'EN: Database port / TH: port ของฐานข้อมูล'
         username:
           type: string
-          description: Database username
+          description: 'EN: Database username / TH: username ของฐานข้อมูล'
         password:
           type: string
-          description: Database password
+          description: 'EN: Database password / TH: password ของฐานข้อมูล'
         database_name:
           type: string
-          description: Database name
+          description: 'EN: Database name / TH: ชื่อฐานข้อมูล'
         params:
           type: string
           nullable: true
-          description: Additional connection parameters (optional)
+          description: 'EN: Additional connection parameters (optional) / TH: parameter เพิ่มเติมสำหรับการเชื่อมต่อ (ไม่บังคับ)'
       required:
         - name
         - type
@@ -1867,19 +2142,19 @@ components:
       properties:
         name:
           type: string
-          description: Source name (optional)
+          description: 'EN: Source name (optional) / TH: ชื่อแหล่งข้อมูล (ไม่บังคับ)'
         description:
           type: string
           nullable: true
-          description: Source description (optional)
+          description: 'EN: Source description (optional) / TH: รายละเอียดแหล่งข้อมูล (ไม่บังคับ)'
         type:
           type: string
           enum:
             - jdbc
-          description: Source type (optional)
+          description: 'EN: Source type (optional) / TH: ประเภทแหล่งข้อมูล (ไม่บังคับ)'
         is_active:
           type: boolean
-          description: Whether the source is active (optional)
+          description: 'EN: Whether the source is active (optional) / TH: ระบุว่าแหล่งข้อมูลเปิดใช้งานอยู่หรือไม่ (ไม่บังคับ)'
         sensitivity:
           type: string
           enum:
@@ -1887,36 +2162,36 @@ components:
             - internal
             - confidential
             - restricted
-          description: Data sensitivity level (optional)
+          description: 'EN: Data sensitivity level (optional) / TH: ระดับความอ่อนไหวของข้อมูล (ไม่บังคับ)'
         db_type:
           type: string
           enum:
             - postgres
             - mysql
-          description: Database type (optional)
+          description: 'EN: Database type (optional) / TH: ประเภทฐานข้อมูล (ไม่บังคับ)'
         host:
           type: string
-          description: Database host (optional)
+          description: 'EN: Database host (optional) / TH: host ของฐานข้อมูล (ไม่บังคับ)'
         port:
           type: integer
           minimum: 1
-          description: Database port (optional)
+          description: 'EN: Database port (optional) / TH: port ของฐานข้อมูล (ไม่บังคับ)'
         username:
           type: string
-          description: Database username (optional)
+          description: 'EN: Database username (optional) / TH: username ของฐานข้อมูล (ไม่บังคับ)'
         database_name:
           type: string
-          description: Database name (optional)
+          description: 'EN: Database name (optional) / TH: ชื่อฐานข้อมูล (ไม่บังคับ)'
         params:
           type: string
           nullable: true
-          description: Additional connection parameters (optional)
+          description: 'EN: Additional connection parameters (optional) / TH: parameter เพิ่มเติมสำหรับการเชื่อมต่อ (ไม่บังคับ)'
         is_update_password:
           type: boolean
-          description: Whether to update the password (optional)
+          description: 'EN: Whether to update the password (optional) / TH: ระบุว่าต้องการอัปเดต password หรือไม่ (ไม่บังคับ)'
         password:
           type: string
-          description: Database password (optional, required if is_update_password is true)
+          description: 'EN: Database password (optional, required if is_update_password is true) / TH: password ของฐานข้อมูล (ไม่บังคับ แต่จำเป็นเมื่อ is_update_password เป็น true)'
     Schemas:
       type: object
       properties:
@@ -1924,20 +2199,20 @@ components:
           type: string
           format: uuid
           nullable: true
-          description: Schema ID
+          description: 'EN: Schema ID / TH: รหัส schema'
         sources_id:
           type: string
           format: uuid
           nullable: true
-          description: Source ID
+          description: 'EN: Source ID / TH: รหัสแหล่งข้อมูล'
         schema:
           type: string
-          description: Schema name
+          description: 'EN: Schema name / TH: ชื่อ schema'
         created_at:
           type: string
           format: date-time
           nullable: true
-          description: Creation timestamp
+          description: 'EN: Creation timestamp / TH: เวลาที่สร้างข้อมูล'
       required:
         - schema
     Tables:
@@ -1947,23 +2222,23 @@ components:
           type: string
           format: uuid
           nullable: true
-          description: Table ID
+          description: 'EN: Table ID / TH: รหัสตาราง'
         sources_id:
           type: string
           format: uuid
           nullable: true
-          description: Source ID
+          description: 'EN: Source ID / TH: รหัสแหล่งข้อมูล'
         schema:
           type: string
-          description: Schema name
+          description: 'EN: Schema name / TH: ชื่อ schema'
         table_name:
           type: string
-          description: Table name
+          description: 'EN: Table name / TH: ชื่อตาราง'
         created_at:
           type: string
           format: date-time
           nullable: true
-          description: Creation timestamp
+          description: 'EN: Creation timestamp / TH: เวลาที่สร้างข้อมูล'
       required:
         - schema
         - table_name
@@ -1974,40 +2249,40 @@ components:
           type: string
           format: uuid
           nullable: true
-          description: Column ID
+          description: 'EN: Column ID / TH: รหัสคอลัมน์'
         sources_id:
           type: string
           format: uuid
           nullable: true
-          description: Source ID
+          description: 'EN: Source ID / TH: รหัสแหล่งข้อมูล'
         schema:
           type: string
-          description: Schema name
+          description: 'EN: Schema name / TH: ชื่อ schema'
         table_name:
           type: string
-          description: Table name
+          description: 'EN: Table name / TH: ชื่อตาราง'
         column_name:
           type: string
-          description: Column name
+          description: 'EN: Column name / TH: ชื่อคอลัมน์'
         data_type:
           type: string
-          description: Data type
+          description: 'EN: Data type / TH: ชนิดข้อมูล'
         is_nullable:
           type: boolean
-          description: Whether the column is nullable
+          description: 'EN: Whether the column is nullable / TH: ระบุว่าคอลัมน์เป็น null ได้หรือไม่'
         column_default:
           type: string
           nullable: true
-          description: Default value
+          description: 'EN: Default value / TH: ค่า default'
         ordinal_position:
           type: integer
           nullable: true
-          description: Column position in table
+          description: 'EN: Column position in table / TH: ลำดับคอลัมน์ในตาราง'
         created_at:
           type: string
           format: date-time
           nullable: true
-          description: Creation timestamp
+          description: 'EN: Creation timestamp / TH: เวลาที่สร้างข้อมูล'
       required:
         - schema
         - table_name
@@ -2117,34 +2392,34 @@ components:
             properties:
               name:
                 type: string
-                description: Column name
+                description: 'EN: Column name / TH: ชื่อคอลัมน์'
               table_name:
                 type: string
-                description: Table name
+                description: 'EN: Table name / TH: ชื่อตาราง'
               alias:
                 type: string
-                description: Column alias (optional)
+                description: 'EN: Column alias (optional) / TH: alias ของคอลัมน์ (ไม่บังคับ)'
               type:
                 type: string
-                description: Data type
+                description: 'EN: Data type / TH: ชนิดข้อมูล'
               is_nullable:
                 type: boolean
-                description: Whether the column is nullable
+                description: 'EN: Whether the column is nullable / TH: ระบุว่าคอลัมน์เป็น null ได้หรือไม่'
               default:
                 type: string
                 nullable: true
-                description: Default value (optional)
+                description: 'EN: Default value (optional) / TH: ค่า default (ไม่บังคับ)'
               enum:
                 type: array
                 items:
                   type: string
-                description: Enum values (optional)
+                description: 'EN: Enum values (optional) / TH: ค่า enum (ไม่บังคับ)'
             required:
               - name
               - table_name
               - type
           minItems: 1
-          description: Column definitions
+          description: 'EN: Column definitions / TH: รายละเอียดคอลัมน์'
       required:
         - columns
     AccessPolicy:
@@ -2152,25 +2427,25 @@ components:
       properties:
         role:
           type: string
-          description: User role
+          description: 'EN: User role / TH: role ของผู้ใช้'
         scope:
           type: string
-          description: Access scope
+          description: 'EN: Access scope / TH: scope การเข้าถึง'
         can_view:
           type: boolean
-          description: View permission
+          description: 'EN: View permission / TH: สิทธิ์ดูข้อมูล'
         can_edit:
           type: boolean
-          description: Edit permission
+          description: 'EN: Edit permission / TH: สิทธิ์แก้ไขข้อมูล'
         can_delete:
           type: boolean
-          description: Delete permission
+          description: 'EN: Delete permission / TH: สิทธิ์ลบข้อมูล'
         allow_view:
           type: array
           items:
             type: string
           minItems: 1
-          description: Allowed views/columns
+          description: 'EN: Allowed views/columns / TH: view หรือคอลัมน์ที่อนุญาต'
       required:
         - role
         - scope
@@ -2192,11 +2467,11 @@ components:
           type: string
     Expr:
       type: object
-      description: Column reference or function call
+      description: 'EN: Column reference or function call / TH: การอ้างอิงคอลัมน์หรือการเรียก function'
       properties:
         col:
           type: string
-          description: alias.column
+          description: 'EN: alias.column / TH: รูปแบบ alias.column'
         func:
           type: string
           enum:
@@ -2215,7 +2490,7 @@ components:
             $ref: '#/components/schemas/Expr'
     BoolExpr:
       type: object
-      description: Boolean expression for joins/where (eq/and/or only)
+      description: 'EN: Boolean expression for joins/where (eq/and/or only) / TH: expression แบบ boolean สำหรับ join/where (รองรับเฉพาะ eq/and/or)'
       properties:
         eq:
           type: array
@@ -2323,6 +2598,23 @@ components:
         limit_default:
           type: integer
           minimum: 1
+    OwnerColumn:
+      type: object
+      description: 'EN: Column used for owner-based row filtering. When set, queries include WHERE {owner_column} = {token_claim_value}. / TH: คอลัมน์ที่ใช้กรองข้อมูลตาม owner โดย query จะบังคับเงื่อนไข WHERE {owner_column} = {token_claim_value}'
+      required:
+        - table_name
+        - column
+        - alias
+      properties:
+        table_name:
+          type: string
+          description: 'EN: The table that contains the owner column / TH: ตารางที่มีคอลัมน์ owner'
+        column:
+          type: string
+          description: 'EN: The column name in the table / TH: ชื่อคอลัมน์ในตาราง'
+        alias:
+          type: string
+          description: 'EN: Alias for the column (must match a projection alias) / TH: alias ของคอลัมน์ (ต้องตรงกับ projection alias)'
     Policies:
       type: object
       properties:
@@ -2331,12 +2623,17 @@ components:
           properties:
             default_view:
               type: string
-              description: Default view name
+              description: 'EN: Default view name / TH: ชื่อ view เริ่มต้น'
             key_field:
               type: string
-              description: Primary key field
+              description: 'EN: Primary key field / TH: field ที่เป็น primary key'
             query:
               $ref: '#/components/schemas/QueryPlan'
+            owner_column:
+              $ref: '#/components/schemas/OwnerColumn'
+            token_claim:
+              type: string
+              description: 'EN: JWT claim key whose value is used for owner filtering (e.g. sub, preferred_username). Required when owner_column is set. / TH: key ของ JWT claim ที่ใช้กรองข้อมูลตาม owner เช่น sub หรือ preferred_username และจำเป็นเมื่อกำหนด owner_column'
           required:
             - default_view
             - key_field
@@ -2350,53 +2647,63 @@ components:
               properties:
                 table_name:
                   type: string
-                  description: Table name
+                  description: 'EN: Table name / TH: ชื่อตาราง'
                 columns:
                   type: array
                   items:
                     type: string
                   minItems: 1
-                  description: Column names
+                  description: 'EN: Column names / TH: ชื่อคอลัมน์'
               required:
                 - table_name
                 - columns
-          description: View definitions
+          description: 'EN: View definitions / TH: รายละเอียด view'
         filters:
           type: array
           items:
             type: string
-          description: Available filters (optional)
+          description: 'EN: Available filters (optional) / TH: filter ที่ใช้งานได้ (ไม่บังคับ)'
         write:
           type: object
           properties:
             key_field:
               type: string
-              description: Key field for write operations
+              description: 'EN: Key field for write operations / TH: field key สำหรับการเขียนข้อมูล'
             allow_edit:
               type: array
               items:
                 type: string
               minItems: 1
-              description: Editable fields
+              description: 'EN: Editable fields / TH: field ที่แก้ไขได้'
             query:
               $ref: '#/components/schemas/QueryPlan'
+            owner_column:
+              $ref: '#/components/schemas/OwnerColumn'
+            token_claim:
+              type: string
+              description: 'EN: JWT claim key whose value is used for owner filtering on write. Required when owner_column is set. / TH: key ของ JWT claim ที่ใช้กรอง owner ตอนเขียนข้อมูล และจำเป็นเมื่อกำหนด owner_column'
           required:
             - key_field
             - allow_edit
             - query
-          description: Write policy (optional)
+          description: 'EN: Write policy (optional) / TH: policy สำหรับเขียนข้อมูล (ไม่บังคับ)'
         delete:
           type: object
           properties:
             key_field:
               type: string
-              description: Key field for delete operations
+              description: 'EN: Key field for delete operations / TH: field key สำหรับการลบข้อมูล'
             query:
               $ref: '#/components/schemas/QueryPlan'
+            owner_column:
+              $ref: '#/components/schemas/OwnerColumn'
+            token_claim:
+              type: string
+              description: 'EN: JWT claim key whose value is used for owner filtering on delete. Required when owner_column is set. / TH: key ของ JWT claim ที่ใช้กรอง owner ตอนลบข้อมูล และจำเป็นเมื่อกำหนด owner_column'
           required:
             - key_field
             - query
-          description: Delete policy (optional)
+          description: 'EN: Delete policy (optional) / TH: policy สำหรับลบข้อมูล (ไม่บังคับ)'
       required:
         - views
     DatasetVersion:
@@ -2404,41 +2711,41 @@ components:
       properties:
         dataset_id:
           type: string
-          description: Parent dataset ID
+          description: 'EN: Parent dataset ID / TH: รหัส dataset หลัก'
         version:
           type: string
-          description: Version name/number
+          description: 'EN: Version name/number / TH: ชื่อหรือเลข version'
         source_id:
           type: string
           format: uuid
           nullable: true
-          description: Source ID (UUID)
+          description: 'EN: Source ID (UUID) / TH: รหัสแหล่งข้อมูล (UUID)'
         status:
           type: string
           enum:
             - active
             - preview
             - deprecated
-          description: Version status
+          description: 'EN: Version status / TH: สถานะของ version'
         schema:
           $ref: '#/components/schemas/Schema'
         access_policies:
           type: array
           items:
             $ref: '#/components/schemas/AccessPolicy'
-          description: Access policies for this version
+          description: 'EN: Access policies for this version / TH: policy การเข้าถึงสำหรับ version นี้'
         policies:
           $ref: '#/components/schemas/Policies'
         created_at:
           type: string
           format: date-time
           nullable: true
-          description: Creation timestamp
+          description: 'EN: Creation timestamp / TH: เวลาที่สร้างข้อมูล'
         updated_at:
           type: string
           format: date-time
           nullable: true
-          description: Last update timestamp
+          description: 'EN: Last update timestamp / TH: เวลาที่แก้ไขข้อมูลล่าสุด'
       required:
         - dataset_id
         - version
@@ -2451,18 +2758,18 @@ components:
       properties:
         version:
           type: string
-          description: Version name/number
+          description: 'EN: Version name/number / TH: ชื่อหรือเลข version'
         source_id:
           type: string
           format: uuid
-          description: Source ID (UUID)
+          description: 'EN: Source ID (UUID) / TH: รหัสแหล่งข้อมูล (UUID)'
         status:
           type: string
           enum:
             - active
             - preview
             - deprecated
-          description: Version status
+          description: 'EN: Version status / TH: สถานะของ version'
         schema:
           $ref: '#/components/schemas/Schema'
         access_policies:
@@ -2470,7 +2777,7 @@ components:
           items:
             $ref: '#/components/schemas/AccessPolicy'
           minItems: 1
-          description: Access policies for this version
+          description: 'EN: Access policies for this version / TH: policy การเข้าถึงสำหรับ version นี้'
         policies:
           $ref: '#/components/schemas/Policies'
       required:
@@ -2486,14 +2793,14 @@ components:
         source_id:
           type: string
           format: uuid
-          description: Source ID (UUID)
+          description: 'EN: Source ID (UUID) / TH: รหัสแหล่งข้อมูล (UUID)'
         status:
           type: string
           enum:
             - active
             - preview
             - deprecated
-          description: Version status
+          description: 'EN: Version status / TH: สถานะของ version'
         schema:
           $ref: '#/components/schemas/Schema'
         access_policies:
@@ -2501,7 +2808,7 @@ components:
           items:
             $ref: '#/components/schemas/AccessPolicy'
           minItems: 1
-          description: Access policies for this version
+          description: 'EN: Access policies for this version / TH: policy การเข้าถึงสำหรับ version นี้'
         policies:
           $ref: '#/components/schemas/Policies'
       required:
@@ -2519,7 +2826,7 @@ components:
             - active
             - preview
             - deprecated
-          description: New status for the dataset version
+          description: 'EN: New status for the dataset version / TH: สถานะใหม่ของ version dataset'
       required:
         - status
     ExportJobCreate:
@@ -2527,20 +2834,23 @@ components:
       properties:
         dataset_id:
           type: string
-        columns:
-          type: array
-          items:
-            type: string
-        filter:
+          description: 'EN: Dataset ID / TH: รหัส dataset'
+        view:
           type: string
+          description: 'EN: Optional dataset view / TH: view ของ dataset (ไม่บังคับ)'
         format:
           type: string
           enum:
-            - parquet
             - csv
-          default: parquet
-        destination_uri:
+            - xlsx
+          description: 'EN: Export file format / TH: รูปแบบไฟล์ export'
+        version:
           type: string
+          description: 'EN: Dataset version / TH: version ของ dataset'
+      required:
+        - dataset_id
+        - format
+        - version
     ExportJobStatus:
       type: object
       properties:
@@ -2551,42 +2861,49 @@ components:
             - in_progress
             - completed
             - failed
-        created_at:
+        dataset_id:
           type: string
-          format: date-time
-        completed_at:
+        view:
           type: string
-          format: date-time
-        destination_uri:
+        original_filename:
           type: string
-        error_message:
-          type: string
-    ExportJobResult:
-      type: object
-      properties:
-        status:
+        file_size:
+          type: integer
+          format: int64
+        format:
           type: string
           enum:
-            - pending
-            - in_progress
-            - completed
-            - failed
+            - csv
+            - xlsx
+        version:
+          type: string
+        destination_uri:
+          type: string
         created_at:
           type: string
           format: date-time
         completed_at:
           type: string
           format: date-time
-        started_at:
-          type: string
-          format: date-time
-        destination_uri:
-          type: string
+          nullable: true
         error_message:
           type: string
+          nullable: true
     ImportJobStatus:
       type: object
       properties:
+        job_id:
+          type: string
+          format: uuid
+        dataset_id:
+          type: string
+        version:
+          type: string
+        format:
+          type: string
+          enum:
+            - csv
+            - xlsx
         status:
           type: string
           enum:
@@ -2594,17 +2911,29 @@ components:
             - in_progress
             - completed
             - failed
+        resource_id:
+          type: string
         created_at:
           type: string
           format: date-time
         completed_at:
           type: string
           format: date-time
+          nullable: true
         error_message:
           type: string
-    ImportJobResult:
+          nullable: true
+    ReportingExportJobStatus:
       type: object
       properties:
+        job_id:
+          type: string
+          format: uuid
+        reporting_template_id:
+          type: string
+          format: uuid
+        resource_id:
+          type: string
         status:
           type: string
           enum:
@@ -2612,14 +2941,21 @@ components:
             - in_progress
             - completed
             - failed
+        original_filename:
+          type: string
+        file_size:
+          type: integer
+          format: int64
         created_at:
           type: string
           format: date-time
         completed_at:
           type: string
           format: date-time
+          nullable: true
         error_message:
           type: string
+          nullable: true
   parameters:
     SearchWord:
       name: search_word
@@ -2666,7 +3002,7 @@ components:
       in: query
       schema:
         type: string
-        description: field or -field
+        description: 'EN: Field name or -field for descending sort / TH: ชื่อ field หรือ -field เพื่อเรียงจากมากไปน้อย'
     SortOrder:
       name: sort_order
       in: query
@@ -2675,18 +3011,10 @@ components:
         enum:
           - asc
           - desc
-        description: 'Sort order: ''asc'' for ascending, ''desc'' for descending'
+        description: 'EN: Sort order: ''asc'' for ascending, ''desc'' for descending / TH: ทิศทางการเรียงลำดับ: ''asc'' จากน้อยไปมาก, ''desc'' จากมากไปน้อย'
     DatasetId:
       name: id
       in: path
       required: true
       schema:
         type: string
-    JobId:
-      name: job_id
-      in: path
-      required: true
-      description: The ID of the export job
-      schema:
-        type: string
-        format: uuid

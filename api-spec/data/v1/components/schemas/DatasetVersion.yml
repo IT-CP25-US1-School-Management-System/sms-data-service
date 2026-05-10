@@ -1,39 +1,39 @@
-type: object
+﻿type: object
 properties:
   dataset_id:
     type: string
-    description: Parent dataset ID
+    description: "EN: Parent dataset ID / TH: รหัส dataset หลัก"
   version:
     type: string
-    description: Version name/number
+    description: "EN: Version name/number / TH: ชื่อหรือเลข version"
   source_id:
     type: string
     format: uuid
     nullable: true
-    description: Source ID (UUID)
+    description: "EN: Source ID (UUID) / TH: รหัสแหล่งข้อมูล (UUID)"
   status:
     type: string
     enum: [active, preview, deprecated]
-    description: Version status
+    description: "EN: Version status / TH: สถานะของ version"
   schema:
     $ref: "Schema.yml"
   access_policies:
     type: array
     items:
       $ref: "AccessPolicy.yml"
-    description: Access policies for this version
+    description: "EN: Access policies for this version / TH: policy การเข้าถึงสำหรับ version นี้"
   policies:
     $ref: "Policies.yml"
   created_at:
     type: string
     format: date-time
     nullable: true
-    description: Creation timestamp
+    description: "EN: Creation timestamp / TH: เวลาที่สร้างข้อมูล"
   updated_at:
     type: string
     format: date-time
     nullable: true
-    description: Last update timestamp
+    description: "EN: Last update timestamp / TH: เวลาที่แก้ไขข้อมูลล่าสุด"
 required:
   - dataset_id
   - version

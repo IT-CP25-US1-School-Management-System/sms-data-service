@@ -1,4 +1,4 @@
-type: object
+﻿type: object
 properties:
   columns:
     type: array
@@ -7,33 +7,33 @@ properties:
       properties:
         name:
           type: string
-          description: Column name
+          description: "EN: Column name / TH: ชื่อคอลัมน์"
         table_name:
           type: string
-          description: Table name
+          description: "EN: Table name / TH: ชื่อตาราง"
         alias:
           type: string
-          description: Column alias (optional)
+          description: "EN: Column alias (optional) / TH: alias ของคอลัมน์ (ไม่บังคับ)"
         type:
           type: string
-          description: Data type
+          description: "EN: Data type / TH: ชนิดข้อมูล"
         is_nullable:
           type: boolean
-          description: Whether the column is nullable
+          description: "EN: Whether the column is nullable / TH: ระบุว่าคอลัมน์เป็น null ได้หรือไม่"
         default:
           type: string
           nullable: true
-          description: Default value (optional)
+          description: "EN: Default value (optional) / TH: ค่า default (ไม่บังคับ)"
         enum:
           type: array
           items:
             type: string
-          description: Enum values (optional)
+          description: "EN: Enum values (optional) / TH: ค่า enum (ไม่บังคับ)"
       required:
         - name
         - table_name
         - type
     minItems: 1
-    description: Column definitions
+    description: "EN: Column definitions / TH: รายละเอียดคอลัมน์"
 required:
   - columns

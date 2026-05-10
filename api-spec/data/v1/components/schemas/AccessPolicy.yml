@@ -1,26 +1,26 @@
-type: object
+﻿type: object
 properties:
   role:
     type: string
-    description: User role
+    description: "EN: User role / TH: role ของผู้ใช้"
   scope:
     type: string
-    description: Access scope
+    description: "EN: Access scope / TH: scope การเข้าถึง"
   can_view:
     type: boolean
-    description: View permission
+    description: "EN: View permission / TH: สิทธิ์ดูข้อมูล"
   can_edit:
     type: boolean
-    description: Edit permission
+    description: "EN: Edit permission / TH: สิทธิ์แก้ไขข้อมูล"
   can_delete:
     type: boolean
-    description: Delete permission
+    description: "EN: Delete permission / TH: สิทธิ์ลบข้อมูล"
   allow_view:
     type: array
     items:
       type: string
     minItems: 1
-    description: Allowed views/columns
+    description: "EN: Allowed views/columns / TH: view หรือคอลัมน์ที่อนุญาต"
 required:
   - role
   - scope

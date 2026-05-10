@@ -1,21 +1,21 @@
 # /datasets/{id}/versions
 get:
   tags: [Contracts]
-  summary: Get list of dataset versions (contracts)
+  summary: "EN: Get list of dataset versions (contracts) / TH: ดูรายการ version ของ dataset (contract)"
   parameters:
     - name: id
       in: path
       required: true
       schema:
         type: string
-      description: Dataset ID
+      description: "EN: Dataset ID / TH: รหัส dataset"
     - name: page
       in: query
       schema:
         type: integer
         minimum: 1
         default: 1
-      description: Page number for pagination
+      description: "EN: Page number for pagination / TH: เลขหน้าสำหรับแบ่งหน้า"
     - name: per_page
       in: query
       schema:
@@ -23,27 +23,27 @@ get:
         minimum: 1
         maximum: 100
         default: 10
-      description: Number of items per page
+      description: "EN: Number of items per page / TH: จำนวนรายการต่อหน้า"
     - name: source_id
       in: query
       schema:
         type: string
         format: uuid
-      description: Filter by source ID
+      description: "EN: Filter by source ID / TH: กรองด้วยรหัสแหล่งข้อมูล"
     - name: search_word
       in: query
       schema:
         type: string
-      description: Search term
+      description: "EN: Search term / TH: คำค้นหา"
     - name: status
       in: query
       schema:
         type: string
         enum: [active, preview, deprecated]
-      description: Filter by status
+      description: "EN: Filter by status / TH: กรองด้วยสถานะ"
   responses:
     "200":
-      description: List of dataset versions with pagination
+      description: "EN: List of dataset versions with pagination / TH: รายการ version ของ dataset พร้อม pagination"
       content:
         application/json:
           schema:
@@ -62,13 +62,13 @@ get:
               total_rows:
                 type: integer
     "400":
-      description: Bad Request
+      description: "EN: Bad request / TH: คำขอไม่ถูกต้อง"
       content:
         application/json:
           schema:
             $ref: "../../components/schemas/ErrorResponse.yml"
     "404":
-      description: Dataset not found
+      description: "EN: Dataset not found / TH: ไม่พบ dataset"
       content:
         application/json:
           schema:
@@ -76,14 +76,14 @@ get:
 
 post:
   tags: [Contracts]
-  summary: Create a new dataset version (contract)
+  summary: "EN: Create a new dataset version (contract) / TH: สร้าง version ใหม่ของ dataset (contract)"
   parameters:
     - name: id
       in: path
       required: true
       schema:
         type: string
-      description: Dataset ID
+      description: "EN: Dataset ID / TH: รหัส dataset"
   requestBody:
     required: true
     content:
@@ -92,7 +92,7 @@ post:
           $ref: "../../components/schemas/InsertDatasetVersionDTO.yml"
   responses:
     "200":
-      description: Dataset version created successfully
+      description: "EN: Dataset version created successfully / TH: สร้าง version ของ dataset สำเร็จ"
       content:
         application/json:
           schema:
@@ -102,19 +102,19 @@ post:
                 type: string
                 example: "success"
     "400":
-      description: Bad Request - validation error
+      description: "EN: Bad request - validation error / TH: คำขอไม่ถูกต้อง - ข้อมูลไม่ผ่าน validation"
       content:
         application/json:
           schema:
             $ref: "../../components/schemas/ErrorResponse.yml"
     "404":
-      description: Dataset not found
+      description: "EN: Dataset not found / TH: ไม่พบ dataset"
       content:
         application/json:
           schema:
             $ref: "../../components/schemas/ErrorResponse.yml"
     "409":
-      description: Version already exists
+      description: "EN: Version already exists / TH: มี version นี้อยู่แล้ว"
       content:
         application/json:
           schema:

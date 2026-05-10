@@ -1,0 +1,34 @@
+# /reporting/export/job/{job_id}
+get:
+  tags: [Reporting]
+  summary: "EN: Get dataset export job by ID / TH: ดูข้อมูลงาน export dataset ตาม ID"
+  parameters:
+    - name: job_id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: "EN: Export job ID / TH: รหัสงาน export"
+  responses:
+    "200":
+      description: "EN: Export job detail / TH: รายละเอียดงาน export"
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              data:
+                $ref: "../../components/schemas/ExportJobStatus.yml"
+    "400":
+      description: "EN: Invalid job ID / TH: รหัสงานไม่ถูกต้อง"
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yml"
+    "404":
+      description: "EN: Export job not found / TH: ไม่พบงาน export"
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/schemas/ErrorResponse.yml"

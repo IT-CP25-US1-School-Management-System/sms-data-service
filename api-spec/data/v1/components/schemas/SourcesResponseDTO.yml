@@ -1,55 +1,55 @@
-type: object
+﻿type: object
 properties:
   id:
     type: string
     format: uuid
     nullable: true
-    description: Source ID
+    description: "EN: Source ID / TH: รหัสแหล่งข้อมูล"
   name:
     type: string
-    description: Source name
+    description: "EN: Source name / TH: ชื่อแหล่งข้อมูล"
   description:
     type: string
     nullable: true
-    description: Source description
+    description: "EN: Source description / TH: รายละเอียดแหล่งข้อมูล"
   type:
     type: string
-    description: Source type
+    description: "EN: Source type / TH: ประเภทแหล่งข้อมูล"
   is_active:
     type: boolean
-    description: Whether the source is active
+    description: "EN: Whether the source is active / TH: ระบุว่าแหล่งข้อมูลเปิดใช้งานอยู่หรือไม่"
   sensitivity:
     type: string
-    description: Data sensitivity level
+    description: "EN: Data sensitivity level / TH: ระดับความอ่อนไหวของข้อมูล"
   db_type:
     type: string
-    description: Database type
+    description: "EN: Database type / TH: ประเภทฐานข้อมูล"
   host:
     type: string
-    description: Database host
+    description: "EN: Database host / TH: host ของฐานข้อมูล"
   port:
     type: integer
-    description: Database port
+    description: "EN: Database port / TH: port ของฐานข้อมูล"
   username:
     type: string
-    description: Database username
+    description: "EN: Database username / TH: username ของฐานข้อมูล"
   database_name:
     type: string
-    description: Database name
+    description: "EN: Database name / TH: ชื่อฐานข้อมูล"
   params:
     type: string
     nullable: true
-    description: Additional connection parameters
+    description: "EN: Additional connection parameters / TH: parameter เพิ่มเติมสำหรับการเชื่อมต่อ"
   created_at:
     type: string
     format: date-time
     nullable: true
-    description: Creation timestamp
+    description: "EN: Creation timestamp / TH: เวลาที่สร้างข้อมูล"
   updated_at:
     type: string
     format: date-time
     nullable: true
-    description: Last update timestamp
+    description: "EN: Last update timestamp / TH: เวลาที่แก้ไขข้อมูลล่าสุด"
 required:
   - name
   - type

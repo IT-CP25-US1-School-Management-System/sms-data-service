@@ -1,21 +1,21 @@
 # /introspect/schemas
 get:
   tags: [Introspection]
-  summary: List schemas in a source
+  summary: "EN: List schemas in a source / TH: ดูรายการ schema ในแหล่งข้อมูล"
   parameters:
     - name: source_id
       in: query
       schema:
         type: string
         format: uuid
-      description: Filter by source ID
+      description: "EN: Filter by source ID / TH: กรองด้วยรหัสแหล่งข้อมูล"
     - name: page
       in: query
       schema:
         type: integer
         minimum: 1
         default: 1
-      description: Page number for pagination
+      description: "EN: Page number for pagination / TH: เลขหน้าสำหรับแบ่งหน้า"
     - name: per_page
       in: query
       schema:
@@ -23,10 +23,10 @@ get:
         minimum: 1
         maximum: 100
         default: 10
-      description: Number of items per page
+      description: "EN: Number of items per page / TH: จำนวนรายการต่อหน้า"
   responses:
     "200":
-      description: List of schemas with pagination
+      description: "EN: List of schemas with pagination / TH: รายการ schema พร้อม pagination"
       content:
         application/json:
           schema:
@@ -45,13 +45,13 @@ get:
               total_rows:
                 type: integer
     "400":
-      description: Bad Request
+      description: "EN: Bad request / TH: คำขอไม่ถูกต้อง"
       content:
         application/json:
           schema:
             $ref: "../../components/schemas/ErrorResponse.yml"
     "500":
-      description: Internal Server Error
+      description: "EN: Internal server error / TH: ระบบเกิดข้อผิดพลาด"
       content:
         application/json:
           schema:
